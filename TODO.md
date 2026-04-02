@@ -26,7 +26,9 @@ wrap-ansi(text, terminalWidth) → split('\n').length → eraseLines(count)
 
 ---
 
-## 2. multiline-input: 集成到 apps/code
+## ~~2. multiline-input: 集成到 apps/code~~ ✅ 已完成
+
+> **已在 `feat/integrate-multiline-input` 分支完成。** 替换旧的 readline + 时间阈值方案为 `@n0n/multiline-input`（raw mode + bracketed paste），移除旧文件，调整 Ctrl+C 中断行为。
 
 **前置：** `@n0n/multiline-input` 包已创建（`feat/multiline-input` 分支），待 review 通过后集成。
 
