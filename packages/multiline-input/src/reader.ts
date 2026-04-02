@@ -65,7 +65,8 @@ export function readMultilineInput(
 
 	return new Promise<MultilineInputResult | null>((resolve) => {
 		const buf = new InputBuffer();
-		let state: DrawState = { cursorRow: 0, totalLines: 0 };
+		// InputBuffer 初始即有 1 行 [""], 光标所在行即为第一行位置，无需额外 scroll
+		let state: DrawState = { cursorRow: 0, totalLines: 1 };
 		let isPasting = false;
 		let pasteBuffer = "";
 

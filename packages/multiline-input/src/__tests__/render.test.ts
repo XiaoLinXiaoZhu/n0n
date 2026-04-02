@@ -59,7 +59,7 @@ function extractCursorRight(output: string): number {
 describe("渲染 - 基本状态转换", () => {
 	test("初始渲染空行", () => {
 		const buf = new InputBuffer();
-		const { next } = buildRedrawOutput(buf, { cursorRow: 0, totalLines: 0 });
+		const { next } = buildRedrawOutput(buf, { cursorRow: 0, totalLines: 1 });
 		expect(next).toEqual({ cursorRow: 0, totalLines: 1 });
 	});
 
