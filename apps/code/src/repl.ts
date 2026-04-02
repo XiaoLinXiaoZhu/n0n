@@ -13,11 +13,17 @@
  * - `log` 命令：导出当前对话历史到 workspace 根目录
  * - `--resume <file>`：从文件恢复对话继续
  * - `--save-every-loop`：每轮 agentLoop 结束后自动保存到 n0n-conversation-latest.json
+ *
+ * 多行输入：
+ * - TTY 模式使用 @n0n/multiline-input（raw mode + bracketed paste）
+ * - Enter 插入换行，Alt+Enter / Ctrl+D 提交，Ctrl+C 退出
+ * - 非 TTY 模式回退到 readline 单行输入
  */
 
 import { createInterface } from "node:readline";
 import { isTTY, label, style, writeln } from "@n0n/cli-ui";
 import { agentLoop, PlainRenderer } from "@n0n/core";
+import { readMultilineInput } from "@n0n/multiline-input";
 import {
 	type BaseWorkspacePaths,
 	formatAgentsMdPrompt,
@@ -27,7 +33,6 @@ import {
 } from "@n0n/shared";
 import type { DomainMessage, SubmitToolResult } from "@n0n/types";
 import { CodeRenderer } from "./code-renderer.ts";
-import { readMultilineInput } from "./multiline-input.ts";
 import codePromptText from "./prompts/code.md" with { type: "text" };
 import { type CodeResult, CodeResultSchema } from "./schema.ts";
 
@@ -49,6 +54,8 @@ export interface CodeReplOptions {
 }
 
 type CodeWorkspacePaths = BaseWorkspacePaths;
+
+// ── 以下为不涉及输入方式的辅助函数，保持不变 ──
 
 function buildWorkspaceContext(workspace: string): string {
 	return [
@@ -113,6 +120,8 @@ async function makeUserInput(
 	};
 }
 
+// ── REPL 主函数 ──
+
 export async function startCodeRepl(
 	paths: CodeWorkspacePaths,
 	options: CodeReplOptions = {},
@@ -128,6 +137,8 @@ export async function startCodeRepl(
 		? new CodeRenderer(paths.workspace)
 		: new PlainRenderer();
 
+	// readline 保留用于 confirmFn 和非 TTY 回退输入
+	// TTY 模式下用户主输入由 @n0n/multiline-input 接管
 	const rl = createInterface({
 		input: process.stdin,
 		output: process.stderr,
@@ -138,11 +149,28 @@ export async function startCodeRepl(
 		closed = true;
 	});
 
-	const continuationPrompt = isTTY ? style.gray("... ") : "";
-	const prompt = async (q: string): Promise<string> => {
-		const result = await readMultilineInput(rl, q, { continuationPrompt });
-		return result ?? "exit";
+	/**
+	 * 读取用户多行输入
+	 * - TTY: 使用 @n0n/multiline-input（raw mode），暂停 readline 避免 stdin 竞争
+	 * - 非 TTY: 回退到 readline 单行输入
+	 */
+	const prompt = async (): Promise<string> => {
+		if (closed) return "exit";
+		if (isTTY) {
+			rl.pause();
+			const result = await readMultilineInput({
+				prompt: label.user(),
+				hint: style.gray("(Alt+Enter 提交)"),
+			});
+			rl.resume();
+			return result?.text ?? "exit";
+		}
+		return new Promise<string>((resolve) => {
+			if (closed) return resolve("exit");
+			rl.question("", resolve);
+		});
 	};
+
 	const confirmFn = (question: string): Promise<string> =>
 		new Promise((resolve) => {
 			if (closed) return resolve("n");
@@ -154,14 +182,15 @@ export async function startCodeRepl(
 	let agentRunning = false;
 
 	if (isTTY) {
+		// TTY 模式：
+		// - 用户输入期间：readMultilineInput 自行处理 Ctrl+C（返回 null → 退出 REPL）
+		// - Agent 运行期间：readline 恢复活跃，SIGINT 事件触发 → abort agent
 		rl.on("SIGINT", () => {
 			if (agentRunning) {
 				abortController.abort();
-			} else {
-				writeln();
-				writeln(style.gray("Bye!"));
-				rl.close();
 			}
+			// 非 agent 运行期间：readline paused 时此事件不会触发，
+			// readMultilineInput 内部处理 Ctrl+C
 		});
 	} else {
 		process.on("SIGINT", () => {
@@ -190,21 +219,21 @@ export async function startCodeRepl(
 					),
 			);
 			writeln();
-			userInput = await prompt(`${label.user()} `);
+			userInput = await prompt();
 		} catch (err) {
 			const message =
 				err instanceof Error ? err.message : String(err ?? "未知错误");
 			writeln(`${style.red("✗")} 恢复对话失败: ${message}`);
 			writeln(style.gray("  将以全新对话启动。"));
 			writeln();
-			userInput = initialInput ?? (await prompt(`${label.user()} `));
+			userInput = initialInput ?? (await prompt());
 			history = [
 				{ type: "system", content: systemPrompt },
 				{ type: "system", content: buildWorkspaceContext(paths.workspace) },
 			];
 		}
 	} else {
-		userInput = initialInput ?? (await prompt(`${label.user()} `));
+		userInput = initialInput ?? (await prompt());
 		history = [
 			{ type: "system", content: systemPrompt },
 			{ type: "system", content: buildWorkspaceContext(paths.workspace) },
@@ -212,9 +241,8 @@ export async function startCodeRepl(
 	}
 
 	while (userInput.trim().toLowerCase() !== "exit") {
-		// 空输入跳过，重新 prompt
 		if (userInput.trim() === "") {
-			userInput = await prompt(`${label.user()} `);
+			userInput = await prompt();
 			continue;
 		}
 
@@ -233,12 +261,10 @@ export async function startCodeRepl(
 				writeln(`${style.red("✗")} 保存对话失败: ${message}`);
 			}
 			writeln();
-			userInput = await prompt(`${label.user()} `);
-			// log 命令不推入 history，直接继续
+			userInput = await prompt();
 			continue;
 		}
 
-		// ── 将用户输入推入 history（在 log/exit 检测之后，确保指令不污染对话历史）──
 		history.push(await makeUserInput(userInput, paths.workspace));
 
 		abortController = new AbortController();
@@ -260,7 +286,7 @@ export async function startCodeRepl(
 				err instanceof Error ? err.message : String(err ?? "未知错误");
 			writeln(style.gray(`  ${message}`));
 			writeln();
-			userInput = await prompt(`${label.user()} `);
+			userInput = await prompt();
 			continue;
 		} finally {
 			agentRunning = false;
@@ -281,10 +307,10 @@ export async function startCodeRepl(
 			}
 		}
 
-		// ── 被用户中断（通过 AbortController.signal 判断，避免与 submit report 冲突） ──
+		// ── 被用户中断 ──
 		if (abortController.signal.aborted) {
 			writeln();
-			userInput = await prompt(`${label.user()} `);
+			userInput = await prompt();
 			continue;
 		}
 
@@ -295,7 +321,7 @@ export async function startCodeRepl(
 			writeln(`${style.red("✗")} Agent 异常终止`);
 			if (agentResult.report) writeln(style.gray(`  ${agentResult.report}`));
 			writeln();
-			userInput = await prompt(`${label.user()} `);
+			userInput = await prompt();
 			continue;
 		}
 
@@ -307,7 +333,7 @@ export async function startCodeRepl(
 					writeln(`     ${style.gray(opt.affect)}`);
 				}
 				writeln();
-				userInput = await prompt(`${label.user()} `);
+				userInput = await prompt();
 				injectUserResponse(history, userInput);
 				continue;
 			}
@@ -320,7 +346,7 @@ export async function startCodeRepl(
 					}
 				}
 				writeln();
-				userInput = await prompt(`${label.user()} `);
+				userInput = await prompt();
 				injectUserResponse(history, userInput);
 				continue;
 			}
@@ -333,7 +359,7 @@ export async function startCodeRepl(
 					writeln(style.gray(`  ${agentResult.report}`));
 				}
 				writeln();
-				userInput = await prompt(`${label.user()} `);
+				userInput = await prompt();
 				break;
 			}
 		}

@@ -47,6 +47,9 @@
 			"@n0n/cli-ui": [
 				"./packages/cli-ui/src/index.ts"
 			],
+			"@n0n/multiline-input": [
+				"./packages/multiline-input/src/index.ts"
+			],
 		},
 		"jsx": "react-jsx",
 		"jsxImportSource": "react"
