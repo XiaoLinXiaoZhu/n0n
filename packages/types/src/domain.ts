@@ -366,6 +366,12 @@ export interface GenericToolResultMessage {
 }
 
 // ── 缓存断点 ──
+/** Transform 折叠产出 — agent 将一轮探索压缩为一条观察记录。adapter 负责映射为 user role。 */
+export interface TransformedObservationMessage {
+	type: "transformed_observation";
+	content: string;
+}
+
 /** 显式标记提示词缓存断点位置。client 层在此处设置 cache_control，提升前缀稳定性。 */
 export interface CacheBreakpointMessage {
 	type: "cache_breakpoint";
@@ -387,6 +393,7 @@ export type DomainMessage =
 	| ReminderDueMessage
 	| SubmitRejectedMessage
 	| ToolArgErrorMessage
+	| TransformedObservationMessage
 	| CacheBreakpointMessage;
 
 // ── 工具并行条件判断 ──

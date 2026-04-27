@@ -1,12 +1,16 @@
 /**
- * Agent Loop — 纯编排层
+ * Agent Loop — 纯编排层（角色转换版本）
  *
- * 每一步都是一个清晰的函数调用：
- * 1. parseStream  → 流式解析，yield 语义事件
- * 2. scheduler    → 流水线并行执行（streaming 中工具就绪即入队）
- * 3. round.*      → 纯函数后处理（截断恢复、消息构建、submit 检查）
+ * 流程：
+ *   1. parseStream  → 流式解析，yield 语义事件
+ *   2. scheduler    → 流水线并行执行（streaming 中工具就绪即入队）
+ *   3. round.*      → 纯函数后处理（截断恢复、消息构建、submit 检查）
+ *   4. transform    → 折叠本轮探索为一条 user 消息 + cache_breakpoint
  *
- * scheduler 通过回调发射 raw 无序事件，排序由各 Renderer 实现自行决定。
+ * 缓存滚动：
+ *   Round N stream  → 在 cache_breakpoint 处创建缓存
+ *   Round N transform → 轻量 complete()，复用或不依赖缓存
+ *   Round N+1 stream → 命中 Round N 的缓存前缀 ✓
  */
 
 import type { PendingReminder, Toolkit } from "@n0n/tools";
@@ -31,6 +35,7 @@ import {
 import { ExecutionScheduler } from "./scheduler.ts";
 import { parseStream, type StreamingResult } from "./streaming.ts";
 import { executeToolStream } from "./tool.ts";
+import { executeTransform } from "./transform.ts";
 
 // ── 结果类型 ──
 
@@ -77,6 +82,9 @@ export async function agentLoop<T = unknown>(
 		cacheReadTokens: 0,
 		cacheWriteTokens: 0,
 	};
+
+	// 确保初始状态有 cache_breakpoint（首个 user 消息后）
+	ensureInitialBreakpoint(messages);
 
 	for (let iter = 0; iter < maxIter; iter++) {
 		if (options.signal?.aborted) {
@@ -264,7 +272,18 @@ export async function agentLoop<T = unknown>(
 			messages.push(pair.result);
 		}
 
-		// ── 7. Submit 检查 ──
+		// ── 7. Transform：折叠本轮探索 → user 消息 + cache_breakpoint ──
+		// 仅在非 submit 的普通工具轮次执行
+		const transformed = await executeTransform(messages, client);
+		if (transformed) {
+			messages.push({
+				type: "transformed_observation",
+				content: transformed.observation,
+			});
+			messages.push({ type: "cache_breakpoint" });
+		}
+
+		// ── 8. Submit 检查 ──
 		const submit = checkSubmit(
 			scheduler.orderedJobs(),
 			options.schema,
@@ -422,4 +441,26 @@ function injectReminders(
 			originalEstimate: r.originalEstimate,
 		});
 	}
+}
+
+// ── 初始断点 ──
+
+/**
+ * 确保 messages 中存在至少一个 cache_breakpoint。
+ * 如果没有，在最后一个 user_input 或 generic_user_text 后插入。
+ */
+function ensureInitialBreakpoint(messages: DomainMessage[]): void {
+	for (let i = messages.length - 1; i >= 0; i--) {
+		if (messages[i]!.type === "cache_breakpoint") return; // 已存在
+	}
+	// 找最后一个 user 类消息的索引
+	let insertAt = messages.length;
+	for (let i = messages.length - 1; i >= 0; i--) {
+		const t = messages[i]!.type;
+		if (t === "user_input" || t === "generic_user_text" || t === "transformed_observation") {
+			insertAt = i + 1;
+			break;
+		}
+	}
+	messages.splice(insertAt, 0, { type: "cache_breakpoint" });
 }

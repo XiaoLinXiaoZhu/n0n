@@ -21,7 +21,6 @@ import type {
 	ToolCallPart,
 	ToolResult,
 } from "@n0n/types";
-import { affectsSubsequent } from "./config.ts";
 import { formatEditResult } from "./format-edit.ts";
 import { formatExecResult } from "./format-exec.ts";
 import { formatIdleNudge } from "./format-idle-nudge.ts";
@@ -72,6 +71,13 @@ function buildUserInputContent(
 	return parts.join("\n\n");
 }
 
+// ── affectsSubsequent 辅助函数 ──
+
+/** 消息类型是否影响后续消息的 anti-few-shot 种子计数。cache_breakpoint 不影响种子。 */
+function affectsSubsequent(type: DomainMessage["type"]): boolean {
+  return type !== "cache_breakpoint";
+}
+
 // ── 连续 system 消息合并 ──
 
 function mergeConsecutiveSystem(messages: PromptMessage[]): PromptMessage[] {
@@ -103,9 +109,40 @@ export function formatPrompt(
 	modelId: string,
 ): PromptMessage[] {
 	const result: PromptMessage[] = [];
+
+	// ── 视角切换：找到最后一个 transformed_observation ──
+	let lastTransformedIdx = -1;
+	for (let j = 0; j < messages.length; j++) {
+		if (messages[j]?.type === "transformed_observation") {
+			lastTransformedIdx = j;
+		}
+	}
+
 	let i = 0;
-	for (const msg of messages) {
+	for (const [msgIdx, msg] of messages.entries()) {
 		if (!msg) continue;
+
+		// 视角切换：在最后一个 transformed_observation 之前，跳过非状态消息
+		if (lastTransformedIdx >= 0 && msgIdx < lastTransformedIdx) {
+			const isNonState: boolean =
+				msg.type === "assistant_text" ||
+				msg.type === "assistant_tool_call" ||
+				msg.type === "tool_result" ||
+				msg.type === "idle_nudge" ||
+				msg.type === "reminder:due" ||
+				msg.type === "submit:rejected" ||
+				msg.type === "turn_feedback" ||
+				msg.type === "tool_arg_error" ||
+				msg.type === "generic_tool_call" ||
+				msg.type === "generic_tool_result";
+			if (isNonState) {
+				// 仍递增 i 以保持 anti-few-shot 种子稳定性
+				if (affectsSubsequent(msg.type)) {
+					i++;
+				}
+				continue;
+			}
+		}
 
 		switch (msg.type) {
 			case "system":
@@ -225,6 +262,10 @@ export function formatPrompt(
 					toolName: msg.toolName,
 					content: msg.content,
 				});
+				break;
+
+			case "transformed_observation":
+				result.push({ role: "user", content: msg.content });
 				break;
 
 			case "cache_breakpoint": {

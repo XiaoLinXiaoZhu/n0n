@@ -25,6 +25,7 @@ export const AFFECTS_SUBSEQUENT: Record<MessageType, boolean> = {
 	"reminder:due": true,
 	"submit:rejected": true,
 	tool_arg_error: true,
+	transformed_observation: true,
 	cache_breakpoint: false,
 };
 
