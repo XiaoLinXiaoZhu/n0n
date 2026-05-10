@@ -16,6 +16,7 @@ export type {
 	GenericUserTextMessage,
 	UserInputMessage,
 	UserImageMessage,
+	ExecOutputImageMessage,
 } from "./user.ts";
 
 // ── Assistant 侧 ──
@@ -92,6 +93,7 @@ import type {
 	GenericUserTextMessage,
 	UserInputMessage,
 	UserImageMessage,
+	ExecOutputImageMessage,
 } from "./user.ts";
 import type {
 	AssistantTextMessage,
@@ -115,6 +117,7 @@ export type DomainMessage =
 	| GenericUserTextMessage
 	| UserInputMessage
 	| UserImageMessage
+	| ExecOutputImageMessage
 	// 模型输出
 	| AssistantTextMessage
 	| AssistantToolCallMessage

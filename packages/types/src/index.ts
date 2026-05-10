@@ -1,4 +1,5 @@
 export type * from "./bootstrap.ts";
+export type { ImageData, ImageMediaType } from "./image.ts";
 // LLM Client 抽象接口 + 流式事件类型
 export type {
 	AssistantMessage,

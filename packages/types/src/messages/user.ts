@@ -1,3 +1,5 @@
+import type { ImageData } from "../image.ts";
+
 /**
  * 用户侧消息类型
  */
@@ -30,4 +32,10 @@ export interface UserImageMessage {
 	focusX: number;
 	focusY: number;
 	scale: number;
+}
+
+/** exec 工具产出的图片（agent loop 在 exec 执行后扫描 .temp/img/ 目录生成） */
+export interface ExecOutputImageMessage {
+	type: "exec_output_image";
+	images: ImageData[];
 }
