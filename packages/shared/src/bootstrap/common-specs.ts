@@ -99,7 +99,7 @@ const OPENAI_COMPATIBLE_VARS: EnvVarDef[] = [
  * 用户不会看到与自己 provider 无关的配置项。
  */
 export function buildLLMEnvGroup(provider: string): EnvGroup {
-	const vars = [...LLM_BASE_VARS];
+	const vars = [...LLM_BASE_VARS, ...LLM_BEHAVIOR_VARS];
 	switch (provider) {
 		case "anthropic":
 			vars.push(...ANTHROPIC_VARS);
@@ -112,7 +112,6 @@ export function buildLLMEnvGroup(provider: string): EnvGroup {
 			break;
 		// openai: 无额外变量
 	}
-	vars.push(...LLM_BEHAVIOR_VARS);
 	return { title: "LLM 配置", vars };
 }
 
