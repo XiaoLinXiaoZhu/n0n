@@ -39,6 +39,16 @@ const LLM_BASE_VARS: EnvVarDef[] = [
 	},
 ];
 
+// ── 通用行为变量（所有 provider） ──
+
+const LLM_BEHAVIOR_VARS: EnvVarDef[] = [
+	{
+		key: "LLM_IMAGES",
+		desc: "允许模型通过 .temp/img/ 发送图片（true / false）",
+		example: "true",
+	},
+];
+
 // ── Provider-specific 变量 ──
 
 const ANTHROPIC_VARS: EnvVarDef[] = [
@@ -102,6 +112,7 @@ export function buildLLMEnvGroup(provider: string): EnvGroup {
 			break;
 		// openai: 无额外变量
 	}
+	vars.push(...LLM_BEHAVIOR_VARS);
 	return { title: "LLM 配置", vars };
 }
 
@@ -112,7 +123,9 @@ export function buildLLMEnvGroup(provider: string): EnvGroup {
  */
 export function buildEditorLLMEnvGroup(provider: string): EnvGroup {
 	const mainGroup = buildLLMEnvGroup(provider);
-	const vars: EnvVarDef[] = mainGroup.vars.map((v) => {
+	// 排除行为变量（如 LLM_IMAGES）——Editor LLM 不需要这些开关
+	const behaviorKeys = new Set(LLM_BEHAVIOR_VARS.map((v) => v.key));
+	const vars: EnvVarDef[] = mainGroup.vars.filter((v) => !behaviorKeys.has(v.key)).map((v) => {
 		// 继承变量不保留 default——让 inheritFrom 机制生效
 		const { default: _, ...rest } = v;
 		return {
