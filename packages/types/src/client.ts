@@ -93,7 +93,7 @@ export interface ToolDefinition {
 /** 提示词组织的输出格式。format-prompt 模块的产物，Client 内部消费。 */
 export type PromptMessage =
 	| { role: "system"; content: string; cacheBreakpoint?: boolean }
-	| { role: "user"; content: string; cacheBreakpoint?: boolean }
+	| { role: "user"; content: string; images?: ImageData[]; cacheBreakpoint?: boolean }
 	| {
 			role: "assistant";
 			content: string;
@@ -119,6 +119,7 @@ export interface ToolCallPart {
 // ── Request / Response ──
 
 import type { DomainMessage } from "./domain.ts";
+import type { ImageData } from "./image.ts";
 
 /** 流式请求 — 走 DomainMessage 领域层，或直接传入 PromptMessage */
 export interface StreamRequest {
