@@ -358,8 +358,12 @@ export class AnthropicClient implements LLMClient {
 	readonly tags: TagAdapter;
 	private readonly pc: AnthropicProviderConfig;
 	private readonly apiUrl: string;
+	private readonly supportsImages: boolean;
 
-	constructor(pc: AnthropicProviderConfig) {
+	constructor(
+		pc: AnthropicProviderConfig,
+		options?: { images?: boolean },
+	) {
 		this.pc = pc;
 		this.modelId = this.pc.model;
 		this.tagStyle = this.pc.tagStyle ?? detectTagStyle(this.modelId);
@@ -369,6 +373,7 @@ export class AnthropicClient implements LLMClient {
 		// 处理 baseUrl 可能已包含 /v1 的情况（如代理 URL）
 		const cleanBase = base.replace(/\/v1\/?$/, "").replace(/\/$/, "");
 		this.apiUrl = `${cleanBase}/v1/messages`;
+		this.supportsImages = options?.images ?? false;
 	}
 
 	async *stream(

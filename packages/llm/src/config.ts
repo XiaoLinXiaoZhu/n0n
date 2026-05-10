@@ -98,4 +98,6 @@ export type ProviderConfig =
 export interface LLMConfig {
 	/** Provider 配置（决定使用哪个 Client，含行为参数） */
 	providerConfig: ProviderConfig;
+	/** 是否在 tool_result 中附带 exec 产出的图片（需 provider 支持 image content blocks） */
+	images?: boolean;
 }

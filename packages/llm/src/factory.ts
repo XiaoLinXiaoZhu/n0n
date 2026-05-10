@@ -22,12 +22,13 @@ import { OpenAIClient } from "./openai-client.ts";
  */
 export function createLLMClient(config: LLMConfig): LLMClient {
 	const pc = config.providerConfig;
+	const images = config.images ?? false;
 	switch (pc.provider) {
 		case "openai":
 		case "openai-compatible":
 			return new OpenAIClient(pc);
 		case "anthropic":
-			return new AnthropicClient(pc);
+			return new AnthropicClient(pc, { images });
 		case "google":
 			return new GeminiClient(pc);
 	}

@@ -152,5 +152,6 @@ export function buildLLMConfigFromEnv(
 ): LLMConfig {
 	return {
 		providerConfig: buildProviderConfigFromEnv(prefix, fallbackProvider),
+		images: process.env[`${prefix}_IMAGES`] === "true",
 	};
 }
