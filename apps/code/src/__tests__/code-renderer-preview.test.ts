@@ -16,7 +16,7 @@ import { formatProgressResult } from "../progress-formatter.ts";
 // ── 测试用临时目录 ──
 const TEST_WORKSPACE = join(import.meta.dir, ".tmp-preview-test");
 const TEST_TEMP = join(TEST_WORKSPACE, ".temp");
-const TEST_PATHS = { workspace: TEST_WORKSPACE, temp: TEST_TEMP };
+const TEST_PATHS = { workspace: TEST_WORKSPACE, temp: TEST_TEMP, img: TEST_TEMP + "/img" };
 
 function cleanup() {
 	if (existsSync(TEST_WORKSPACE)) {

@@ -18,6 +18,8 @@ export interface BaseWorkspacePaths {
 	workspace: string;
 	/** 临时文件目录 */
 	temp: string;
+	/** 图片输出目录（exec 产出的图片） */
+	img: string;
 }
 
 // ── 路径解析（纯函数）──
@@ -28,6 +30,7 @@ export function resolveBasePaths(workspace: string): BaseWorkspacePaths {
 	return {
 		workspace: ws,
 		temp: resolve(ws, ".temp"),
+		img: resolve(ws, ".temp", "img"),
 	};
 }
 

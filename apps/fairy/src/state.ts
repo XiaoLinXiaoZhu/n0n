@@ -15,6 +15,8 @@ export interface FairyPaths {
 	workspace: string;
 	/** 临时文件目录 */
 	temp: string;
+	/** 图片输出目录 */
+	img: string;
 	/** 全局对话记录 */
 	historyFile: string;
 	/** 角色设定 */
@@ -28,6 +30,7 @@ export function resolveFairyPaths(workspace: string): FairyPaths {
 	return {
 		workspace: ws,
 		temp: resolve(ws, ".temp"),
+		img: resolve(ws, ".temp", "img"),
 		historyFile: resolve(ws, "history.json"),
 		identityFile: resolve(ws, "identity.md"),
 		memoryFile: resolve(ws, "memory.md"),
@@ -37,7 +40,7 @@ export function resolveFairyPaths(workspace: string): FairyPaths {
 /** 确保所有必要目录和文件存在 */
 export function ensureFairyFiles(paths: FairyPaths): void {
 	// 确保目录
-	for (const dir of [paths.workspace, paths.temp]) {
+	for (const dir of [paths.workspace, paths.temp, paths.img]) {
 		if (!existsSync(dir)) {
 			mkdirSync(dir, { recursive: true });
 		}
