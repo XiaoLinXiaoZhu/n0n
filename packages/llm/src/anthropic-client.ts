@@ -60,6 +60,14 @@ type AnthropicContent =
 			tool_use_id: string;
 			content: string;
 			cache_control?: { type: "ephemeral" };
+	  }
+	| {
+			type: "image";
+			source: {
+				type: "base64";
+				media_type: string;
+				data: string;
+			};
 	  };
 
 interface AnthropicMessage {
@@ -169,6 +177,7 @@ interface AnthropicConversionResult {
 
 function toAnthropicFormat(
 	promptMessages: PromptMessage[],
+	supportsImages = false,
 ): AnthropicConversionResult {
 	const systemParts: Array<{
 		type: "text";
@@ -193,8 +202,33 @@ function toAnthropicFormat(
 				break;
 			}
 
-			case "user":
-				if (msg.cacheBreakpoint) {
+			case "user": {
+				const hasImages = supportsImages && msg.images?.length;
+				if (hasImages) {
+					// 图片消息：构造 content 数组（text + image blocks）
+					const content: AnthropicContent[] = [];
+					if (msg.content) {
+						content.push({ type: "text", text: msg.content });
+					}
+					for (const img of msg.images!) {
+						content.push({
+							type: "image",
+							source: {
+								type: "base64",
+								media_type: img.mediaType,
+								data: img.base64,
+							},
+						});
+					}
+					if (msg.cacheBreakpoint && content.length > 0) {
+						const last = content[content.length - 1]!;
+						if (last.type === "text") {
+							last.cache_control = { type: "ephemeral" };
+						}
+						hasBreakpoint = true;
+					}
+					messages.push({ role: "user", content });
+				} else if (msg.cacheBreakpoint) {
 					messages.push({
 						role: "user",
 						content: [
@@ -213,6 +247,7 @@ function toAnthropicFormat(
 					});
 				}
 				break;
+			}
 
 			case "assistant": {
 				const content: AnthropicContent[] = [];
@@ -381,7 +416,7 @@ export class AnthropicClient implements LLMClient {
 		signal?: AbortSignal,
 	): AsyncGenerator<StreamEvent> {
 		const promptMessages = formatPrompt(request.messages, this.tags);
-		const { system, messages } = toAnthropicFormat(promptMessages);
+		const { system, messages } = toAnthropicFormat(promptMessages, this.supportsImages);
 
 		// 过滤空消息——防止提取后残留的空 user 或只有 thinking 无内容的 assistant
 		const filteredMessages = messages.filter((msg) => {
@@ -724,7 +759,7 @@ export class AnthropicClient implements LLMClient {
 	async heartbeat(request: StreamRequest): Promise<TokenUsage | null> {
 		const promptMessages = formatPrompt(request.messages, this.tags);
 		const { system, messages: anthropicMessages } =
-			toAnthropicFormat(promptMessages);
+			toAnthropicFormat(promptMessages, this.supportsImages);
 
 		// 构造与 stream() 完全一致的请求体，只覆盖 max_tokens 和 stream
 		const body: AnthropicRequest = {
