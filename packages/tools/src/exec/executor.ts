@@ -151,8 +151,10 @@ export async function* execToolStream(
 	const ext = RUNTIME_EXT[runtime] ?? "";
 	const tempDir = resolve(toolsConfig.tempDir);
 	if (!existsSync(tempDir)) mkdirSync(tempDir, { recursive: true });
+	const scriptDir = resolve(cwd);
+	if (!existsSync(scriptDir)) mkdirSync(scriptDir, { recursive: true });
 	const tmpFile = join(
-		tempDir,
+		scriptDir,
 		`_n0n_exec_${Date.now()}_${Math.random().toString(36).slice(2, 8)}${ext}`,
 	);
 
