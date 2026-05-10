@@ -146,21 +146,16 @@ export function formatPrompt(
 				break;
 
 			case "generic_image": {
+				if (!imagesSupported) break;
 				const filenames = msg.images.map((img) => img.filename);
 				const skippedInfo = msg.skipped.length > 0
 					? `\nSkipped: ${msg.skipped.join(", ")}`
 					: "";
-				if (imagesSupported && msg.images.length > 0) {
+				if (msg.images.length > 0) {
 					result.push({
 						role: "user",
 						content: `[Images: ${filenames.join(", ")}]${skippedInfo}`,
 						images: msg.images,
-					});
-				} else if (msg.images.length > 0 || msg.skipped.length > 0) {
-					const names = [...filenames, ...msg.skipped.map(s => s.split(" (")[0])];
-					result.push({
-						role: "user",
-						content: `[exec produced images: ${names.join(", ")} — image display not supported by current model]${skippedInfo}`,
 					});
 				}
 				break;

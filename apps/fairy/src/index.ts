@@ -126,7 +126,7 @@ async function main(): Promise<void> {
 				maxIterations: 30,
 				renderer,
 				signal: abortController.signal,
-				imageDir: paths.img,
+				imageDir: llmConfig.images ? paths.img : undefined,
 			});
 		} catch (err) {
 			writeln();

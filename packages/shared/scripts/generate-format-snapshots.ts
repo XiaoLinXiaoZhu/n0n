@@ -27,6 +27,8 @@ interface Scenario {
 	title: string;
 	/** 输入的 DomainMessage 列表 */
 	messages: DomainMessage[];
+	/** 可选选项，如 imagesSupported */
+	options?: { imagesSupported?: boolean };
 }
 
 const scenarios: Scenario[] = [
@@ -61,7 +63,8 @@ const scenarios: Scenario[] = [
 	},
 	{
 		file: "generic-image",
-		title: "generic_image 消息（图片不支持时降级）",
+		title: "generic_image 消息（图片支持开启时）",
+		options: { imagesSupported: true },
 		messages: [
 			{
 				type: "generic_image",
@@ -302,7 +305,7 @@ function formatResult(r: PromptMessage): string {
 
 let count = 0;
 for (const scenario of scenarios) {
-	const results = formatPrompt(scenario.messages, createTagAdapter("default"));
+	const results = formatPrompt(scenario.messages, createTagAdapter("default"), scenario.options);
 	const parts = [`# ${scenario.title}`, `<!-- model: ${MODEL} -->`, ""];
 	for (const r of results) {
 		parts.push("```", formatResult(r), "```", "");
@@ -321,7 +324,7 @@ mkdirSync(DS_SNAPSHOT_DIR, { recursive: true });
 
 let dsCount = 0;
 for (const scenario of scenarios) {
-	const results = formatPrompt(scenario.messages, createTagAdapter("deepseek"));
+	const results = formatPrompt(scenario.messages, createTagAdapter("deepseek"), scenario.options);
 	const parts = [`# ${scenario.title}`, `<!-- model: deepseek, tag-style: deepseek -->`, ""];
 	for (const r of results) {
 		parts.push("```", formatResult(r), "```", "");

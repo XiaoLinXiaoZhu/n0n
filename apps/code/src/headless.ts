@@ -34,6 +34,8 @@ export interface HeadlessOptions {
 	systemPromptPrefix?: string;
 	/** 提示词版本（如 "0.2"）；不传则使用默认版本 */
 	promptVersion?: string;
+	/** 是否启用图片支持 */
+	imagesEnabled?: boolean;
 }
 
 export interface HeadlessResult {
@@ -81,6 +83,7 @@ export async function runHeadless(
 		timeoutMs = 900_000, // 15 分钟默认
 		systemPromptPrefix,
 		promptVersion,
+		imagesEnabled = false,
 	} = options;
 
 	const startTime = Date.now();
@@ -138,7 +141,7 @@ export async function runHeadless(
 				renderer,
 				confirmFn: async () => "y",
 				signal: abortController.signal,
-				imageDir: paths.img,
+				imageDir: imagesEnabled ? paths.img : undefined,
 			});
 
 			history = agentResult.history;

@@ -138,5 +138,6 @@ await startCodeRepl(paths, {
 	resumeFile,
 	saveEveryLoop,
 	promptVersion,
+	imagesEnabled: llmConfig.images,
 });
 process.exit(0);

@@ -43,6 +43,7 @@ export interface CodeReplOptions {
 	resumeFile?: string;
 	saveEveryLoop?: boolean;
 	promptVersion?: string;
+	imagesEnabled?: boolean;
 }
 
 type CodeWorkspacePaths = BaseWorkspacePaths;
@@ -138,6 +139,7 @@ export async function startCodeRepl(
 		resumeFile,
 		saveEveryLoop = false,
 		promptVersion,
+		imagesEnabled = false,
 	} = options;
 
 	// 基础系统提示词（稳定前缀，不含 agents.md 和环境信息）
@@ -409,7 +411,7 @@ export async function startCodeRepl(
 				renderer,
 				confirmFn,
 				signal: stdin?.abortController.signal,
-				imageDir: paths.img,
+				imageDir: imagesEnabled ? paths.img : undefined,
 			});
 		} catch (err) {
 			writeln();
