@@ -36,10 +36,11 @@ export function formatEditResult(
 	if (msg.success) {
 		const prefix = pick(successPrefixTemplates, msgIndex);
 		const summary = `${prefix(msg.call.args.path)}\n${formatPatches(msg.patches)}`;
-		return {
-			fact: tags.wrapTag("edit_result", summary),
-			hint: msg.feedback ?? null,
-		};
+		const parts = [tags.wrapTag("edit_result", summary)];
+		if (msg.feedback) {
+			parts.push(tags.wrapTag("edit_feedback", msg.feedback));
+		}
+		return { fact: parts.join("\n"), hint: null };
 	}
 	return {
 		fact: tags.wrapTag("error", `Edit failed: ${msg.error}`),

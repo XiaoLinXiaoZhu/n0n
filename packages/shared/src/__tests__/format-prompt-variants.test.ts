@@ -227,7 +227,8 @@ describe("formatPrompt 变体端到端", () => {
 		// 找 long 结果中的自动 cache breakpoint 位置
 		let bpIdx = -1;
 		for (let j = longResult.length - 1; j >= 0; j--) {
-			if (longResult[j]?.cacheBreakpoint && longResult[j]?.role === "assistant" && longResult[j]?.toolCalls?.length) {
+			const m = longResult[j];
+			if (m && m.cacheBreakpoint && m.role === "assistant" && m.toolCalls?.length) {
 				bpIdx = j;
 				break;
 			}

@@ -269,11 +269,14 @@ const scenarios: Scenario[] = [
 				type: "tool_arg_error",
 				callId: "tc_err",
 				tool: "exec",
-				error: "script: Required",
-				schema: {
-					type: "object",
-					properties: { script: { type: "string" } },
-					required: ["script"],
+				error: {
+					kind: "invalid_args",
+					issues: [{ path: "script", message: "Required" }],
+					schema: {
+						type: "object",
+						properties: { script: { type: "string" } },
+						required: ["script"],
+					},
 				},
 			},
 		],

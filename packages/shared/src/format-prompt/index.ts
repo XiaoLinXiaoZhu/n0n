@@ -286,7 +286,7 @@ export function formatPrompt(
 		for (let j = result.length - 1; j >= 0; j--) {
 			const m = result[j];
 			if (m && m.role === "assistant" && m.toolCalls?.length) {
-				m.cacheBreakpoint = true;
+				result[j] = { ...m, cacheBreakpoint: true };
 				break;
 			}
 		}
