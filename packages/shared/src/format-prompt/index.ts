@@ -151,7 +151,11 @@ export function formatPrompt(
 				break;
 
 			case "exec_output_image":
-				// TODO: 实现图片消息转换（下一步）
+				result.push({
+					role: "user",
+					content: "",
+					images: msg.images,
+				});
 				break;
 
 			case "assistant_text":
