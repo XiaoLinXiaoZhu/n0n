@@ -31,7 +31,7 @@ import { parseStream, type StreamingResult } from "./streaming.ts";
 import { executeToolStream } from "./tool.ts";
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join, extname } from "node:path";
-import type { ExecOutputImageMessage, ImageData, ImageMediaType } from "@n0n/types";
+import type { GenericImageMessage, ImageData, ImageMediaType } from "@n0n/types";
 
 // ── 结果类型 ──
 
@@ -74,7 +74,7 @@ const MAX_IMAGE_SIZE = 5 * 1024 * 1024;
 function collectImages(
 	imageDir: string | undefined,
 	sinceTime: number,
-): ExecOutputImageMessage | null {
+): GenericImageMessage | null {
 	if (!imageDir || !existsSync(imageDir)) return null;
 
 	let files: string[];
@@ -110,7 +110,7 @@ function collectImages(
 	}
 
 	if (images.length === 0 && skipped.length === 0) return null;
-	return { type: "exec_output_image", images, skipped };
+	return { type: "generic_image", images, skipped };
 }
 
 // ── Agent Loop ──

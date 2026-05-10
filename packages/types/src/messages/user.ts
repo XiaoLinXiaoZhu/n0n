@@ -25,18 +25,9 @@ export interface UserInputMessage {
 	hint: string | null;
 }
 
-export interface UserImageMessage {
-	type: "user_image";
-	text: string;
-	imagePath: string;
-	focusX: number;
-	focusY: number;
-	scale: number;
-}
-
-/** exec 工具产出的图片（agent loop 在工具执行后扫描 .temp/img/ 目录生成） */
-export interface ExecOutputImageMessage {
-	type: "exec_output_image";
+/** .temp/img/ 目录新增的图片文件 */
+export interface GenericImageMessage {
+	type: "generic_image";
 	images: ImageData[];
 	/** 因超限等原因被跳过的文件名列表 */
 	skipped: string[];

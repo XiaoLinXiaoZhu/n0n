@@ -145,14 +145,7 @@ export function formatPrompt(
 				result.push({ role: "user", content: msg.content });
 				break;
 
-			case "user_image":
-				result.push({
-					role: "user",
-					content: `[Image: ${msg.imagePath}] ${msg.text}`,
-				});
-				break;
-
-			case "exec_output_image": {
+			case "generic_image": {
 				const filenames = msg.images.map((img) => img.filename);
 				const skippedInfo = msg.skipped.length > 0
 					? `\nSkipped: ${msg.skipped.join(", ")}`
