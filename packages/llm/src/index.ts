@@ -21,7 +21,6 @@
 // 配置类型
 export type {
 	AnthropicProviderConfig,
-	DeepSeekProviderConfig,
 	GoogleProviderConfig,
 	LLMConfig,
 	OpenAICompatibleProviderConfig,

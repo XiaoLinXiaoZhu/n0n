@@ -246,9 +246,21 @@ export class OpenAIClient implements LLMClient {
 				: undefined,
 		);
 
+		// 过滤空消息——防止 directive 提取后残留的空 user 或只有 thinking 无内容的 assistant
+		const filteredMessages = apiMessages.filter((msg) => {
+			if (msg.role === "user" && !(msg.content ?? "").trim()) return false;
+			if (
+				msg.role === "assistant" &&
+				!msg.content?.trim() &&
+				!msg.tool_calls?.length
+			)
+				return false;
+			return true;
+		});
+
 		const body: OpenAIRequest = {
 			model: this.modelId,
-			messages: apiMessages,
+			messages: filteredMessages,
 			stream: true,
 			stream_options: { include_usage: true },
 		};

@@ -8,7 +8,7 @@
  * - Minimax:  ]~b]tag content [e~[
  * - 默认:     <tag> content </tag>  (标准 XML 风格)
  *
- * DeepSeek 的 DSML 标签不在公共层处理——由 DeepSeekClient 内部按需使用。
+ * provider-specific 标签不由公共层处理——各 Client 内部按需使用。
  *
  * 各 LLM Client 通过 createTagAdapter(style) 构造 TagAdapter 实例，
  * 注入到 formatPrompt。
@@ -71,7 +71,7 @@ function wrapTagByStyle(
 /**
  * 创建标准 TagAdapter — 基于 TagStyle 的通用实现。
  *
- * 大多数 provider（OpenAI、Anthropic、Gemini、DeepSeek）使用此工厂。
+ * 大多数 provider（OpenAI、Anthropic、Gemini）使用此工厂。
  */
 export function createTagAdapter(style: TagStyle): TagAdapter {
 	return {

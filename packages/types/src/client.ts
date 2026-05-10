@@ -49,7 +49,7 @@ export type TagStyle = "glm" | "minimax" | "default";
 
 /**
  * Tag 适配器 — 由各 LLM Client 构造并注入到 formatPrompt。
- * 不同 provider 可对特定 tag name 做特殊处理（如 DeepSeek 的 DSML 格式）。
+ * 不同 provider 可对特定 tag name 做特殊处理。
  */
 export interface TagAdapter {
 	/** 用标签包裹内容 */
@@ -175,7 +175,7 @@ export interface LLMClient {
 	/**
 	 * LLM 模型标识（只读）
 	 *
-	 * 如 "claude-3.5-sonnet"、"deepseek-chat"
+	 * 如 "claude-3.5-sonnet"
 	 * 用途：makeToolkit 构建 exec 工具描述时需要 tag 风格
 	 */
 	readonly modelId: string;

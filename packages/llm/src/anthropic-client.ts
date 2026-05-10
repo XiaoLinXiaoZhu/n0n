@@ -378,11 +378,24 @@ export class AnthropicClient implements LLMClient {
 		const promptMessages = formatPrompt(request.messages, this.tags);
 		const { system, messages } = toAnthropicFormat(promptMessages);
 
+		// 过滤空消息——防止提取后残留的空 user 或只有 thinking 无内容的 assistant
+		const filteredMessages = messages.filter((msg) => {
+			if (msg.role === "user") {
+				if (typeof msg.content === "string" && !msg.content.trim()) return false;
+				if (Array.isArray(msg.content) && msg.content.length === 0) return false;
+			}
+			if (msg.role === "assistant") {
+				if (Array.isArray(msg.content) && msg.content.length === 0) return false;
+				if (typeof msg.content === "string" && !msg.content.trim()) return false;
+			}
+			return true;
+		});
+
 		const body: AnthropicRequest = {
 			model: this.modelId,
 			max_tokens: DEFAULT_STREAM_MAX_TOKENS,
 			system,
-			messages,
+			messages: filteredMessages,
 			stream: true,
 		};
 

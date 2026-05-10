@@ -6,7 +6,7 @@
  * 每个模块内维护 anti-few-shot 表述变体。
  *
  * TagAdapter 注入：各 LLM Client 构造自己的 TagAdapter 实例传入，
- * 控制 XML tag 的风格。DeepSeek 可对特定 tag name 做特殊处理。
+ * 控制 XML tag 的风格。各 provider 可对特定 tag name 做特殊处理。
  *
  * system-hint 剥离策略：
  * 工具返回中包含 fact（客观数据）和 hint（系统操作建议）两部分。
