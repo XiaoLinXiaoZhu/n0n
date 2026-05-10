@@ -3,10 +3,14 @@
  *
  * 多部分拼装（meta、stdout/stderr tag、hint 等）各自使用
  * msgIndex+N 偏移独立选择变体，组合爆炸产生远超单维度的多样性。
+ *
+ * 返回 FormattedToolResult：fact（客观数据）与 hint（系统操作建议）分离。
+ * fact = 模型未来可能用到且不会过时的信息（状态、PID、文件路径、分块数据等）
+ * hint = 仅当前轮有用的操作建议，隔一轮就不需要了
  */
 
 import type { ExecToolResult } from "@n0n/types";
-import type { TagAdapter } from "./utils.ts";
+import type { FormattedToolResult, TagAdapter } from "./utils.ts";
 import { pick } from "./utils.ts";
 
 const IS_WINDOWS = process.platform === "win32";
@@ -40,16 +44,24 @@ const truncatedMetaTemplates = [
 		`(${rt}) ${cwd} | exit ${exit} | ${ms}ms | truncated to ${file}`,
 ];
 
-const waitforNoticeTemplates = [
+/** backgrounded fact 模板：包含 PID 和 log file 路径（持久有效的客观信息） */
+const backgroundedFactTemplates = [
 	(pid: number, logFile: string) =>
-		`Process exceeded waitfor limit, moved to background.\nPID: ${pid}\nLog file: ${logFile}\nThe log file is updated every few seconds — read it anytime to check output and process status.`,
+		`Process exceeded waitfor limit, moved to background.\nPID: ${pid}\nLog file: ${logFile}`,
 	(pid: number, logFile: string) =>
-		`Waitfor exceeded — process continues in background (PID ${pid}).\nOutput is being logged to: ${logFile}\nThe file syncs every few seconds — check it anytime for progress and status.`,
+		`Waitfor exceeded — process continues in background (PID ${pid}).\nOutput is being logged to: ${logFile}`,
 	(pid: number, logFile: string) =>
-		`Background process started (PID: ${pid}).\nThe command exceeded its waitfor limit but is still running.\nLog file updates every few seconds: ${logFile}`,
+		`Background process started (PID: ${pid}).\nThe command exceeded its waitfor limit but is still running.\nLog file: ${logFile}`,
 ];
 
-/** 格式化截断分块的读取建议 */
+/** backgrounded hint 模板：操作建议（隔轮后不需要） */
+const backgroundedHintTemplates = [
+	"The log file is updated every few seconds — read it anytime to check output and process status.",
+	"The file syncs every few seconds — check it anytime for progress and status.",
+	"Log file updates every few seconds; read it to check progress.",
+];
+
+/** 格式化截断分块的读取建议（fact 部分：客观分块数据） */
 function formatChunkGuide(
 	chunks: { startLine: number; endLine: number; tokens: number }[],
 	outputFile: string,
@@ -64,19 +76,24 @@ function formatChunkGuide(
 		(c, i) =>
 			`  chunk ${i + 1}: lines ${c.startLine}-${c.endLine} (~${c.tokens} tok)`,
 	);
-	const readCmd = IS_WINDOWS
-		? `Use pwsh -c "Get-Content ${outputFile} | Select-Object -Skip <start-1> -First <count>" to read a specific chunk.`
-		: `Use sed -n '<start>,<end>p' ${outputFile} to read a specific chunk.`;
-	return `Truncated part can be read in ${chunks.length} chunks:\n${lines.join("\n")}\n${readCmd}`;
+	return `Truncated part can be read in ${chunks.length} chunks:\n${lines.join("\n")}`;
 }
 
+/** truncated fact 模板：输出文件路径和分块信息（持久有效） */
+const truncatedFactTemplates = [
+	(totalLines: number, outputFile: string, chunkGuide: string) =>
+		`Full output (${totalLines} lines) saved to: ${outputFile}${chunkGuide ? `\n${chunkGuide}` : ""}`,
+	(totalLines: number, outputFile: string, chunkGuide: string) =>
+		`${totalLines} lines captured in ${outputFile}.${chunkGuide ? `\n${chunkGuide}` : ""}`,
+	(totalLines: number, outputFile: string, chunkGuide: string) =>
+		`Complete output saved to ${outputFile} (${totalLines} lines).${chunkGuide ? `\n${chunkGuide}` : ""}`,
+];
+
+/** truncated hint 模板：操作建议（隔轮后不需要） */
 const truncatedHintTemplates = [
-	(totalLines: number, outputFile: string, chunkGuide: string) =>
-		`Full output (${totalLines} lines) saved to: ${outputFile}\n${chunkGuide}\nOr write a script to extract key information — do NOT ${IS_WINDOWS ? "type" : "cat"} the full file.`,
-	(totalLines: number, outputFile: string, chunkGuide: string) =>
-		`${totalLines} lines captured in ${outputFile}.\n${chunkGuide}\nPrefer writing a script to extract what you need rather than reading raw output.`,
-	(totalLines: number, outputFile: string, chunkGuide: string) =>
-		`Complete output saved to ${outputFile} (${totalLines} lines).\n${chunkGuide}\nUse targeted reads or a script — avoid re-dumping the full file.`,
+	`${IS_WINDOWS ? `Use pwsh -c "Get-Content <file> | Select-Object -Skip <start-1> -First <count>" to read a specific chunk.` : `Use sed -n '<start>,<end>p' <file> to read a specific chunk.`}\nOr write a script to extract key information — do NOT ${IS_WINDOWS ? "type" : "cat"} the full file.`,
+	`Prefer writing a script to extract what you need rather than reading raw output.${IS_WINDOWS ? `\nUse pwsh Select-Object for targeted reads.` : `\nUse sed for targeted reads.`}`,
+	`Use targeted reads or a script — avoid re-dumping the full file.`,
 ];
 
 const diagnosticHintTemplates = [
@@ -94,7 +111,7 @@ export function formatExecResult(
 	msg: ExecToolResult,
 	tags: TagAdapter,
 	msgIndex: number,
-): string {
+): FormattedToolResult {
 	const runtime = msg.call.args.runtime ?? "unknown";
 	const cwd = msg.call.args.cwd ?? ".";
 	// 每个 pick 点用不同偏移：meta=+0, stdoutTag=+1, stderrTag=+2, notice/hint=+3, diagnostic=+4
@@ -104,24 +121,29 @@ export function formatExecResult(
 	switch (msg.status) {
 		case "backgrounded": {
 			const metaFn = pick(backgroundedMetaTemplates, msgIndex);
-			const parts = [
+			const factParts = [
 				tags.wrapTag("exec_meta", metaFn(runtime, cwd, msg.durationMs)),
 			];
 
-			const noticeFn = pick(waitforNoticeTemplates, msgIndex + 3);
-			parts.push(
+			// PID + log file 路径：持久有效的客观信息，属于 fact
+			const noticeFn = pick(backgroundedFactTemplates, msgIndex + 3);
+			factParts.push(
 				tags.wrapTag("waitfor_notice", noticeFn(msg.pid, msg.logFile)),
 			);
 
 			if (msg.stdoutSoFar)
-				parts.push(tags.wrapTag(stdoutTag, msg.stdoutSoFar));
+				factParts.push(tags.wrapTag(stdoutTag, msg.stdoutSoFar));
 			if (msg.stderrSoFar)
-				parts.push(tags.wrapTag(stderrTag, msg.stderrSoFar));
-			return parts.join("\n");
+				factParts.push(tags.wrapTag(stderrTag, msg.stderrSoFar));
+
+			// 操作建议：隔轮后不需要
+			const hint = pick(backgroundedHintTemplates, msgIndex + 4);
+
+			return { fact: factParts.join("\n"), hint };
 		}
 		case "truncated": {
 			const metaFn = pick(truncatedMetaTemplates, msgIndex);
-			const parts = [
+			const factParts = [
 				tags.wrapTag(
 					"exec_meta",
 					metaFn(runtime, cwd, msg.exitCode, msg.durationMs, msg.outputFile),
@@ -129,59 +151,61 @@ export function formatExecResult(
 			];
 
 			if (msg.stdoutTail)
-				parts.push(
+				factParts.push(
 					tags.wrapTag(
 						stdoutTag,
 						`... (last ${msg.totalLines - msg.tailStartLine + 1} of ${msg.totalLines} lines)\n${msg.stdoutTail}`,
 					),
 				);
 			if (msg.stderrTail)
-				parts.push(
+				factParts.push(
 					tags.wrapTag(stderrTag, `... (truncated)\n${msg.stderrTail}`),
 				);
 
-			const hintFn = pick(truncatedHintTemplates, msgIndex + 3);
+			// 输出文件路径和分块信息：持久有效，属于 fact
 			const chunkGuide = formatChunkGuide(msg.truncatedChunks, msg.outputFile);
-			parts.push(
+			const truncFactFn = pick(truncatedFactTemplates, msgIndex + 3);
+			factParts.push(
 				tags.wrapTag(
-					"output_hint",
-					hintFn(msg.totalLines, msg.outputFile, chunkGuide),
+					"output_info",
+					truncFactFn(msg.totalLines, msg.outputFile, chunkGuide),
 				),
 			);
-			return parts.join("\n");
+
+			// 操作建议：隔轮后不需要
+			const hint = pick(truncatedHintTemplates, msgIndex + 4);
+
+			return { fact: factParts.join("\n"), hint };
 		}
 		case "completed": {
 			const metaFn = pick(metaTemplates, msgIndex);
-			const parts = [
+			const factParts = [
 				tags.wrapTag(
 					"exec_meta",
 					metaFn(runtime, cwd, msg.exitCode, msg.durationMs),
 				),
 			];
 
-			if (msg.stdout) parts.push(tags.wrapTag(stdoutTag, msg.stdout));
-			if (msg.stderr) parts.push(tags.wrapTag(stderrTag, msg.stderr));
+			if (msg.stdout) factParts.push(tags.wrapTag(stdoutTag, msg.stdout));
+			if (msg.stderr) factParts.push(tags.wrapTag(stderrTag, msg.stderr));
 
 			const combined = (msg.stdout || "") + (msg.stderr || "");
+			let hint: string | null = null;
 			if (
 				msg.exitCode !== 0 &&
 				/Cannot find package|Cannot find module|ERR_MODULE_NOT_FOUND|ModuleNotFoundError|No module named/i.test(
 					combined,
 				)
 			) {
-				parts.push(
-					tags.wrapTag(
-						"diagnostic_hint",
-						pick(diagnosticHintTemplates, msgIndex + 4),
-					),
-				);
+				hint = pick(diagnosticHintTemplates, msgIndex + 4);
 			}
-			return parts.join("\n");
+
+			return { fact: factParts.join("\n"), hint };
 		}
 		default: {
 			const _exhaustive: never = msg;
 			// biome-ignore lint/suspicious/noExplicitAny: exhaustive switch default
-			return `Unknown exec status: ${(msg as any).status}`;
+			return { fact: `Unknown exec status: ${(msg as any).status}`, hint: null };
 		}
 	}
 }

@@ -6,6 +6,6 @@ role: user
 
 --- content ---
 <system_warning>
-Plain text replies are not delivered to the user. If work remains, call tools to make progress. If you are done, call submit — that is the only way to communicate results. (2/5 idle rounds)
+Plain text replies are invisible to the user. If you drafted a response they should read, put it in a submit result — that's the only channel that reaches them. (2/5 idle rounds)
 </system_warning>
 ```
