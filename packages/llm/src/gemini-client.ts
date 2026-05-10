@@ -128,7 +128,21 @@ function toGeminiMessages(promptMessages: PromptMessage[]): GeminiMessage[] {
 				break;
 
 			case "user":
-				result.push({ role: "user", content: msg.content });
+				if (msg.images?.length) {
+					const content: Array<{ type: string; text?: string; image_url?: { url: string } }> = [];
+					if (msg.content) {
+						content.push({ type: "text", text: msg.content });
+					}
+					for (const img of msg.images) {
+						content.push({
+							type: "image_url",
+							image_url: { url: `data:${img.mediaType};base64,${img.base64}` },
+						});
+					}
+					result.push({ role: "user", content: content as unknown as string });
+				} else {
+					result.push({ role: "user", content: msg.content });
+				}
 				break;
 
 			case "assistant": {
@@ -189,8 +203,9 @@ export class GeminiClient implements LLMClient {
 	readonly tags: TagAdapter;
 	private readonly pc: GoogleProviderConfig;
 	private readonly apiUrl: string;
+	private readonly supportsImages: boolean;
 
-	constructor(pc: GoogleProviderConfig) {
+	constructor(pc: GoogleProviderConfig, options?: { images?: boolean }) {
 		this.pc = pc;
 		this.modelId = this.pc.model;
 		this.tagStyle = this.pc.tagStyle ?? detectTagStyle(this.modelId);
@@ -203,13 +218,14 @@ export class GeminiClient implements LLMClient {
 			const cleanBase = base.replace(/\/v1\/?$/, "").replace(/\/$/, "");
 			this.apiUrl = `${cleanBase}/v1/chat/completions`;
 		}
+		this.supportsImages = options?.images ?? false;
 	}
 
 	async *stream(
 		request: StreamRequest,
 		signal?: AbortSignal,
 	): AsyncGenerator<StreamEvent> {
-		const promptMessages = formatPrompt(request.messages, this.tags);
+		const promptMessages = formatPrompt(request.messages, this.tags, { imagesSupported: this.supportsImages });
 		const apiMessages = toGeminiMessages(promptMessages);
 
 		// 过滤空消息——防止提取后残留的空 user 或只有 thinking 无内容的 assistant

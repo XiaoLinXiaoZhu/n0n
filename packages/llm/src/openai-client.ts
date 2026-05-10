@@ -125,7 +125,21 @@ function toOpenAIMessages(
 				break;
 
 			case "user":
-				result.push({ role: "user", content: msg.content });
+				if (msg.images?.length) {
+					const content: Array<{ type: string; text?: string; image_url?: { url: string } }> = [];
+					if (msg.content) {
+						content.push({ type: "text", text: msg.content });
+					}
+					for (const img of msg.images) {
+						content.push({
+							type: "image_url",
+							image_url: { url: `data:${img.mediaType};base64,${img.base64}` },
+						});
+					}
+					result.push({ role: "user", content: content as unknown as string });
+				} else {
+					result.push({ role: "user", content: msg.content });
+				}
 				break;
 
 			case "assistant": {
@@ -214,8 +228,12 @@ export class OpenAIClient implements LLMClient {
 	readonly tags: TagAdapter;
 	private readonly pc: OpenAIProviderConfig | OpenAICompatibleProviderConfig;
 	private readonly apiUrl: string;
+	private readonly supportsImages: boolean;
 
-	constructor(pc: OpenAIProviderConfig | OpenAICompatibleProviderConfig) {
+	constructor(
+		pc: OpenAIProviderConfig | OpenAICompatibleProviderConfig,
+		options?: { images?: boolean },
+	) {
 		this.pc = pc;
 		this.modelId = this.pc.model;
 		this.tagStyle = this.pc.tagStyle ?? detectTagStyle(this.modelId);
@@ -229,13 +247,15 @@ export class OpenAIClient implements LLMClient {
 			const cleanBase = base.replace(/\/v1\/?$/, "").replace(/\/$/, "");
 			this.apiUrl = `${cleanBase}/v1/chat/completions`;
 		}
+
+		this.supportsImages = options?.images ?? false;
 	}
 
 	async *stream(
 		request: StreamRequest,
 		signal?: AbortSignal,
 	): AsyncGenerator<StreamEvent> {
-		const promptMessages = formatPrompt(request.messages, this.tags);
+		const promptMessages = formatPrompt(request.messages, this.tags, { imagesSupported: this.supportsImages });
 		const apiMessages = toOpenAIMessages(
 			promptMessages,
 			this.pc.provider === "openai-compatible"

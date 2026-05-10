@@ -26,10 +26,10 @@ export function createLLMClient(config: LLMConfig): LLMClient {
 	switch (pc.provider) {
 		case "openai":
 		case "openai-compatible":
-			return new OpenAIClient(pc);
+			return new OpenAIClient(pc, { images });
 		case "anthropic":
 			return new AnthropicClient(pc, { images });
 		case "google":
-			return new GeminiClient(pc);
+			return new GeminiClient(pc, { images });
 	}
 }
