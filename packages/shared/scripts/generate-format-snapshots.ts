@@ -314,3 +314,22 @@ for (const scenario of scenarios) {
 }
 
 console.log(`Generated ${count} snapshots in ${SNAPSHOT_DIR}/`);
+
+// ── DeepSeek tag 风格 snapshot ──
+
+const DS_SNAPSHOT_DIR = join(import.meta.dir, "preview-output-deepseek");
+mkdirSync(DS_SNAPSHOT_DIR, { recursive: true });
+
+let dsCount = 0;
+for (const scenario of scenarios) {
+	const results = formatPrompt(scenario.messages, createTagAdapter("deepseek"));
+	const parts = [`# ${scenario.title}`, `<!-- model: deepseek, tag-style: deepseek -->`, ""];
+	for (const r of results) {
+		parts.push("```", formatResult(r), "```", "");
+	}
+	const outPath = join(DS_SNAPSHOT_DIR, `${scenario.file}.snapshot.md`);
+	await Bun.write(outPath, parts.join("\n"));
+	dsCount++;
+}
+
+console.log(`Generated ${dsCount} deepseek snapshots in ${DS_SNAPSHOT_DIR}/`);

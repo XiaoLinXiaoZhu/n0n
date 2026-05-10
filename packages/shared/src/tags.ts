@@ -6,6 +6,7 @@
  *
  * - GLM:      <tag> content </tag>
  * - Minimax:  ]~b]tag content [e~[
+ * - DeepSeek:  ## tagname 内容 --- (Markdown 风格)
  * - 默认:     <tag> content </tag>  (标准 XML 风格)
  *
  * provider-specific 标签不由公共层处理——各 Client 内部按需使用。
@@ -22,6 +23,7 @@ export function detectTagStyle(model: string): TagStyle {
 	const m = model.toLowerCase();
 	if (m.includes("glm")) return "glm";
 	if (m.includes("minimax")) return "minimax";
+	if (m.includes("deepseek")) return "deepseek";
 	return "default";
 }
 
@@ -30,6 +32,8 @@ export function openTag(style: TagStyle, name: string): string {
 	switch (style) {
 		case "minimax":
 			return `]~b]${name}`;
+		case "deepseek":
+			return `## ${name}`;
 		case "glm":
 		case "default":
 			return `<${name}>`;
@@ -41,6 +45,8 @@ export function closeTag(style: TagStyle, name: string): string {
 	switch (style) {
 		case "minimax":
 			return "[e~[";
+		case "deepseek":
+			return "---";
 		case "glm":
 		case "default":
 			return `</${name}>`;
@@ -54,6 +60,15 @@ export function closeTag(style: TagStyle, name: string): string {
 function adaptTagsByStyle(text: string, style: TagStyle): string {
 	if (style === "default" || style === "glm") return text;
 
+	if (style === "deepseek") {
+		return text
+			.replace(/<system-hint>([\s\S]*?)<\/system-hint>/g, (_, content) =>
+				`【system-hint】\n${content.trim()}\n---`,
+			)
+			.replace(/<(\w+)>/g, (_, name) => openTag(style, name))
+			.replace(/<\/(\w+)>/g, (_, name) => closeTag(style, name));
+	}
+
 	return text
 		.replace(/<(\w+)>/g, (_, name) => openTag(style, name))
 		.replace(/<\/(\w+)>/g, (_, name) => closeTag(style, name));
@@ -65,13 +80,16 @@ function wrapTagByStyle(
 	content: string,
 	style: TagStyle,
 ): string {
+	if (style === "deepseek" && name === "system-hint") {
+		return `【system-hint】\n${content}\n---`;
+	}
 	return `${openTag(style, name)}\n${content}\n${closeTag(style, name)}`;
 }
 
 /**
  * 创建标准 TagAdapter — 基于 TagStyle 的通用实现。
  *
- * 大多数 provider（OpenAI、Anthropic、Gemini）使用此工厂。
+ * 大多数 provider（OpenAI、Anthropic、Gemini、DeepSeek）使用此工厂。
  */
 export function createTagAdapter(style: TagStyle): TagAdapter {
 	return {
