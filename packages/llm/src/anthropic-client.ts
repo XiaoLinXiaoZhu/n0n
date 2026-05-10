@@ -415,7 +415,7 @@ export class AnthropicClient implements LLMClient {
 		request: StreamRequest,
 		signal?: AbortSignal,
 	): AsyncGenerator<StreamEvent> {
-		const promptMessages = formatPrompt(request.messages, this.tags);
+		const promptMessages = formatPrompt(request.messages, this.tags, { imagesSupported: this.supportsImages });
 		const { system, messages } = toAnthropicFormat(promptMessages, this.supportsImages);
 
 		// 过滤空消息——防止提取后残留的空 user 或只有 thinking 无内容的 assistant
@@ -757,7 +757,7 @@ export class AnthropicClient implements LLMClient {
 	}
 
 	async heartbeat(request: StreamRequest): Promise<TokenUsage | null> {
-		const promptMessages = formatPrompt(request.messages, this.tags);
+		const promptMessages = formatPrompt(request.messages, this.tags, { imagesSupported: this.supportsImages });
 		const { system, messages: anthropicMessages } =
 			toAnthropicFormat(promptMessages, this.supportsImages);
 

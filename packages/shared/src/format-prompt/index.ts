@@ -120,8 +120,10 @@ function findLastAssistantToolCallIndex(messages: DomainMessage[]): number {
 export function formatPrompt(
 	messages: DomainMessage[],
 	tags: TagAdapter,
+	options?: { imagesSupported?: boolean },
 ): PromptMessage[] {
 	const result: PromptMessage[] = [];
+	const imagesSupported = options?.imagesSupported ?? false;
 
 	// 预扫描：找到最后一个 assistant_tool_call 的原始 index，用于判断"最新轮"
 	const lastAtcIndex = findLastAssistantToolCallIndex(messages);
@@ -150,13 +152,26 @@ export function formatPrompt(
 				});
 				break;
 
-			case "exec_output_image":
-				result.push({
-					role: "user",
-					content: "",
-					images: msg.images,
-				});
+			case "exec_output_image": {
+				const filenames = msg.images.map((img) => img.filename);
+				const skippedInfo = msg.skipped.length > 0
+					? `\nSkipped: ${msg.skipped.join(", ")}`
+					: "";
+				if (imagesSupported && msg.images.length > 0) {
+					result.push({
+						role: "user",
+						content: `[Images: ${filenames.join(", ")}]${skippedInfo}`,
+						images: msg.images,
+					});
+				} else if (msg.images.length > 0 || msg.skipped.length > 0) {
+					const names = [...filenames, ...msg.skipped.map(s => s.split(" (")[0])];
+					result.push({
+						role: "user",
+						content: `[exec produced images: ${names.join(", ")} — image display not supported by current model]${skippedInfo}`,
+					});
+				}
 				break;
+			}
 
 			case "assistant_text":
 				result.push({
