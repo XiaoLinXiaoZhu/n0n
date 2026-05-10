@@ -29,7 +29,7 @@ import {
 import { ExecutionScheduler } from "./scheduler.ts";
 import { parseStream, type StreamingResult } from "./streaming.ts";
 import { executeToolStream } from "./tool.ts";
-import { existsSync, readdirSync, readFileSync, rmSync, mkdirSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join, extname } from "node:path";
 import type { ExecOutputImageMessage, ImageData, ImageMediaType } from "@n0n/types";
 
@@ -67,10 +67,14 @@ const IMAGE_EXTENSIONS: Record<string, ImageMediaType> = {
 const MAX_IMAGE_SIZE = 5 * 1024 * 1024;
 
 /**
- * 扫描图片目录，收集图片并清理。
- * 返回 null 表示无图片或目录不存在。
+ * 扫描图片目录，收集自 sinceTime 后修改的新图片。
+ * 不删除文件，通过 mtime 实现增量检测。
+ * 返回 null 表示无新图片。
  */
-function collectImages(imageDir: string | undefined): ExecOutputImageMessage | null {
+function collectImages(
+	imageDir: string | undefined,
+	sinceTime: number,
+): ExecOutputImageMessage | null {
 	if (!imageDir || !existsSync(imageDir)) return null;
 
 	let files: string[];
@@ -81,6 +85,8 @@ function collectImages(imageDir: string | undefined): ExecOutputImageMessage | n
 	}
 
 	const images: ImageData[] = [];
+	const skipped: string[] = [];
+
 	for (const file of files) {
 		const ext = extname(file).toLowerCase();
 		const mediaType = IMAGE_EXTENSIONS[ext];
@@ -88,20 +94,23 @@ function collectImages(imageDir: string | undefined): ExecOutputImageMessage | n
 
 		const filePath = join(imageDir, file);
 		try {
+			const stat = statSync(filePath);
+			// 增量检测：只收集本轮新增/修改的文件
+			if (stat.mtimeMs <= sinceTime) continue;
+
+			if (stat.size > MAX_IMAGE_SIZE) {
+				skipped.push(`${file} (${(stat.size / 1024 / 1024).toFixed(1)}MB > 5MB limit)`);
+				continue;
+			}
 			const buf = readFileSync(filePath);
-			if (buf.length > MAX_IMAGE_SIZE) continue;
-			images.push({ mediaType, base64: buf.toString("base64") });
+			images.push({ mediaType, filename: file, base64: buf.toString("base64") });
 		} catch {
 			// 读取失败则跳过
 		}
 	}
 
-	// 清理目录中的所有文件
-	for (const file of files) {
-		try { rmSync(join(imageDir, file)); } catch { /* ignore */ }
-	}
-
-	return images.length > 0 ? { type: "exec_output_image", images } : null;
+	if (images.length === 0 && skipped.length === 0) return null;
+	return { type: "exec_output_image", images, skipped };
 }
 
 // ── Agent Loop ──
@@ -119,6 +128,7 @@ export async function agentLoop<T = unknown>(
 	let idleCount = 0;
 
 	for (let iter = 0; iter < maxIter; iter++) {
+		const roundStartTime = Date.now();
 		if (options.signal?.aborted) {
 			renderer.aborted();
 			return {
@@ -300,7 +310,7 @@ export async function agentLoop<T = unknown>(
 		}
 
 		// ── 6.5 扫描图片目录 ──
-		const imageMsg = collectImages(options.imageDir);
+		const imageMsg = collectImages(options.imageDir, roundStartTime);
 		if (imageMsg) {
 			messages.push(imageMsg);
 		}

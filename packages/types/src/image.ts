@@ -14,6 +14,8 @@ export type ImageMediaType =
 export interface ImageData {
 	/** MIME 类型 */
 	mediaType: ImageMediaType;
+	/** 原始文件名（不含路径） */
+	filename: string;
 	/** base64 编码的图片数据 */
 	base64: string;
 }
