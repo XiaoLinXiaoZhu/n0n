@@ -7,8 +7,7 @@
  * - Context 注入项目结构和 git 状态，而非 workflow 列表
  */
 
-import { randomBytes } from "node:crypto";
-import { existsSync, mkdirSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readdirSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { createInterface } from "node:readline";
 import { isTTY, label, style, writeln } from "@n0n/cli-ui";
@@ -160,7 +159,18 @@ export async function startCodeRepl(
 		paths.temp,
 	);
 	// progress 结果文件编号（进程级，不随 renderer 生命周期绑定）
-	const sessionDir = resolve(paths.temp, `session-${randomBytes(2).toString("hex")}`);
+	const nextSessionId = (() => {
+		try {
+			const existing = readdirSync(paths.temp)
+				.filter(d => d.startsWith("session-"))
+				.map(d => Number.parseInt(d.slice("session-".length), 10))
+				.filter(n => !Number.isNaN(n));
+			return existing.length > 0 ? Math.max(...existing) + 1 : 1;
+		} catch {
+			return 1;
+		}
+	})();
+	const sessionDir = resolve(paths.temp, `session-${String(nextSessionId).padStart(4, "0")}`);
 	let progressSeq = 0;
 	// renderer 选择也基于 canInteract：管道环境用 PlainRenderer（无光标控制）
 	const canInteract =
