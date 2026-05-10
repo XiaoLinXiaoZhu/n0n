@@ -60,16 +60,15 @@ const scenarios: Scenario[] = [
 		],
 	},
 	{
-		file: "user-image",
-		title: "user_image 消息（降级为文本）",
+		file: "generic-image",
+		title: "generic_image 消息（图片不支持时降级）",
 		messages: [
 			{
-				type: "user_image",
-				text: "What is this error?",
-				imagePath: "/tmp/screenshot.png",
-				focusX: 0,
-				focusY: 0,
-				scale: 1,
+				type: "generic_image",
+				images: [
+					{ mediaType: "image/png", filename: "screenshot.png", base64: "iVBORw0KGgo..." },
+				],
+				skipped: [],
 			},
 		],
 	},

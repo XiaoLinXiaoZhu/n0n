@@ -126,9 +126,9 @@ export async function agentLoop<T = unknown>(
 	const toolkit = options.toolkit;
 	const messages: DomainMessage[] = [...history];
 	let idleCount = 0;
+	let lastImageScanTime = 0;
 
 	for (let iter = 0; iter < maxIter; iter++) {
-		const roundStartTime = Date.now();
 		if (options.signal?.aborted) {
 			renderer.aborted();
 			return {
@@ -310,10 +310,11 @@ export async function agentLoop<T = unknown>(
 		}
 
 		// ── 6.5 扫描图片目录 ──
-		const imageMsg = collectImages(options.imageDir, roundStartTime);
+		const imageMsg = collectImages(options.imageDir, lastImageScanTime);
 		if (imageMsg) {
 			messages.push(imageMsg);
 		}
+		lastImageScanTime = Date.now();
 
 		// ── 7. 检测 progress 调用 → 终止循环并返回结果 ──
 		for (const job of scheduler.orderedJobs()) {
