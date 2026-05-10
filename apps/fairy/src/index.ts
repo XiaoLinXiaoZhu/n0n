@@ -6,6 +6,7 @@
  */
 
 import { createInterface } from "node:readline";
+import { join } from "node:path";
 import { isTTY, label, RichRenderer, style, writeln } from "@n0n/cli-ui";
 import {
 	agentLoop,
@@ -125,6 +126,7 @@ async function main(): Promise<void> {
 				maxIterations: 30,
 				renderer,
 				signal: abortController.signal,
+				imageDir: join(paths.temp, "img"),
 			});
 		} catch (err) {
 			writeln();

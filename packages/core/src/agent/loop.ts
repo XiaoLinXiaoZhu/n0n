@@ -29,6 +29,9 @@ import {
 import { ExecutionScheduler } from "./scheduler.ts";
 import { parseStream, type StreamingResult } from "./streaming.ts";
 import { executeToolStream } from "./tool.ts";
+import { existsSync, readdirSync, readFileSync, rmSync, mkdirSync } from "node:fs";
+import { join, extname } from "node:path";
+import type { ExecOutputImageMessage, ImageData, ImageMediaType } from "@n0n/types";
 
 // ── 结果类型 ──
 
@@ -47,6 +50,58 @@ export interface AgentOptions<T = unknown> {
 	renderer?: Renderer;
 	confirmFn?: (question: string) => Promise<string>;
 	signal?: AbortSignal;
+	imageDir?: string;
+}
+
+// ── 图片目录扫描 ──
+
+const IMAGE_EXTENSIONS: Record<string, ImageMediaType> = {
+	".png": "image/png",
+	".jpg": "image/jpeg",
+	".jpeg": "image/jpeg",
+	".webp": "image/webp",
+	".gif": "image/gif",
+};
+
+/** 最大单张图片大小 5MB */
+const MAX_IMAGE_SIZE = 5 * 1024 * 1024;
+
+/**
+ * 扫描图片目录，收集图片并清理。
+ * 返回 null 表示无图片或目录不存在。
+ */
+function collectImages(imageDir: string | undefined): ExecOutputImageMessage | null {
+	if (!imageDir || !existsSync(imageDir)) return null;
+
+	let files: string[];
+	try {
+		files = readdirSync(imageDir).sort();
+	} catch {
+		return null;
+	}
+
+	const images: ImageData[] = [];
+	for (const file of files) {
+		const ext = extname(file).toLowerCase();
+		const mediaType = IMAGE_EXTENSIONS[ext];
+		if (!mediaType) continue;
+
+		const filePath = join(imageDir, file);
+		try {
+			const buf = readFileSync(filePath);
+			if (buf.length > MAX_IMAGE_SIZE) continue;
+			images.push({ mediaType, base64: buf.toString("base64") });
+		} catch {
+			// 读取失败则跳过
+		}
+	}
+
+	// 清理目录中的所有文件
+	for (const file of files) {
+		try { rmSync(join(imageDir, file)); } catch { /* ignore */ }
+	}
+
+	return images.length > 0 ? { type: "exec_output_image", images } : null;
 }
 
 // ── Agent Loop ──
@@ -242,6 +297,12 @@ export async function agentLoop<T = unknown>(
 		messages.push(...collectJobMessages(scheduler.orderedJobs()));
 		for (const pair of truncation.pairs) {
 			messages.push(pair.result);
+		}
+
+		// ── 6.5 扫描图片目录 ──
+		const imageMsg = collectImages(options.imageDir);
+		if (imageMsg) {
+			messages.push(imageMsg);
 		}
 
 		// ── 7. 检测 progress 调用 → 终止循环并返回结果 ──

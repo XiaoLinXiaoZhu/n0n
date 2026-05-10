@@ -9,7 +9,7 @@
 
 import { randomBytes } from "node:crypto";
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { join, resolve } from "node:path";
 import { createInterface } from "node:readline";
 import { isTTY, label, style, writeln } from "@n0n/cli-ui";
 import {
@@ -409,6 +409,7 @@ export async function startCodeRepl(
 				renderer,
 				confirmFn,
 				signal: stdin?.abortController.signal,
+				imageDir: join(paths.temp, "img"),
 			});
 		} catch (err) {
 			writeln();

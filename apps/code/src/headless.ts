@@ -7,6 +7,7 @@
  * 输出 JSON 结果到 stdout，日志输出到 stderr。
  */
 
+import { join } from "node:path";
 import {
 	agentLoop,
 	buildToolsConfig,
@@ -138,6 +139,7 @@ export async function runHeadless(
 				renderer,
 				confirmFn: async () => "y",
 				signal: abortController.signal,
+				imageDir: join(paths.temp, "img"),
 			});
 
 			history = agentResult.history;
