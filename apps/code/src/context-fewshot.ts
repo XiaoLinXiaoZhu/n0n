@@ -1,22 +1,20 @@
 /**
  * context-fewshot — Bootstrap 教学场景
  *
- * 三重作用：环境注入（真实 exec 结果）+ 行为教学（exec-as-thinking、并行调用、submit）+ 格式对齐（通过真实 toolkit 确保 tool_call 格式正确）。
+ * 通过 CLI 工具 (n0n-init, n0n-skill) 获取环境信息，
+ * fewshot 只负责行为教学：
+ *   - 多路并行工具调用（递进：4路 → blocked → 7路 → 2路）
+ *   - progress 三种状态（working / blocked / completed）
+ *   - write/edit/exec 确定性工具不等待同批发出
+ *   - CLI 工具使用模式
  *
- * FEWSHOT_TEMPLATE 是模型看到的完整对话结构。三种 entry：
- * - DomainMessage — 静态消息，直接使用
- * - ExecSlot      — 需要真实执行，结果替换此位置
- * - DerivedSlot   — 从运行时上下文派生
- *
- * 4-turn 教学流程：
- * Turn 1: exec 推理（拆解任务）+ 5 个并行 exec 环境发现
- * Turn 2: exec 推理 + write + edit + exec + progress(working) 并行执行 — 教学：做事的同时汇报进展
- * Turn 3: 系统自动注入"继续"后，模型看到所有结果
- * Turn 4: progress(completed) 提交最终结果
+ * 4 assistant turns 教学流程：
+ * Turn 1: n0n-init global + project + n0n-skill + progress(working) — 多路并行
+ * Turn 2: progress(blocked) 索取验证任务 — 教 blocked 用法
+ * Turn 3: 2×write + 2×edit + 2×exec + progress(working) — 混合工具同批不等待
+ * Turn 4: exec(清理) + progress(completed) — 收尾 + 结构化汇报
  */
 
-import { existsSync, mkdirSync, unlinkSync, writeFileSync } from "node:fs";
-import { resolve } from "node:path";
 import type { Toolkit } from "@n0n/tools";
 import type {
 	DomainMessage,
@@ -26,6 +24,8 @@ import type {
 	ToolCallRecord,
 	ToolResult,
 	ToolStreamEvent,
+	WriteToolCall,
+	EditToolCall,
 } from "@n0n/types";
 
 // ── Slot 类型 ──
@@ -45,383 +45,410 @@ type FewshotEntry = DomainMessage | ExecSlot | DerivedSlot;
 interface RuntimeCtx {
 	results: Map<string, ToolResult>;
 	workspace: string;
-	os: string;
-	branch: string;
-	codebaseSummary: string;
 }
 
 const IS_WINDOWS = process.platform === "win32";
 
-// ── Turn 1 调用定义 ──
+// ════════════════════════════════════════════════════════════════
+// ██  TOOL CALLS 定义
+// ════════════════════════════════════════════════════════════════
 
-const BOOT_PLAN: ExecToolCall = {
-	id: "boot_plan",
+// ── Turn 1: 环境发现（4 并行）──
+
+const INIT_GLOBAL: ExecToolCall = {
+	id: "init_global",
 	tool: "exec",
-	args: {
-		runtime: "bun",
-		script: `// system-reminder 里的任务有些驳杂，整理一下再执行
-const raw = [
-  { task: "Check OS, shell, git state",          tag: "env" },
-  { task: "Read AGENTS.md",                      tag: "config" },
-  { task: "Survey codebase structure",            tag: "scan" },
-  { task: "Read and complete bootstrap-test.md",  tag: "task" },
-  { task: "Discover CLI tools in PATH",           tag: "env" },
-];
-// 按认知顺序重排：先知道在哪 → 再知道项目要求 → 再看代码全貌 → 最后读具体任务
-const sorted = [
-  { pri: 0, label: "OS / shell / git",       reason: "先确定基础环境" },
-  { pri: 1, label: "PATH 可用工具",           reason: "知道有什么能用" },
-  { pri: 2, label: "AGENTS.md",              reason: "了解项目特定指令" },
-  { pri: 3, label: "代码库结构",              reason: "建立项目全貌" },
-  { pri: 4, label: "bootstrap-test.md 任务",  reason: "最后读具体要做的事" },
-];
-for (const s of sorted) console.log(\`\${s.pri}. \${s.label} — \${s.reason}\`);
-// 全部是只读操作，互不依赖，可以一起发出
-console.log("→ 5 项只读探测，并行执行");`,
-	},
+	args: { script: "n0n-init global" },
 };
 
-const BOOT_ENV: ExecToolCall = {
-	id: "boot_1",
+const INIT_PROJECT: ExecToolCall = {
+	id: "init_project",
 	tool: "exec",
-	args: {
-		script: IS_WINDOWS
-			? "ver & git branch --show-current 2>nul & git status --short 2>nul"
-			: 'echo "OS: $(uname -s)"; echo "Shell: $SHELL"; echo "Git branch: $(git branch --show-current 2>/dev/null || echo none)"; git status --short 2>/dev/null | head -20',
-	},
+	args: { script: "n0n-init project" },
 };
 
-const BOOT_AGENTS: ExecToolCall = {
-	id: "boot_2",
+const SKILL_LIST: ExecToolCall = {
+	id: "skill_list",
 	tool: "exec",
-	args: {
-		script: IS_WINDOWS
-			? "type AGENTS.md 2>nul || echo (no AGENTS.md found)"
-			: "cat AGENTS.md 2>/dev/null || echo '(no AGENTS.md found)'",
-	},
+	args: { script: IS_WINDOWS ? "n0n-skill" : "n0n-skill" },
 };
 
-const BOOT_CODE: ExecToolCall = {
-	id: "boot_3",
-	tool: "exec",
-	args: {
-		runtime: "bun",
-		script: `import { readdir, readFile } from 'node:fs/promises';
-import { join } from 'node:path';
-let files = 0, lines = 0;
-const IGNORE = new Set(["node_modules",".git",".temp","dist",".turbo","bun.lock"]);
-async function walk(dir, depth = 0) {
-  const out = [];
-  for (const e of await readdir(dir, { withFileTypes: true })) {
-    if (IGNORE.has(e.name)) continue;
-    if (e.name.startsWith(".") && depth === 0) continue;
-    const full = join(dir, e.name);
-    if (e.isDirectory()) {
-      const sub = await walk(full, depth + 1);
-      if (sub.length) out.push("  ".repeat(depth)+"\u{1F4C1} "+e.name+"/", ...sub);
-    } else if (e.name.match(/\\.(ts|js)$/) && !e.name.endsWith(".d.ts")) {
-      const c = (await readFile(full,"utf8")).split("\\n").length;
-      files++; lines += c;
-      out.push("  ".repeat(depth)+e.name+\` (\${c} lines)\`);
-    }
-  }
-  return out;
-}
-const tree = await walk(".");
-const display = tree.length > 60 ? [...tree.slice(0, 60), \`... (\${tree.length - 60} more)\`] : tree;
-console.log(display.join("\\n"));
-console.log(\`\\nTotal: \${files} source files, \${lines} lines\`);`,
-	},
-};
-
-const BOOT_TASK: ExecToolCall = {
-	id: "boot_4",
-	tool: "exec",
-	args: {
-		script: IS_WINDOWS
-			? "type .temp\\bootstrap-test.md"
-			: "cat .temp/bootstrap-test.md",
-	},
-};
-
-const BOOT_TOOLS: ExecToolCall = {
-	id: "boot_5",
-	tool: "exec",
-	args: {
-		runtime: "bun",
-		script: `import { readdirSync, statSync } from 'node:fs';
-import { join } from 'node:path';
-const home = process.env.HOME || '';
-const isUser = d => (home && d.startsWith(home)) || d.startsWith('/opt/homebrew') || d === '/usr/local/bin';
-const dirs = (process.env.PATH || '').split(':');
-const seen = new Set();
-for (const dir of dirs) {
-  if (!dir || seen.has(dir) || !isUser(dir)) { seen.add(dir); continue; }
-  seen.add(dir);
-  try {
-    const tools = readdirSync(dir).filter(n => { try { const s = statSync(join(dir, n)); return s.isFile() && (s.mode & 0o111); } catch { return false; } }).sort();
-    if (tools.length) { const short = home && dir.startsWith(home) ? '~' + dir.slice(home.length) : dir; console.log(short + ': ' + tools.join(', ')); }
-  } catch {}
-}`,
-	},
-};
-
-const BOOT_SKILL: ExecToolCall = {
-	id: "boot_6",
-	tool: "exec",
-	args: {
-		script: IS_WINDOWS
-			? "n0n-skill help 2>nul || echo n0n-skill 不可用"
-			: "n0n-skill help 2>/dev/null || echo 'n0n-skill 不可用'",
-	},
-};
-
-// ── Turn 2 静态调用 & 结果 ──
-
-const TURN2_WRITE: ToolCallRecord = {
-	id: "boot_w",
-	tool: "write" as const,
-	args: { path: ".temp/hello.ts", content: 'console.log("bootstrap ok");\n' },
-};
-
-const TURN2_EDIT: ToolCallRecord = {
-	id: "boot_e",
-	tool: "edit" as const,
-	args: {
-		path: ".temp/bootstrap-test.md",
-		intent: "Change Status from PENDING to DONE",
-	},
-};
-
-const TURN2_EXEC: ExecToolCall = {
-	id: "boot_x",
-	tool: "exec" as const,
-	args: {
-		script: IS_WINDOWS
-			? "bun .temp/hello.ts && del .temp\\hello.ts .temp\\bootstrap-test.md"
-			: "bun .temp/hello.ts && rm .temp/hello.ts .temp/bootstrap-test.md",
-	},
-};
-
-const TURN2_PROGRESS: ProgressToolCall = {
-	id: "boot_p",
-	tool: "progress" as const,
+const WORKING_1: ProgressToolCall = {
+	id: "working_1",
+	tool: "progress",
 	args: {
 		status: "working",
-		content: "判断 bootstrap 任务可以一次性完成：write/edit 是确定性工具（必定成功），与 exec 同批发出不需要等待结果。选择先写文件再执行验证+清理，而非分步执行，因为各步骤无依赖关系。",
+		content: "正在收集环境信息和可用技能...",
 	},
 };
 
-const PLAN_RESULT: DomainMessage = {
-	type: "tool_result",
-	tool: "exec" as const,
-	call: BOOT_PLAN,
-	status: "completed" as const,
-	exitCode: 0,
-	stdout: [
-		"0. OS / shell / git — 先确定基础环境",
-		"1. PATH 可用工具 — 知道有什么能用",
-		"2. AGENTS.md — 了解项目特定指令",
-		"3. 代码库结构 — 建立项目全貌",
-		"4. bootstrap-test.md 任务 — 最后读具体要做的事",
-		"→ 5 项只读探测，并行执行",
-	].join("\n"),
-	stderr: "",
-	durationMs: 25,
+// ── Turn 2: 索取验证任务 ──
+
+const BLOCKED_TASK: ProgressToolCall = {
+	id: "blocked_task",
+	tool: "progress",
+	args: {
+		status: "blocked",
+		content:
+			"环境信息已收集完毕。system-reminder 提到有启动验证任务，请提供具体任务内容。",
+	},
 };
 
-const BOOT_THINK: ExecToolCall = {
-	id: "boot_think",
+// ── Turn 3: 验证任务执行（7 并行）──
+
+const WRITE_HELLO: ToolCallRecord = {
+	id: "w_hello",
+	tool: "write" as const,
+	args: { path: ".temp/hello.ts", content: 'console.log("Hello n0n");\n' },
+};
+
+const WRITE_TEST: ToolCallRecord = {
+	id: "w_test",
+	tool: "write" as const,
+	args: { path: ".temp/test.md", content: "# Test\nStatus: PENDING\n" },
+};
+
+const EDIT_TEST: ToolCallRecord = {
+	id: "e_test",
+	tool: "edit" as const,
+	args: { path: ".temp/test.md", intent: "Change Status from PENDING to DONE" },
+};
+
+const EDIT_HELLO: ToolCallRecord = {
+	id: "e_hello",
+	tool: "edit" as const,
+	args: {
+		path: ".temp/hello.ts",
+		intent: 'Change "Hello n0n" to "Hello World"',
+	},
+};
+
+const EXEC_HELLO: ExecToolCall = {
+	id: "x_hello",
 	tool: "exec",
 	args: {
-		runtime: "bun",
-		script: `// 整理 Turn 1 收集的信息，规划 bootstrap 任务
-const steps = [
-  { action: "write .temp/hello.ts",     tool: "write", deterministic: true },
-  { action: "edit Status PENDING→DONE", tool: "edit",  deterministic: true },
-  { action: "run hello.ts + cleanup",   tool: "exec",   deterministic: false },
-];
-// write/edit 结果已知（确定性工具），与 exec 同批发出
-console.log("plan: " + steps.map(s => s.tool).join(", ") + " — 一次性发出");`,
+		script: IS_WINDOWS
+			? "bun .temp/hello.ts"
+			: "bun .temp/hello.ts",
 	},
 };
 
-const THINK_RESULT: DomainMessage = {
-	type: "tool_result",
-	tool: "exec" as const,
-	call: BOOT_THINK,
-	status: "completed" as const,
-	exitCode: 0,
-	stdout: "plan: write, edit, exec — 一次性发出",
-	stderr: "",
-	durationMs: 30,
+const EXEC_TEST: ExecToolCall = {
+	id: "x_test",
+	tool: "exec",
+	args: {
+		script: IS_WINDOWS
+			? "type .temp\\test.md"
+			: "cat .temp/test.md",
+	},
 };
 
-const WRITE_RESULT: DomainMessage = {
+const WORKING_2: ProgressToolCall = {
+	id: "working_2",
+	tool: "progress",
+	args: {
+		status: "working",
+		content:
+			"验证工具并行调用：同时写入、编辑、执行多个文件，不等待中间结果。",
+	},
+};
+
+// ── Turn 4: 清理 + 提交 ──
+
+const EXEC_CLEANUP: ExecToolCall = {
+	id: "x_cleanup",
+	tool: "exec",
+	args: {
+		script: IS_WINDOWS
+			? "del .temp\\hello.ts .temp\\test.md 2>nul & echo cleaned"
+			: "rm -f .temp/hello.ts .temp/test.md && echo cleaned",
+	},
+};
+
+// progress(completed) 是 derived — 依赖环境信息动态生成
+
+// ════════════════════════════════════════════════════════════════
+// ██  静态结果
+// ════════════════════════════════════════════════════════════════
+
+const WORKING_1_RESULT: DomainMessage = {
+	type: "tool_result",
+	tool: "progress" as const,
+	call: WORKING_1,
+	cleanedResult: WORKING_1.args,
+	userResponse: "继续",
+} satisfies ProgressToolResult as DomainMessage;
+
+const BLOCKED_TASK_RESULT: DomainMessage = {
+	type: "tool_result",
+	tool: "progress" as const,
+	call: BLOCKED_TASK,
+	cleanedResult: BLOCKED_TASK.args,
+	userResponse: [
+		"验证任务如下：",
+		"1. 我们的工具不会冲突，可按任意顺序调用",
+		"2. 写入、编辑、执行等，可一次性并行调用",
+		"3. 请验证各工具正常工作",
+		"4. 完成后汇报环境状态和验证结果，然后等待实际请求",
+	].join("\n"),
+} satisfies ProgressToolResult as DomainMessage;
+
+const WRITE_HELLO_RESULT: DomainMessage = {
 	type: "tool_result",
 	tool: "write" as const,
-	call: TURN2_WRITE as import("@n0n/types").WriteToolCall,
+	call: WRITE_HELLO as WriteToolCall,
 	status: "completed" as const,
 };
 
-const EDIT_RESULT: DomainMessage = {
+const WRITE_TEST_RESULT: DomainMessage = {
+	type: "tool_result",
+	tool: "write" as const,
+	call: WRITE_TEST as WriteToolCall,
+	status: "completed" as const,
+};
+
+const EDIT_TEST_RESULT: DomainMessage = {
 	type: "tool_result",
 	tool: "edit" as const,
-	call: TURN2_EDIT as import("@n0n/types").EditToolCall,
-	patches: [
-		{
-			oldText: "Status: PENDING",
-			newText: "Status: DONE",
-		},
-	],
+	call: EDIT_TEST as EditToolCall,
+	patches: [{ oldText: "Status: PENDING", newText: "Status: DONE" }],
 	success: true,
 	error: null,
 	feedback: null,
 	rounds: 1,
-	durationMs: 800,
+	durationMs: 600,
 };
 
-const EXEC_RESULT: DomainMessage = {
+const EDIT_HELLO_RESULT: DomainMessage = {
+	type: "tool_result",
+	tool: "edit" as const,
+	call: EDIT_HELLO as EditToolCall,
+	patches: [{ oldText: '"Hello n0n"', newText: '"Hello World"' }],
+	success: true,
+	error: null,
+	feedback: null,
+	rounds: 1,
+	durationMs: 500,
+};
+
+const EXEC_HELLO_RESULT: DomainMessage = {
 	type: "tool_result",
 	tool: "exec" as const,
-	call: TURN2_EXEC,
+	call: EXEC_HELLO,
 	status: "completed" as const,
 	exitCode: 0,
-	stdout: "bootstrap ok",
+	stdout: "Hello World",
 	stderr: "",
-	durationMs: 150,
+	durationMs: 80,
 };
 
-const PROGRESS_WORKING_RESULT: DomainMessage = {
+const EXEC_TEST_RESULT: DomainMessage = {
+	type: "tool_result",
+	tool: "exec" as const,
+	call: EXEC_TEST,
+	status: "completed" as const,
+	exitCode: 0,
+	stdout: "# Test\nStatus: DONE",
+	stderr: "",
+	durationMs: 30,
+};
+
+const WORKING_2_RESULT: DomainMessage = {
 	type: "tool_result",
 	tool: "progress" as const,
-	call: TURN2_PROGRESS,
-	cleanedResult: TURN2_PROGRESS.args,
+	call: WORKING_2,
+	cleanedResult: WORKING_2.args,
 	userResponse: "继续",
 } satisfies ProgressToolResult as DomainMessage;
 
-// ── 派生消息构建器 ──
+const EXEC_CLEANUP_RESULT: DomainMessage = {
+	type: "tool_result",
+	tool: "exec" as const,
+	call: EXEC_CLEANUP,
+	status: "completed" as const,
+	exitCode: 0,
+	stdout: "cleaned",
+	stderr: "",
+	durationMs: 50,
+};
 
-function buildSubmitReport(ctx: RuntimeCtx): string {
+// ════════════════════════════════════════════════════════════════
+// ██  派生消息构建器
+// ════════════════════════════════════════════════════════════════
+
+function buildCompletedCall(ctx: RuntimeCtx): DomainMessage {
+	const globalOut = extractStdout(ctx.results.get("init_global"));
+	const projectOut = extractStdout(ctx.results.get("init_project"));
+	const skillOut = extractStdout(ctx.results.get("skill_list"));
+
+	// 从输出中提取关键信息
+	const os = globalOut.match(/\[OS\]\n(.+)/)?.[1] ?? process.platform;
+	const branch =
+		projectOut.match(/Branch: (.+)/)?.[1] ?? "unknown";
+	const workspace =
+		projectOut.match(/\[Workspace\]\n(.+)/)?.[1] ?? ctx.workspace;
+	const fileInfo =
+		projectOut.match(/Source files: (\d+)/)?.[1] ?? "?";
+	const lineInfo =
+		projectOut.match(/Total lines: (.+)/)?.[1] ?? "?";
+	const skills =
+		skillOut
+			.match(/  (\w+) —/g)
+			?.map((m) => m.match(/  (\w+) —/)?.[1])
+			.filter(Boolean)
+			.join(", ") ?? "none";
+
+	const content = [
+		`环境初始化完成。`,
+		`${os}，工作目录 ${workspace}，分支 ${branch}。`,
+		`代码库：${fileInfo} 源文件，${lineInfo}。`,
+		`可用 skills: ${skills}。`,
+		``,
+		`并行工具调用验证通过：write/edit/exec 可同批执行、互不等待。`,
+		`收到实际请求后，我会结合环境信息判断是否有合适的 skill 可加载，然后执行任务。`,
+	].join("\n");
+
+	const call: ProgressToolCall = {
+		id: "completed_final",
+		tool: "progress",
+		args: { status: "completed", content },
+	};
+
+	return {
+		type: "assistant_tool_call",
+		content: null,
+		reasoning: null,
+		reasoningSignature: null,
+		toolCalls: [EXEC_CLEANUP, call],
+	};
+}
+
+function buildCompletedResults(ctx: RuntimeCtx): DomainMessage[] {
+	const globalOut = extractStdout(ctx.results.get("init_global"));
+	const projectOut = extractStdout(ctx.results.get("init_project"));
+	const skillOut = extractStdout(ctx.results.get("skill_list"));
+
+	const os = globalOut.match(/\[OS\]\n(.+)/)?.[1] ?? process.platform;
+	const branch = projectOut.match(/Branch: (.+)/)?.[1] ?? "unknown";
+	const workspace = projectOut.match(/\[Workspace\]\n(.+)/)?.[1] ?? ctx.workspace;
+	const fileInfo = projectOut.match(/Source files: (\d+)/)?.[1] ?? "?";
+	const lineInfo = projectOut.match(/Total lines: (.+)/)?.[1] ?? "?";
+	const skills =
+		skillOut
+			.match(/  (\w+) —/g)
+			?.map((m) => m.match(/  (\w+) —/)?.[1])
+			.filter(Boolean)
+			.join(", ") ?? "none";
+
+	const content = [
+		`环境初始化完成。`,
+		`${os}，工作目录 ${workspace}，分支 ${branch}。`,
+		`代码库：${fileInfo} 源文件，${lineInfo}。`,
+		`可用 skills: ${skills}。`,
+		``,
+		`并行工具调用验证通过：write/edit/exec 可同批执行、互不等待。`,
+		`收到实际请求后，我会结合环境信息判断是否有合适的 skill 可加载，然后执行任务。`,
+	].join("\n");
+
+	const call: ProgressToolCall = {
+		id: "completed_final",
+		tool: "progress",
+		args: { status: "completed", content },
+	};
+
 	return [
-		"环境初始化完成。",
-		`${ctx.os}，工作目录 ${ctx.workspace}，当前在 ${ctx.branch} 分支。`,
-		`${ctx.codebaseSummary}。就绪，等待指令。`,
-	].join("");
-}
-
-function buildTurn2Assistant(_ctx: RuntimeCtx): DomainMessage {
-	return {
-		type: "assistant_tool_call",
-		content: null,
-		reasoning: "让我整理一下。",
-		reasoningSignature: null,
-		toolCalls: [BOOT_THINK, TURN2_WRITE, TURN2_EDIT, TURN2_EXEC, TURN2_PROGRESS],
-	};
-}
-
-function buildTurn3Progress(ctx: RuntimeCtx): DomainMessage {
-	const progressCall: ProgressToolCall = {
-		id: "boot_s",
-		tool: "progress" as const,
-		args: {
-			status: "completed",
-			content: buildSubmitReport(ctx),
-		},
-	};
-	return {
-		type: "assistant_tool_call",
-		content: null,
-		reasoning: "确认完成，提交结果。",
-		reasoningSignature: null,
-		toolCalls: [progressCall],
-	};
-}
-
-function buildProgressResult(ctx: RuntimeCtx): DomainMessage {
-	const progressCall: ProgressToolCall = {
-		id: "boot_s",
-		tool: "progress" as const,
-		args: {
-			status: "completed",
-			content: buildSubmitReport(ctx),
-		},
-	};
-	return {
-		type: "tool_result",
-		tool: "progress" as const,
-		call: progressCall,
-		cleanedResult: progressCall.args,
-		userResponse: undefined,
-	} satisfies ProgressToolResult as DomainMessage;
+		EXEC_CLEANUP_RESULT,
+		{
+			type: "tool_result",
+			tool: "progress" as const,
+			call,
+			cleanedResult: call.args,
+			userResponse: undefined,
+		} satisfies ProgressToolResult as DomainMessage,
+	];
 }
 
 // ════════════════════════════════════════════════════════════════
-// ██  FEWSHOT TEMPLATE — 模型看到的完整对话结构
+// ██  FEWSHOT TEMPLATE
 // ════════════════════════════════════════════════════════════════
 
 const FEWSHOT_TEMPLATE: FewshotEntry[] = [
-	// ── 用户请求初始化 ──
+	// ── User 请求 ──
 	{
 		type: "generic_user_text",
 		content: [
 			"<system-reminder>",
-			"Bootstrap: discover your environment before the user's first message.",
-			"1. Check OS, shell, and git state",
-			"2. Read AGENTS.md for project-specific instructions",
-			"3. Survey the codebase structure",
-			"4. Read and complete the bootstrap task in .temp/bootstrap-test.md",
-			"5. Discover available CLI tools in PATH",
-			"6. Check skill CLI tool (n0n-skill) availability and list skills",
-			"Submit when all steps are done.",
-			"Note: The user cannot see your text responses — only submit results are delivered as push notifications.",
+			"Bootstrap: use n0n-init to discover environment, n0n-skill to check available skills.",
+			"1. Run `n0n-init global` and `n0n-init project` to get environment information.",
+			"2. Run `n0n-skill` to see available skills",
+			"3. Complete the bootstrap verification task which will be provided after you init",
+			"4. Report via progress(completed)",
+			"Note: The user cannot see your text responses — only progress results are delivered.",
 			"</system-reminder>",
-			"",
-			"帮我初始化工作环境。",
-			"",
-			"【思维模式要求】",
-			"面对复杂决策或分析时，用 exec 做思维实验——把心智模型写成具体的数据、逻辑或分步场景，然后检查结果。抽象推理会隐藏漏洞；具象化迫使你直面细节。exec 天然适合这件事：脚本可以结构化、计算和验证，// 注释可以内嵌推理且无副作用。当你发现自己在想“大概”“应该”“让我想想有哪些情况”时，这就是该具象化而非空想的信号。",
 		].join("\n"),
 	},
 
-	// ── Turn 1: 5 个并行 exec 环境发现 ──
+	// ── Turn 1: 4 并行（环境发现 + working）──
 	{
 		type: "assistant_tool_call",
 		content: null,
-		reasoning: "让我想想要做什么。",
+		reasoning: null,
+		reasoningSignature: null,
+		toolCalls: [INIT_GLOBAL, INIT_PROJECT, SKILL_LIST, WORKING_1],
+	},
+
+	{ _slot: "exec", call: INIT_GLOBAL },
+	{ _slot: "exec", call: INIT_PROJECT },
+	{ _slot: "exec", call: SKILL_LIST },
+	WORKING_1_RESULT,
+
+	// ── Turn 2: progress(blocked) 索取验证任务 ──
+	{
+		type: "assistant_tool_call",
+		content: null,
+		reasoning: null,
+		reasoningSignature: null,
+		toolCalls: [BLOCKED_TASK],
+	},
+
+	BLOCKED_TASK_RESULT,
+
+	// ── Turn 3: 7 并行（验证任务执行）──
+	{
+		type: "assistant_tool_call",
+		content: null,
+		reasoning: null,
 		reasoningSignature: null,
 		toolCalls: [
-			BOOT_PLAN,
-			BOOT_ENV,
-			BOOT_TOOLS,
-			BOOT_AGENTS,
-			BOOT_CODE,
-			BOOT_TASK,
-			BOOT_SKILL,
+			WRITE_HELLO,
+			WRITE_TEST,
+			EDIT_TEST,
+			EDIT_HELLO,
+			EXEC_HELLO,
+			EXEC_TEST,
+			WORKING_2,
 		],
 	},
 
-	PLAN_RESULT,
-	{ _slot: "exec", call: BOOT_ENV },
-	{ _slot: "exec", call: BOOT_TOOLS },
-	{ _slot: "exec", call: BOOT_AGENTS },
-	{ _slot: "exec", call: BOOT_CODE },
-	{ _slot: "exec", call: BOOT_TASK },
-	{ _slot: "exec", call: BOOT_SKILL },
+	WRITE_HELLO_RESULT,
+	WRITE_TEST_RESULT,
+	EDIT_TEST_RESULT,
+	EDIT_HELLO_RESULT,
+	EXEC_HELLO_RESULT,
+	EXEC_TEST_RESULT,
+	WORKING_2_RESULT,
 
-	// ── Turn 2: exec 推理 + 执行 bootstrap 任务 ──
-	{ _slot: "derived", build: buildTurn2Assistant },
-
-	THINK_RESULT,
-	WRITE_RESULT,
-	EDIT_RESULT,
-	EXEC_RESULT,
-	PROGRESS_WORKING_RESULT,
-
-	// ── Turn 3: progress(working) 后系统注入"继续"，新一轮开始 ──
-	// 教学：模型看到上一批全部结果 + 用户的"继续"，然后通过 progress(completed) 提交最终结果
-	{ _slot: "derived", build: buildTurn3Progress },
-	{ _slot: "derived", build: buildProgressResult },
+	// ── Turn 4: 清理 + completed（derived）──
+	{ _slot: "derived", build: buildCompletedCall },
+	// Results also derived (contain dynamic env info)
+	{
+		_slot: "derived",
+		build: (ctx) => buildCompletedResults(ctx)[0]!,
+	},
+	{
+		_slot: "derived",
+		build: (ctx) => buildCompletedResults(ctx)[1]!,
+	},
 ];
 
 // ════════════════════════════════════════════════════════════════
@@ -440,9 +467,7 @@ async function runExec(
 	if (!entry?.stream)
 		throw new Error("exec tool entry not found or not stream");
 	const gen = (
-		entry.execute as (
-			tc: ToolCallRecord,
-		) => AsyncGenerator<ToolStreamEvent>
+		entry.execute as (tc: ToolCallRecord) => AsyncGenerator<ToolStreamEvent>
 	)(call);
 	let result: ToolResult | undefined;
 	for await (const event of gen) {
@@ -458,49 +483,17 @@ function extractStdout(result: ToolResult | undefined): string {
 	if ("stdout" in result) return result.stdout;
 	if ("stdoutSoFar" in result)
 		return (result as { stdoutSoFar: string }).stdoutSoFar;
+	if ("stdoutTail" in result)
+		return (result as { stdoutTail: string }).stdoutTail;
 	return "";
 }
-
-function extractOs(stdout: string): string {
-	return (
-		stdout.match(/OS: (\S+)/)?.[1] ??
-		(stdout.includes("Windows") ? "Windows" : "unknown")
-	);
-}
-
-function extractBranch(stdout: string): string {
-	const match = stdout.match(/Git branch: (\S+)/);
-	if (match?.[1]) return match[1];
-	if (!IS_WINDOWS) return "unknown";
-	for (const line of stdout
-		.split(/\r?\n/)
-		.map((l) => l.trim())
-		.filter(Boolean)) {
-		if (/^Microsoft Windows|^[MADRCU?!]{1,2}\s/.test(line)) continue;
-		return line;
-	}
-	return "unknown";
-}
-
-const BOOTSTRAP_TASK = `# Bootstrap Task
-1. Create .temp/hello.ts with: console.log("bootstrap ok")
-2. Run it to verify bun works
-3. Edit this file: change Status from PENDING to DONE
-4. Clean up all temp files
-
-Status: PENDING`;
 
 async function renderFewshot(
 	template: FewshotEntry[],
 	toolkit: Toolkit,
 	workspace: string,
-	tempDir: string,
 ): Promise<DomainMessage[]> {
-	const absTempDir = resolve(workspace, tempDir);
-	if (!existsSync(absTempDir)) mkdirSync(absTempDir, { recursive: true });
-	const taskFilePath = resolve(absTempDir, "bootstrap-test.md");
-	writeFileSync(taskFilePath, BOOTSTRAP_TASK, "utf-8");
-
+	// Execute all exec slots in parallel
 	const execSlots = template.filter(
 		(e): e is ExecSlot => isSlot(e) && e._slot === "exec",
 	);
@@ -512,20 +505,9 @@ async function renderFewshot(
 		resultMap.set(execSlots[i]!.call.id, execResults[i]!);
 	}
 
-	try {
-		unlinkSync(taskFilePath);
-	} catch {}
+	const ctx: RuntimeCtx = { results: resultMap, workspace };
 
-	const envStdout = extractStdout(resultMap.get("boot_1"));
-	const codeStdout = extractStdout(resultMap.get("boot_3"));
-	const ctx: RuntimeCtx = {
-		results: resultMap,
-		workspace,
-		os: extractOs(envStdout),
-		branch: extractBranch(envStdout),
-		codebaseSummary: codeStdout.match(/Total: .+/)?.[0] ?? "项目结构已扫描",
-	};
-
+	// Render template
 	return template.map((entry): DomainMessage => {
 		if (!isSlot(entry)) return entry;
 		if (entry._slot === "exec") return resultMap.get(entry.call.id)!;
@@ -538,7 +520,7 @@ async function renderFewshot(
 export async function buildContextFewshot(
 	toolkit: Toolkit,
 	workspace: string,
-	tempDir: string,
+	_tempDir?: string,
 ): Promise<DomainMessage[]> {
-	return renderFewshot(FEWSHOT_TEMPLATE, toolkit, workspace, tempDir);
+	return renderFewshot(FEWSHOT_TEMPLATE, toolkit, workspace);
 }

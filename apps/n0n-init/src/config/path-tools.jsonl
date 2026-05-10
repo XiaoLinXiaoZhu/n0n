@@ -1,0 +1,8 @@
+{"type":"whitelist","tools":["git","rg","fd","fzf","jq","curl","wget","docker","kubectl","npm","pnpm","yarn","cargo","go","rustc","gcc","make","cmake","ssh","rsync","tar","zip","unzip","uv","bun","node","deno","python3","python","zstd","ffmpeg","ffplay","ffprobe","pandoc","markitdown","ppt2md","choco","gh","dotnet","openssl","sqlite3","xmake","nvim","tig","adb","fastboot","pwsh"]}
+{"type":"blacklist-dir-pattern","patterns":["\\\\windows\\\\","\\\\windows$","\\\\system32","\\\\syswow64","\\\\winsxs","\\\\windowsapps","\\\\servicing"]}
+{"type":"blacklist-dir-pattern","patterns":["\\.venv","\\\\node_modules\\\\","\\.bin$","\\\\jdk","\\\\java\\\\","\\\\mingw","\\\\msys"]}
+{"type":"blacklist-name-prefix","prefixes":["x86_64-w64-mingw32-","microsoft.","@"]}
+{"type":"blacklist-name-pattern","patterns":["^c_\\d","^\\d+$","plug$","_uninstall","^activate","^deactivate","^install","^unins"]}
+{"type":"blacklist-name-exact","tools":["nodevars","npx","pnpx","bunx","corepack","refreshenv","python3w","scalar","createdump"]}
+{"type":"blacklist-dir-pattern","patterns":["windows kits","windows performance toolkit","\\\\wpt\\\\","\\\\gpuview"]}
+{"type":"blacklist-name-exact","tools":["__nvcc_device_query","aslr-manager","pc_toast","pcsuite","pcsuite_","vivotraycenter","unityclouddrive","symcachegen","wdfperfenhancedverifier","xbootmgr","xbootmgrsleep","wpa","wpaexporter","wpr","wprui","xperf","registermanifest","registermicrosoftupdate","pwsh.profile.resource","enableloopback","forcecpu","execaction","update"]}

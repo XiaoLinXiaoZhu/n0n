@@ -1,0 +1,9 @@
+{
+	"name": "@n0n/init",
+	"version": "0.1.0",
+	"private": true,
+	"type": "module",
+	"bin": {
+		"n0n-init": "src/cli.ts"
+	}
+}
