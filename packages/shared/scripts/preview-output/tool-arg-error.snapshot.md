@@ -8,19 +8,6 @@ toolName: exec
 
 --- content ---
 <error>
-Bad tool args — script: Required
-
-Expected schema:
-{
-  "type": "object",
-  "properties": {
-    "script": {
-      "type": "string"
-    }
-  },
-  "required": [
-    "script"
-  ]
-}
+Unknown error: "script: Required"
 </error>
 ```

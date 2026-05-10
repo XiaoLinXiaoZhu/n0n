@@ -16,9 +16,10 @@ toolName: exec
 ./src/exec/security.ts
 ./src/types/domain.ts
 </output>
-<output_hint>
+<output_info>
 Full output (850 lines) saved to: .temp/exec_output_tc_3.txt
-
-Or write a script to extract key information — do NOT type the full file.
-</output_hint>
+</output_info>
+<system-hint>
+Use targeted reads or a script — avoid re-dumping the full file.
+</system-hint>
 ```

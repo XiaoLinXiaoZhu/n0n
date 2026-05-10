@@ -14,10 +14,12 @@ toolName: exec
 Process exceeded waitfor limit, moved to background.
 PID: 65432
 Log file: .temp/exec_bg_65432.log
-Read the log file later to check process status.
 </waitfor_notice>
 <output>
 npm warn deprecated inflight@1.0.6
 added 142 packages in 28s
 </output>
+<system-hint>
+Log file updates every few seconds; read it to check progress.
+</system-hint>
 ```

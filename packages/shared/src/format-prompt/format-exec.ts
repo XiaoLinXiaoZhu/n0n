@@ -5,6 +5,8 @@
  * msgIndex+N 偏移独立选择变体，组合爆炸产生远超单维度的多样性。
  *
  * 返回 FormattedToolResult：fact（客观数据）与 hint（系统操作建议）分离。
+ * fact = 模型未来可能用到且不会过时的信息（状态、PID、文件路径、分块数据等）
+ * hint = 仅当前轮有用的操作建议，隔一轮就不需要了
  */
 
 import type { ExecToolResult } from "@n0n/types";
@@ -42,16 +44,24 @@ const truncatedMetaTemplates = [
 		`(${rt}) ${cwd} | exit ${exit} | ${ms}ms | truncated to ${file}`,
 ];
 
-const waitforNoticeTemplates = [
+/** backgrounded fact 模板：包含 PID 和 log file 路径（持久有效的客观信息） */
+const backgroundedFactTemplates = [
 	(pid: number, logFile: string) =>
-		`Process exceeded waitfor limit, moved to background.\nPID: ${pid}\nLog file: ${logFile}\nThe log file is updated every few seconds — read it anytime to check output and process status.`,
+		`Process exceeded waitfor limit, moved to background.\nPID: ${pid}\nLog file: ${logFile}`,
 	(pid: number, logFile: string) =>
-		`Waitfor exceeded — process continues in background (PID ${pid}).\nOutput is being logged to: ${logFile}\nThe file syncs every few seconds — check it anytime for progress and status.`,
+		`Waitfor exceeded — process continues in background (PID ${pid}).\nOutput is being logged to: ${logFile}`,
 	(pid: number, logFile: string) =>
-		`Background process started (PID: ${pid}).\nThe command exceeded its waitfor limit but is still running.\nLog file updates every few seconds: ${logFile}`,
+		`Background process started (PID: ${pid}).\nThe command exceeded its waitfor limit but is still running.\nLog file: ${logFile}`,
 ];
 
-/** 格式化截断分块的读取建议 */
+/** backgrounded hint 模板：操作建议（隔轮后不需要） */
+const backgroundedHintTemplates = [
+	"The log file is updated every few seconds — read it anytime to check output and process status.",
+	"The file syncs every few seconds — check it anytime for progress and status.",
+	"Log file updates every few seconds; read it to check progress.",
+];
+
+/** 格式化截断分块的读取建议（fact 部分：客观分块数据） */
 function formatChunkGuide(
 	chunks: { startLine: number; endLine: number; tokens: number }[],
 	outputFile: string,
@@ -66,19 +76,24 @@ function formatChunkGuide(
 		(c, i) =>
 			`  chunk ${i + 1}: lines ${c.startLine}-${c.endLine} (~${c.tokens} tok)`,
 	);
-	const readCmd = IS_WINDOWS
-		? `Use pwsh -c "Get-Content ${outputFile} | Select-Object -Skip <start-1> -First <count>" to read a specific chunk.`
-		: `Use sed -n '<start>,<end>p' ${outputFile} to read a specific chunk.`;
-	return `Truncated part can be read in ${chunks.length} chunks:\n${lines.join("\n")}\n${readCmd}`;
+	return `Truncated part can be read in ${chunks.length} chunks:\n${lines.join("\n")}`;
 }
 
+/** truncated fact 模板：输出文件路径和分块信息（持久有效） */
+const truncatedFactTemplates = [
+	(totalLines: number, outputFile: string, chunkGuide: string) =>
+		`Full output (${totalLines} lines) saved to: ${outputFile}${chunkGuide ? `\n${chunkGuide}` : ""}`,
+	(totalLines: number, outputFile: string, chunkGuide: string) =>
+		`${totalLines} lines captured in ${outputFile}.${chunkGuide ? `\n${chunkGuide}` : ""}`,
+	(totalLines: number, outputFile: string, chunkGuide: string) =>
+		`Complete output saved to ${outputFile} (${totalLines} lines).${chunkGuide ? `\n${chunkGuide}` : ""}`,
+];
+
+/** truncated hint 模板：操作建议（隔轮后不需要） */
 const truncatedHintTemplates = [
-	(totalLines: number, outputFile: string, chunkGuide: string) =>
-		`Full output (${totalLines} lines) saved to: ${outputFile}\n${chunkGuide}\nOr write a script to extract key information — do NOT ${IS_WINDOWS ? "type" : "cat"} the full file.`,
-	(totalLines: number, outputFile: string, chunkGuide: string) =>
-		`${totalLines} lines captured in ${outputFile}.\n${chunkGuide}\nPrefer writing a script to extract what you need rather than reading raw output.`,
-	(totalLines: number, outputFile: string, chunkGuide: string) =>
-		`Complete output saved to ${outputFile} (${totalLines} lines).\n${chunkGuide}\nUse targeted reads or a script — avoid re-dumping the full file.`,
+	`${IS_WINDOWS ? `Use pwsh -c "Get-Content <file> | Select-Object -Skip <start-1> -First <count>" to read a specific chunk.` : `Use sed -n '<start>,<end>p' <file> to read a specific chunk.`}\nOr write a script to extract key information — do NOT ${IS_WINDOWS ? "type" : "cat"} the full file.`,
+	`Prefer writing a script to extract what you need rather than reading raw output.${IS_WINDOWS ? `\nUse pwsh Select-Object for targeted reads.` : `\nUse sed for targeted reads.`}`,
+	`Use targeted reads or a script — avoid re-dumping the full file.`,
 ];
 
 const diagnosticHintTemplates = [
@@ -110,13 +125,19 @@ export function formatExecResult(
 				tags.wrapTag("exec_meta", metaFn(runtime, cwd, msg.durationMs)),
 			];
 
+			// PID + log file 路径：持久有效的客观信息，属于 fact
+			const noticeFn = pick(backgroundedFactTemplates, msgIndex + 3);
+			factParts.push(
+				tags.wrapTag("waitfor_notice", noticeFn(msg.pid, msg.logFile)),
+			);
+
 			if (msg.stdoutSoFar)
 				factParts.push(tags.wrapTag(stdoutTag, msg.stdoutSoFar));
 			if (msg.stderrSoFar)
 				factParts.push(tags.wrapTag(stderrTag, msg.stderrSoFar));
 
-			const noticeFn = pick(waitforNoticeTemplates, msgIndex + 3);
-			const hint = noticeFn(msg.pid, msg.logFile);
+			// 操作建议：隔轮后不需要
+			const hint = pick(backgroundedHintTemplates, msgIndex + 4);
 
 			return { fact: factParts.join("\n"), hint };
 		}
@@ -141,9 +162,18 @@ export function formatExecResult(
 					tags.wrapTag(stderrTag, `... (truncated)\n${msg.stderrTail}`),
 				);
 
-			const hintFn = pick(truncatedHintTemplates, msgIndex + 3);
+			// 输出文件路径和分块信息：持久有效，属于 fact
 			const chunkGuide = formatChunkGuide(msg.truncatedChunks, msg.outputFile);
-			const hint = hintFn(msg.totalLines, msg.outputFile, chunkGuide);
+			const truncFactFn = pick(truncatedFactTemplates, msgIndex + 3);
+			factParts.push(
+				tags.wrapTag(
+					"output_info",
+					truncFactFn(msg.totalLines, msg.outputFile, chunkGuide),
+				),
+			);
+
+			// 操作建议：隔轮后不需要
+			const hint = pick(truncatedHintTemplates, msgIndex + 4);
 
 			return { fact: factParts.join("\n"), hint };
 		}
