@@ -211,8 +211,10 @@ export async function makeToolkit(
 		progress: progressEntry,
 	};
 
-	// 从注册表构建 ToolDefinition 列表
-	const tools = Object.values(registry).map((entry) => entry.definition);
+	// 工具顺序是隐性优先级信号——模型对前置工具有注意力偏向。
+	// 显式声明顺序，避免依赖 JS 对象属性的插入顺序。
+	const TOOL_ORDER = ["progress", "exec", "write", "edit"] as const;
+	const tools = TOOL_ORDER.map((name) => registry[name]!.definition);
 
 	return {
 		tools,

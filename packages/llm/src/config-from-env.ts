@@ -22,6 +22,7 @@ export const PROVIDER_TYPES: readonly ProviderConfig["provider"][] = [
 	"anthropic",
 	"google",
 	"openai-compatible",
+	"deepseek",
 ] as const;
 
 /** 类型守卫：判断字符串是否为合法的 provider 类型 */
@@ -135,6 +136,21 @@ export function buildProviderConfigFromEnv(
 				baseUrl: baseUrl ?? "",
 				...(backendProvider ? { backendProvider } : {}),
 				...(enableThinking ? { enableThinking } : {}),
+			};
+		}
+		case "deepseek": {
+			const enableThinking =
+				process.env[`${prefix}_ENABLE_THINKING`] === "true";
+			const effortRaw = process.env[`${prefix}_THINKING_EFFORT`];
+			const thinkingEffort =
+				effortRaw === "max" || effortRaw === "high" ? effortRaw : undefined;
+			return {
+				provider: "deepseek",
+				apiKey,
+				model,
+				...(baseUrl ? { baseUrl } : {}),
+				...(enableThinking ? { enableThinking } : {}),
+				...(thinkingEffort ? { thinkingEffort } : {}),
 			};
 		}
 	}
