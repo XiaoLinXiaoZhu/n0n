@@ -1,7 +1,7 @@
 /**
  * global 命令：发现全局环境状态
  *
- * 输出：OS、exec 可用 runtime（含执行方式说明）、PATH 中的 CLI 工具
+ * 输出：OS、exec 可用 runtime（分组 + 优先级推荐 + 版本）、PATH 中的 CLI 工具
  * --detail：使用黑名单过滤，展示更完整的工具列表
  */
 
@@ -21,6 +21,8 @@ export async function globalCommand(detail = false): Promise<void> {
 
 	console.log(sections.join("\n\n"));
 }
+
+// ── OS ──
 
 function osSection(): string {
 	const lines = ["[OS]"];
@@ -44,47 +46,186 @@ function osSection(): string {
 	return lines.join("\n");
 }
 
+// ── Runtimes ──
+
+type RuntimeGroup = "shell" | "js" | "python";
+
+interface RuntimeDef {
+	name: string;
+	group: RuntimeGroup;
+	/** 版本探测命令 */
+	cmd: string;
+	args: string[];
+	/** 从输出中提取版本号 */
+	versionPattern: RegExp;
+	/** exec 工具的执行方式说明 */
+	execution: string;
+	/** 同组优先级（越小越优先） */
+	priority: number;
+	/** 仅在指定平台探测 */
+	platforms: ("win32" | "darwin" | "linux")[] | null;
+	/** 版本解析失败时是否仍标记为可用（shell 类） */
+	versionOptional?: boolean;
+}
+
+const RUNTIME_DEFS: RuntimeDef[] = [
+	// Shell
+	{
+		name: "cmd",
+		group: "shell",
+		cmd: "cmd",
+		args: ["/c", "ver"],
+		versionPattern: /(\d+\.\d+[\w.]*)/,
+		execution: "cmd /c <tmpfile.cmd>",
+		priority: 1,
+		platforms: ["win32"],
+		versionOptional: true,
+	},
+	{
+		name: "sh",
+		group: "shell",
+		cmd: "sh",
+		args: ["-c", "exit 0"],
+		versionPattern: /^$/,
+		execution: "sh <tmpfile.sh>",
+		priority: 1,
+		platforms: ["darwin", "linux"],
+		versionOptional: true,
+	},
+	{
+		name: "bash",
+		group: "shell",
+		cmd: "bash",
+		args: ["--version"],
+		versionPattern: /(\d+\.\d+[\w.]*)/,
+		execution: "bash <tmpfile.sh>",
+		priority: 2,
+		platforms: null,
+	},
+	{
+		name: "pwsh",
+		group: "shell",
+		cmd: "pwsh",
+		args: ["-NoProfile", "-Command", "$PSVersionTable.PSVersion.ToString()"],
+		versionPattern: /(\d+\.\d+[\w.]*)/,
+		execution: "pwsh -NoProfile -File <tmpfile.ps1>",
+		priority: 3,
+		platforms: null,
+	},
+	// JS/TS — bun > node > deno
+	{
+		name: "bun",
+		group: "js",
+		cmd: "bun",
+		args: ["--version"],
+		versionPattern: /(\d+\.\d+[\w.]*)/,
+		execution: "bun run <tmpfile.ts>",
+		priority: 1,
+		platforms: null,
+	},
+	{
+		name: "node",
+		group: "js",
+		cmd: "node",
+		args: ["--version"],
+		versionPattern: /v?(\d+\.\d+[\w.]*)/,
+		execution: "node <tmpfile.mjs>",
+		priority: 2,
+		platforms: null,
+	},
+	{
+		name: "deno",
+		group: "js",
+		cmd: "deno",
+		args: ["--version"],
+		versionPattern: /deno\s+(\d+\.\d+[\w.]*)/,
+		execution: "deno run --allow-all <tmpfile.ts>",
+		priority: 3,
+		platforms: null,
+	},
+	// Python — python3 > uv
+	{
+		name: "python3",
+		group: "python",
+		cmd: IS_WINDOWS ? "python" : "python3",
+		args: ["--version"],
+		versionPattern: /Python\s+(\d+\.\d+[\w.]*)/,
+		execution: "python3 <tmpfile.py>",
+		priority: 1,
+		platforms: null,
+	},
+	{
+		name: "uv",
+		group: "python",
+		cmd: "uv",
+		args: ["--version"],
+		versionPattern: /uv\s+(\d+\.\d+[\w.]*)/,
+		execution: "uv run <tmpfile.py>",
+		priority: 2,
+		platforms: null,
+	},
+];
+
+interface ProbeResult {
+	def: RuntimeDef;
+	available: boolean;
+	version: string | null;
+}
+
+function probeRuntime(def: RuntimeDef): ProbeResult {
+	const base: ProbeResult = { def, available: false, version: null };
+
+	if (def.platforms && !def.platforms.includes(process.platform as "win32" | "darwin" | "linux")) {
+		return base;
+	}
+
+	try {
+		const output = execSync(`${def.cmd} ${def.args.join(" ")}`, {
+			encoding: "utf8",
+			timeout: 5000,
+			stdio: ["pipe", "pipe", "pipe"],
+		}).trim();
+
+		const match = output.match(def.versionPattern);
+		const version = match?.[1] ?? null;
+
+		if (!version && !def.versionOptional) return base;
+
+		return { def, available: true, version };
+	} catch {
+		return base;
+	}
+}
+
 function runtimesSection(): string {
 	const lines = ["[Exec Runtimes] (use as `runtime` param in exec tool)"];
 
-	const checks: Array<{
-		name: string;
-		cmd: string;
-		execution: string;
-		windows?: boolean;
-		unix?: boolean;
-	}> = [
-		{ name: "sh", cmd: "sh --version", execution: "sh <tmpfile.sh>", unix: true },
-		{ name: "bash", cmd: "bash --version", execution: "bash <tmpfile.sh>", unix: true },
-		{ name: "pwsh", cmd: "pwsh --version", execution: "pwsh -NoProfile -File <tmpfile.ps1>" },
-		{ name: "cmd", cmd: "cmd /c echo available", execution: "cmd /c <tmpfile.cmd>", windows: true },
-		{ name: "bun", cmd: "bun --version", execution: "bun run <tmpfile.ts>" },
-		{ name: "node", cmd: "node --version", execution: "node <tmpfile.mjs>" },
-		{ name: "deno", cmd: "deno --version", execution: "deno run --allow-all <tmpfile.ts>" },
-		{ name: "python3", cmd: IS_WINDOWS ? "python --version" : "python3 --version", execution: "python3 <tmpfile.py>" },
-		{ name: "uv", cmd: "uv --version", execution: "uv run <tmpfile.py>" },
-	];
+	const results = RUNTIME_DEFS.map(probeRuntime);
+	const available = results.filter((r) => r.available);
 
-	for (const { name, cmd, execution, windows, unix } of checks) {
-		if (windows && !IS_WINDOWS) continue;
-		if (unix && IS_WINDOWS) continue;
-		try {
-			const ver = execSync(cmd, {
-				encoding: "utf8",
-				timeout: 5000,
-				stdio: ["pipe", "pipe", "pipe"],
-			}).trim().split("\n")[0]!;
-			lines.push(`${name}: ${ver}  →  ${execution}`);
-		} catch {
-			// not available
+	// 按分组输出，每组标注首选
+	const groups: RuntimeGroup[] = ["shell", "js", "python"];
+	const preferredByGroup = new Map<RuntimeGroup, string>();
+
+	for (const group of groups) {
+		const groupResults = available
+			.filter((r) => r.def.group === group)
+			.sort((a, b) => a.def.priority - b.def.priority);
+
+		if (groupResults.length > 0) {
+			preferredByGroup.set(group, groupResults[0]!.def.name);
+		}
+
+		for (const r of groupResults) {
+			const isPreferred = r.def.name === preferredByGroup.get(group);
+			const versionStr = r.version ? `${r.version}` : "available";
+			const marker = isPreferred ? " (preferred)" : "";
+			lines.push(`${r.def.name}: ${versionStr}${marker}  →  ${r.def.execution}`);
 		}
 	}
 
-	if (!IS_WINDOWS) {
-		lines.push(`(default runtime: sh)`);
-	} else {
-		lines.push(`(default runtime: cmd)`);
-	}
+	const defaultRuntime = IS_WINDOWS ? "cmd" : "sh";
+	lines.push(`(default runtime: ${defaultRuntime})`);
 
 	lines.push(
 		`To run inline code (TS/Python/PowerShell), use the runtime param directly — do NOT invoke interpreters through the default shell (e.g. don't write script="bun -e '...'" or script="python -c '...'"). Instead: exec(runtime="bun", script="<your TS code>") or exec(runtime="uv", script="<your Python code>").`,
@@ -92,6 +233,8 @@ function runtimesSection(): string {
 
 	return lines.join("\n");
 }
+
+// ── PATH Tools ──
 
 function pathToolsSection(detail: boolean): string {
 	const config = loadPathToolsConfig();
@@ -167,6 +310,8 @@ function pathToolsDetailed(config: PathToolsConfig): string {
 
 	return lines.join("\n");
 }
+
+// ── Helpers ──
 
 function normalizeName(entry: string): string | null {
 	if (IS_WINDOWS) {
