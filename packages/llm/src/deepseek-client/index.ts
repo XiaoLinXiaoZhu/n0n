@@ -9,7 +9,7 @@
  * 走正常的 formatPrompt → TagAdapter 路线，不绕过 tag 适配体系。
  */
 
-import { createTagAdapter, detectTagStyle, formatPrompt } from "@n0n/shared";
+import type { FormatFn } from "../factory.ts";
 import type {
 	CompleteRequest,
 	CompleteResponse,
@@ -182,12 +182,16 @@ export class DeepSeekClient implements LLMClient {
 	readonly tags: TagAdapter;
 	private readonly pc: DeepSeekProviderConfig;
 	private readonly apiUrl: string;
+	private readonly format: FormatFn;
+	private readonly systemFormat: FormatFn;
 
-	constructor(pc: DeepSeekProviderConfig) {
+	constructor(pc: DeepSeekProviderConfig, tagStyle: TagStyle, tags: TagAdapter, format: FormatFn, systemFormat: FormatFn) {
 		this.pc = pc;
 		this.modelId = this.pc.model;
-		this.tagStyle = this.pc.tagStyle ?? detectTagStyle(this.modelId);
-		this.tags = createTagAdapter(this.tagStyle);
+		this.tagStyle = tagStyle;
+		this.tags = tags;
+		this.format = format;
+		this.systemFormat = systemFormat;
 
 		const base = this.pc.baseUrl ?? "https://api.deepseek.com";
 		if (base.includes("/chat/completions")) {
@@ -196,6 +200,7 @@ export class DeepSeekClient implements LLMClient {
 			const cleanBase = base.replace(/\/v1\/?$/, "").replace(/\/$/, "");
 			this.apiUrl = `${cleanBase}/v1/chat/completions`;
 		}
+
 	}
 
 	async *stream(
@@ -203,10 +208,10 @@ export class DeepSeekClient implements LLMClient {
 		signal?: AbortSignal,
 	): AsyncGenerator<StreamEvent> {
 		// 系统提示词走专用 adapter：提取、合并、适配为 DeepSeek 风格
-		const adaptedSystemPrompt = systemPromptAdapter(request);
+		const adaptedSystemPrompt = systemPromptAdapter(request, this.systemFormat);
 
 		// 非 system 消息走标准 formatPrompt → API 消息转换
-		const promptMessages = formatPrompt(request.messages, this.tags);
+		const promptMessages = this.format(request.messages);
 		const apiMessages = toDeepSeekMessages(
 			promptMessages,
 			this.pc.enableThinking,

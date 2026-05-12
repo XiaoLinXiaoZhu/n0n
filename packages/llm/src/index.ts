@@ -29,6 +29,7 @@ export type {
 	ProviderConfig,
 } from "./config.ts";
 // 环境变量 → 配置工厂（SSOT：runtime.ts 和 bootstrap 共用）
+export type { ConfigSource } from "./config-from-env.ts";
 export {
 	buildLLMConfigFromEnv,
 	buildProviderConfigFromEnv,

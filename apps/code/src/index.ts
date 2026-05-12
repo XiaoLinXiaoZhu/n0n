@@ -7,7 +7,7 @@
  *
  * 启动流程：
  * 1. bootstrap — 检测 .env / 必填配置 / LLM 连通性，缺什么补什么
- * 2. 初始化运行时上下文
+ * 2. 从 source 构造各组件配置
  * 3. 启动 REPL
  */
 
@@ -15,20 +15,28 @@ import { existsSync, mkdirSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, resolve } from "node:path";
 import { CliSetupRenderer, style, writeln } from "@n0n/cli-ui";
-import { createRuntimeContext, initRuntime } from "@n0n/core";
+import {
+	buildAgentConfig,
+	buildSecurityConfig,
+	buildToolsConfig,
+	type EditBackendConfig,
+} from "@n0n/core";
 import {
 	buildLLMConfigFromEnv,
+	type ConfigSource,
 	createLLMClient,
 	createResponsesClient,
 } from "@n0n/llm";
 import {
 	bootstrap,
 	ensureDirs,
+	type FormatOptions,
 	parseWorkspaceArg,
 	resolveBasePaths,
 } from "@n0n/shared";
 
 import { buildCodeEnvSpec } from "./env-spec.ts";
+import { buildNotifyConfig } from "./notify-sound.ts";
 
 // ── Bootstrap ──
 // 配置文件存放在全局目录 ~/.n0n/，避免每个工作目录都需要重新配置
@@ -40,8 +48,8 @@ if (!existsSync(globalConfigDir)) {
 const setupUI = new CliSetupRenderer();
 
 /** LLM 连通性测试回调 — 注入到 bootstrap，避免 shared 直接依赖 llm */
-const testLLM = async () => {
-	const llmConfig = buildLLMConfigFromEnv("LLM");
+const testLLM = async (source: ConfigSource) => {
+	const llmConfig = buildLLMConfigFromEnv(source, "LLM");
 	const tempClient = createLLMClient(llmConfig);
 	return tempClient.ping();
 };
@@ -58,7 +66,9 @@ if (!result.ok) {
 	process.exit(1);
 }
 
-// ── 初始化 ──
+// ── 从 source 构造各组件配置 ──
+
+const source = result.source;
 
 const cliOpts = (globalThis as Record<string, unknown>).__n0n_cli_opts as
 	| {
@@ -83,39 +93,45 @@ const { workspace, remainingArgs } = parseWorkspaceArg(
 
 const paths = resolveBasePaths(workspace);
 ensureDirs(paths);
-const llmConfig = buildLLMConfigFromEnv("LLM");
 
-// 编辑后端：通过 EDIT_BACKEND 环境变量切换，默认 str-replace
+const llmConfig = buildLLMConfigFromEnv(source, "LLM");
+const formatOptions: FormatOptions = {
+	stripHint: source.N0N_STRIP_HINT !== "0",
+};
+
+// 编辑后端：通过配置切换，默认 str-replace
 const editBackendType =
-	process.env.EDIT_BACKEND === "freeform-patch"
+	source.EDIT_BACKEND === "freeform-patch"
 		? "freeform-patch"
 		: "str-replace";
 
-const runtime =
+const editBackend: EditBackendConfig =
 	editBackendType === "freeform-patch"
-		? createRuntimeContext({
-				client: createLLMClient(llmConfig),
-				editBackend: {
-					type: "freeform-patch",
-					responsesClient: createResponsesClient({
-						baseUrl:
-							process.env.EDITOR_LLM_BASE_URL || process.env.LLM_BASE_URL || "",
-						apiKey:
-							process.env.EDITOR_LLM_API_KEY || process.env.LLM_API_KEY || "",
-						model: process.env.EDITOR_LLM_MODEL || "gpt-5.4-mini",
-					}),
-				},
-			})
-		: createRuntimeContext({
-				client: createLLMClient(llmConfig),
-				editBackend: {
-					type: "str-replace",
-					editorClient: createLLMClient(
-						buildLLMConfigFromEnv("EDITOR_LLM", llmConfig.providerConfig),
-					),
-				},
-			});
-initRuntime(runtime);
+		? {
+				type: "freeform-patch",
+				responsesClient: createResponsesClient({
+					baseUrl: source.EDITOR_LLM_BASE_URL || source.LLM_BASE_URL || "",
+					apiKey: source.EDITOR_LLM_API_KEY || source.LLM_API_KEY || "",
+					model: source.EDITOR_LLM_MODEL || "gpt-5.4-mini",
+				}),
+			}
+		: {
+				type: "str-replace",
+				editorClient: createLLMClient(
+					buildLLMConfigFromEnv(source, "EDITOR_LLM", llmConfig.providerConfig),
+					formatOptions,
+				),
+			};
+
+const client = createLLMClient(llmConfig, formatOptions);
+const agentConfig = buildAgentConfig(source);
+const securityConfig = buildSecurityConfig(source);
+const toolsConfig = buildToolsConfig(editBackend, agentConfig, securityConfig, {
+	workspace: paths.workspace,
+	tempDir: paths.temp,
+});
+
+const notifyConfig = buildNotifyConfig(source);
 
 const { startCodeRepl } = await import("./repl.ts");
 
@@ -138,5 +154,9 @@ await startCodeRepl(paths, {
 	resumeFile,
 	saveEveryLoop,
 	promptVersion,
+	client,
+	toolsConfig,
+	agentConfig,
+	notifyConfig,
 });
 process.exit(0);

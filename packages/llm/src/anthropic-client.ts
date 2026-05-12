@@ -17,7 +17,7 @@
  * - system 消息拆离（Anthropic 格式要求 system 在消息体外）
  */
 
-import { createTagAdapter, detectTagStyle, formatPrompt } from "@n0n/shared";
+import type { FormatFn } from "./factory.ts";
 import {
 	type CompleteRequest,
 	type CompleteResponse,
@@ -358,12 +358,14 @@ export class AnthropicClient implements LLMClient {
 	readonly tags: TagAdapter;
 	private readonly pc: AnthropicProviderConfig;
 	private readonly apiUrl: string;
+	private readonly format: FormatFn;
 
-	constructor(pc: AnthropicProviderConfig) {
+	constructor(pc: AnthropicProviderConfig, tagStyle: TagStyle, tags: TagAdapter, format: FormatFn) {
 		this.pc = pc;
 		this.modelId = this.pc.model;
-		this.tagStyle = this.pc.tagStyle ?? detectTagStyle(this.modelId);
-		this.tags = createTagAdapter(this.tagStyle);
+		this.tagStyle = tagStyle;
+		this.tags = tags;
+		this.format = format;
 
 		const base = this.pc.baseUrl ?? "https://api.anthropic.com";
 		// 处理 baseUrl 可能已包含 /v1 的情况（如代理 URL）
@@ -375,7 +377,7 @@ export class AnthropicClient implements LLMClient {
 		request: StreamRequest,
 		signal?: AbortSignal,
 	): AsyncGenerator<StreamEvent> {
-		const promptMessages = formatPrompt(request.messages, this.tags);
+		const promptMessages = this.format(request.messages);
 		const { system, messages } = toAnthropicFormat(promptMessages);
 
 		// 过滤空消息——防止提取后残留的空 user 或只有 thinking 无内容的 assistant
@@ -717,7 +719,7 @@ export class AnthropicClient implements LLMClient {
 	}
 
 	async heartbeat(request: StreamRequest): Promise<TokenUsage | null> {
-		const promptMessages = formatPrompt(request.messages, this.tags);
+		const promptMessages = this.format(request.messages);
 		const { system, messages: anthropicMessages } =
 			toAnthropicFormat(promptMessages);
 

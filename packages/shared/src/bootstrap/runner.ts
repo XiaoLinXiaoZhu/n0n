@@ -6,9 +6,12 @@
  * 2. 构建 EnvSpec + 验证：根据 provider 动态构建配置规格，检查必填变量，测试连通性
  *
  * 配置加载优先级（高→低）：
- * 1. 项目根 .env（由 Bun 运行时自动加载）
- * 2. 全局 ~/.n0n/.env（由 bootstrap 加载，不覆盖已存在值）
- * 3. 环境变量默认值（EnvSpec 中的 default 字段）
+ * 1. 环境变量（进程启动时已存在的）
+ * 2. 项目根 .env（由 Bun 运行时自动加载）
+ * 3. 全局 ~/.n0n/.env（由 bootstrap 加载）
+ * 4. 环境变量默认值（EnvSpec 中的 default 字段）
+ *
+ * 不 mutate process.env — 所有解析结果通过返回值传出。
  */
 
 import {
@@ -35,7 +38,7 @@ import { generateEnvTemplate } from "./template.ts";
  * 由上层（app 入口）注入，避免 shared 直接依赖 @n0n/llm
  * （打破 shared ↔ llm 循环依赖）。
  */
-export type LLMConnectionTester = () => Promise<{
+export type LLMConnectionTester = (source: Record<string, string>) => Promise<{
 	ok: boolean;
 	error?: string;
 }>;
@@ -46,12 +49,12 @@ function allVars(spec: EnvSpec): EnvVarDef[] {
 }
 
 /** 查找缺失的必填变量 */
-function findMissing(spec: EnvSpec): EnvVarDef[] {
+function findMissing(spec: EnvSpec, resolved: Record<string, string>): EnvVarDef[] {
 	return allVars(spec).filter(
 		(v) =>
 			v.default === undefined &&
-			!process.env[v.key] &&
-			!(v.inheritFrom && process.env[v.inheritFrom]),
+			!resolved[v.key] &&
+			!(v.inheritFrom && resolved[v.inheritFrom]),
 	);
 }
 
@@ -70,19 +73,10 @@ function parseEnvFile(content: string): Record<string, string> {
 	return result;
 }
 
-/** 加载 .env 文件到 process.env */
-function loadEnvFile(
-	envPath: string,
-	options?: { override?: boolean },
-): Record<string, string> {
+/** 加载 .env 文件（仅解析，不 mutate process.env） */
+function loadEnvFile(envPath: string): Record<string, string> {
 	const text = readFileSync(envPath, "utf-8");
-	const parsed = parseEnvFile(text);
-	for (const [key, value] of Object.entries(parsed)) {
-		if (options?.override || !process.env[key]) {
-			process.env[key] = value;
-		}
-	}
-	return parsed;
+	return parseEnvFile(text);
 }
 
 /** 掩码密钥：显示前 4 位 + 后 4 位 */
@@ -94,8 +88,8 @@ function maskSecret(value: string): string {
 /**
  * 检测项目根 .env（Bun 自动加载的那个）。
  *
- * Bun 在启动时自动加载 cwd 下的 .env 文件。
- * 这里不重新加载，只解析文件内容以获取 key-value 映射，用于来源追踪。
+ * Bun 在启动时自动加载 cwd 下的 .env 文件到 process.env。
+ * 这里解析文件内容获取 key-value 映射，用于来源追踪。
  */
 function detectProjectEnv(): Record<string, string> {
 	const projectEnvPath = resolve(process.cwd(), ".env");
@@ -111,34 +105,36 @@ function detectProjectEnv(): Record<string, string> {
  * 解析 N0N_PREFIX 值（从多个来源中取优先级最高的）。
  */
 function resolvePrefix(
+	processEnv: Record<string, string>,
 	globalEnv: Record<string, string>,
 	projectEnv: Record<string, string>,
 ): string | undefined {
 	return (
-		process.env.N0N_PREFIX ?? globalEnv.N0N_PREFIX ?? projectEnv.N0N_PREFIX
+		processEnv.N0N_PREFIX ?? globalEnv.N0N_PREFIX ?? projectEnv.N0N_PREFIX
 	);
 }
 
 /**
  * 确定当前生效的 LLM provider（纯函数）。
  *
- * 优先级：前缀覆盖 > process.env > globalEnv > projectEnv > 默认 "openai"
+ * 优先级：前缀覆盖 > processEnv > globalEnv > projectEnv > 默认 "openai"
  */
 function resolveEffectiveProvider(
 	prefix: string | undefined,
+	processEnv: Record<string, string>,
 	globalEnv: Record<string, string>,
 	projectEnv: Record<string, string>,
 ): string {
 	if (prefix) {
 		const providerKey = `${prefix}_LLM_PROVIDER`;
 		const override =
-			process.env[providerKey] ??
+			processEnv[providerKey] ??
 			globalEnv[providerKey] ??
 			projectEnv[providerKey];
 		if (override) return override;
 	}
 	return (
-		process.env.LLM_PROVIDER ??
+		processEnv.LLM_PROVIDER ??
 		globalEnv.LLM_PROVIDER ??
 		projectEnv.LLM_PROVIDER ??
 		"openai"
@@ -149,14 +145,12 @@ function resolveEffectiveProvider(
  * 计算配置前缀覆盖（纯函数）。
  *
  * 当 N0N_PREFIX=XXX 时，扫描所有 env 来源中的 XXX_<key> 变量，
- * 返回 key→value 映射。调用方决定何时、如何应用这些覆盖。
- *
- * @param keys 需要检查的环境变量 key 列表
- * @returns 被前缀覆盖的 key→value 映射
+ * 返回 key→value 映射。
  */
 function computePrefixOverrides(
 	prefix: string,
 	keys: string[],
+	processEnv: Record<string, string>,
 	globalEnv: Record<string, string>,
 	projectEnv: Record<string, string>,
 ): Record<string, string> {
@@ -164,7 +158,7 @@ function computePrefixOverrides(
 	for (const key of keys) {
 		const prefixedKey = `${prefix}_${key}`;
 		const value =
-			process.env[prefixedKey] ??
+			processEnv[prefixedKey] ??
 			globalEnv[prefixedKey] ??
 			projectEnv[prefixedKey];
 		if (value !== undefined) {
@@ -175,18 +169,51 @@ function computePrefixOverrides(
 }
 
 /**
- * 将覆盖值应用到 process.env。
+ * 将覆盖值合并到 resolved 中。
  */
-function applyOverrides(overrides: Record<string, string>): void {
+function applyOverrides(resolved: Record<string, string>, overrides: Record<string, string>): void {
 	for (const [key, value] of Object.entries(overrides)) {
-		process.env[key] = value;
+		resolved[key] = value;
 	}
+}
+
+/**
+ * 构建 resolved 配置：按优先级合并所有来源（后写入者胜出）。
+ * 优先级低→高：defaults → globalEnv → projectEnv → processEnv
+ */
+function buildResolved(
+	spec: EnvSpec,
+	processEnv: Record<string, string>,
+	globalEnv: Record<string, string>,
+	projectEnv: Record<string, string>,
+): Record<string, string> {
+	const resolved: Record<string, string> = {};
+	// 1. 填入 defaults
+	for (const v of allVars(spec)) {
+		if (v.default !== undefined) resolved[v.key] = v.default;
+	}
+	// 2. 全局 .env
+	Object.assign(resolved, globalEnv);
+	// 3. 项目 .env
+	Object.assign(resolved, projectEnv);
+	// 4. 进程环境变量（仅 spec 声明的 key）
+	for (const v of allVars(spec)) {
+		if (processEnv[v.key] !== undefined) resolved[v.key] = processEnv[v.key]!;
+	}
+	// 5. inheritFrom 解析
+	for (const v of allVars(spec)) {
+		if (!resolved[v.key] && v.inheritFrom && resolved[v.inheritFrom]) {
+			resolved[v.key] = resolved[v.inheritFrom]!;
+		}
+	}
+	return resolved;
 }
 
 // ── 配置来源分析 ──
 
 function resolveConfigSources(
 	spec: EnvSpec,
+	resolved: Record<string, string>,
 	projectEnv: Record<string, string>,
 	globalEnv: Record<string, string>,
 	prefixedKeys: Set<string>,
@@ -199,10 +226,7 @@ function resolveConfigSources(
 	const result: ConfigEntry[] = [];
 
 	for (const v of allVars(spec)) {
-		const finalValue =
-			process.env[v.key] ??
-			(v.inheritFrom ? process.env[v.inheritFrom] : undefined) ??
-			v.default;
+		const finalValue = resolved[v.key] ?? v.default;
 		if (finalValue === undefined) continue;
 
 		let source: ConfigSource;
@@ -227,8 +251,9 @@ function resolveConfigSources(
 			source = "global";
 		} else if (
 			v.inheritFrom &&
-			!process.env[v.key] &&
-			process.env[v.inheritFrom]
+			!projectEnv[v.key] &&
+			!globalEnv[v.key] &&
+			resolved[v.inheritFrom]
 		) {
 			source = "inherit";
 		} else if (v.default !== undefined && finalValue === v.default) {
@@ -285,8 +310,8 @@ function formatConfigSummary(configs: ConfigEntry[], spec: EnvSpec): string {
 /**
  * 执行 bootstrap 引导流程
  *
- * 两阶段：先加载环境和前缀切换确定 provider，再根据 provider 构建 EnvSpec 并验证。
- * envSpecBuilder 接收 provider 字符串，返回该 provider 对应的完整配置规格。
+ * 不 mutate process.env。所有解析结果通过 BootstrapResult.source 返回。
+ * 调用方从 source 构造类型安全的配置对象。
  *
  * @param envSpecBuilder 根据 provider 构建 EnvSpec 的函数
  * @param ui SetupRenderer 实现
@@ -303,6 +328,12 @@ export async function bootstrap(
 	const dir = envDir ?? process.cwd();
 	const envPath = resolve(dir, ".env");
 
+	// 快照进程环境变量（只在边界读一次）
+	const processEnv: Record<string, string> = {};
+	for (const [k, v] of Object.entries(process.env)) {
+		if (v !== undefined) processEnv[k] = v;
+	}
+
 	// ── Phase 1: 加载环境，确定 provider ──
 
 	const projectEnv = detectProjectEnv();
@@ -315,10 +346,9 @@ export async function bootstrap(
 		globalEnv = loadEnvFile(envPath);
 		ui.success(`.env 已加载 (${envPath})`);
 	}
-	// .env 不存在时延迟到 Phase 2 处理（需要 spec 来驱动交互式创建）
 
-	const prefix = resolvePrefix(globalEnv, projectEnv);
-	const provider = resolveEffectiveProvider(prefix, globalEnv, projectEnv);
+	const prefix = resolvePrefix(processEnv, globalEnv, projectEnv);
+	const provider = resolveEffectiveProvider(prefix, processEnv, globalEnv, projectEnv);
 
 	// ── Phase 2: 构建 EnvSpec，前缀切换剩余变量，验证 ──
 
@@ -331,7 +361,8 @@ export async function bootstrap(
 		ui.warn("未找到 .env 文件");
 		const shouldCreate = await ui.confirm("是否创建 .env 配置文件？");
 		if (shouldCreate) {
-			await createEnvInteractive(spec, ui, envPath);
+			const resolved = buildResolved(spec, processEnv, globalEnv, projectEnv);
+			await createEnvInteractive(spec, ui, envPath, resolved);
 			globalEnv = existsSync(envPath)
 				? parseEnvFile(readFileSync(envPath, "utf-8"))
 				: {};
@@ -341,17 +372,21 @@ export async function bootstrap(
 		}
 	}
 
-	// 应用完整的前缀切换
+	// 构建 resolved（合并所有来源）
+	let resolved = buildResolved(spec, processEnv, globalEnv, projectEnv);
+
+	// 应用前缀切换
 	let prefixedKeys = new Set<string>();
 	if (prefix) {
 		const allKeys = allVars(spec).map((v) => v.key);
 		const overrides = computePrefixOverrides(
 			prefix,
 			allKeys,
+			processEnv,
 			globalEnv,
 			projectEnv,
 		);
-		applyOverrides(overrides);
+		applyOverrides(resolved, overrides);
 		prefixedKeys = new Set(Object.keys(overrides));
 
 		if (prefixedKeys.size > 0) {
@@ -363,7 +398,7 @@ export async function bootstrap(
 
 	// ── 必填变量检查 ──
 
-	let missing = findMissing(spec);
+	let missing = findMissing(spec, resolved);
 	if (missing.length > 0) {
 		ui.warn(
 			`缺少 ${missing.length} 个必填配置: ${missing.map((v) => v.key).join(", ")}`,
@@ -378,17 +413,17 @@ export async function bootstrap(
 				: await ui.input(prompt, undefined);
 
 			if (value) {
-				process.env[v.key] = value;
+				resolved[v.key] = value;
 				if (existsSync(envPath)) {
 					appendFileSync(envPath, `\n${v.key}=${value}\n`, { mode: 0o600 });
 				}
 			}
 		}
 
-		missing = findMissing(spec);
+		missing = findMissing(spec, resolved);
 		if (missing.length > 0) {
 			ui.error(`仍缺少必填配置: ${missing.map((v) => v.key).join(", ")}`);
-			return { ok: false, env: {}, skipped };
+			return { ok: false, source: {}, skipped };
 		}
 	}
 
@@ -396,6 +431,7 @@ export async function bootstrap(
 
 	const configEntries = resolveConfigSources(
 		spec,
+		resolved,
 		projectEnv,
 		globalEnv,
 		prefixedKeys,
@@ -426,10 +462,10 @@ export async function bootstrap(
 
 	if (testLLM) {
 		ui.info("测试 LLM 连接…");
-		const conn = await testLLM();
+		const conn = await testLLM(resolved);
 
 		if (conn.ok) {
-			const model = process.env.LLM_MODEL ?? "(unknown)";
+			const model = resolved.LLM_MODEL ?? "(unknown)";
 			ui.success(`LLM 连接正常 (${model})`);
 		} else {
 			ui.error(`LLM 连接失败: ${conn.error}`);
@@ -440,15 +476,17 @@ export async function bootstrap(
 			if (action === "edit") {
 				ui.info(`请编辑: ${envPath}`);
 				try {
-					const editor = process.env.EDITOR || "vi";
+					const editor = processEnv.EDITOR || "vi";
 					Bun.spawnSync([editor, envPath], {
 						stdio: ["inherit", "inherit", "inherit"],
 					});
-					loadEnvFile(envPath, { override: true });
+					// 重新加载编辑后的文件
+					globalEnv = loadEnvFile(envPath);
+					resolved = buildResolved(spec, processEnv, globalEnv, projectEnv);
 					ui.info("配置已重新加载");
 				} catch {
 					ui.warn(`无法打开编辑器，请手动编辑 ${envPath} 后重新运行`);
-					return { ok: false, env: {}, skipped };
+					return { ok: false, source: {}, skipped };
 				}
 			} else {
 				skipped.push("llm_connectivity");
@@ -457,16 +495,16 @@ export async function bootstrap(
 		}
 	}
 
-	// ── 收集最终环境变量 ──
+	// ── 收集最终配置源 ──
 
-	const env: Record<string, string> = {};
+	const source: Record<string, string> = {};
 	for (const v of allVars(spec)) {
-		const val = process.env[v.key] ?? v.default;
-		if (val !== undefined) env[v.key] = val;
+		const val = resolved[v.key];
+		if (val !== undefined) source[v.key] = val;
 	}
 
 	ui.success(`${spec.appName} 初始化完成\n`);
-	return { ok: true, env, skipped };
+	return { ok: true, source, skipped };
 }
 
 /** 交互式创建 .env 文件 */
@@ -474,6 +512,7 @@ async function createEnvInteractive(
 	spec: EnvSpec,
 	ui: SetupRenderer,
 	envPath: string,
+	resolved: Record<string, string>,
 ): Promise<void> {
 	ui.info("开始配置向导…\n");
 	const values: Record<string, string> = {};
@@ -488,7 +527,7 @@ async function createEnvInteractive(
 			for (const v of requiredVars) {
 				const parentKey = v.inheritFrom;
 				if (!parentKey) continue;
-				const parentVal = values[parentKey] ?? process.env[parentKey];
+				const parentVal = values[parentKey] ?? resolved[parentKey];
 				if (!parentVal) {
 					const prompt = v.example
 						? `  ${v.desc} (${v.key}, 例如: ${v.example})`
@@ -498,7 +537,7 @@ async function createEnvInteractive(
 						: await ui.input(prompt, undefined);
 					if (value) {
 						values[v.key] = value;
-						process.env[v.key] = value;
+						resolved[v.key] = value;
 					}
 					continue;
 				}
@@ -509,7 +548,7 @@ async function createEnvInteractive(
 					true,
 				);
 				if (reuse) {
-					process.env[v.key] = parentVal;
+					resolved[v.key] = parentVal;
 				} else {
 					const prompt = v.example
 						? `  ${v.desc} (${v.key}, 例如: ${v.example})`
@@ -519,7 +558,7 @@ async function createEnvInteractive(
 						: await ui.input(prompt, undefined);
 					if (value) {
 						values[v.key] = value;
-						process.env[v.key] = value;
+						resolved[v.key] = value;
 					}
 				}
 			}
@@ -536,7 +575,7 @@ async function createEnvInteractive(
 				: await ui.input(prompt, undefined);
 			if (value) {
 				values[v.key] = value;
-				process.env[v.key] = value;
+				resolved[v.key] = value;
 			}
 		}
 	}

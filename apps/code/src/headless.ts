@@ -9,13 +9,15 @@
 
 import {
 	agentLoop,
+	type AgentConfig,
+	type EditBackendConfig,
+	type SecurityConfig,
 	buildToolsConfig,
-	getRuntime,
 	PlainRenderer,
 } from "@n0n/core";
 import type { BaseWorkspacePaths } from "@n0n/shared";
 import { makeToolkit } from "@n0n/tools";
-import type { DomainMessage, ProgressToolResult } from "@n0n/types";
+import type { DomainMessage, LLMClient, ProgressToolResult } from "@n0n/types";
 import { buildContextFewshot } from "./context-fewshot.ts";
 import { codeProgressConfig } from "./progress-config.ts";
 import { getPrompt } from "./prompts/index.ts";
@@ -34,6 +36,14 @@ export interface HeadlessOptions {
 	systemPromptPrefix?: string;
 	/** 提示词版本（如 "0.2"）；不传则使用默认版本 */
 	promptVersion?: string;
+	/** LLM Client 实例 */
+	client: LLMClient;
+	/** 编辑后端配置 */
+	editBackend: EditBackendConfig;
+	/** Agent 配置 */
+	agentConfig: AgentConfig;
+	/** 安全配置 */
+	securityConfig: SecurityConfig;
 }
 
 export interface HeadlessResult {
@@ -98,15 +108,15 @@ export async function runHeadless(
 	const timer = setTimeout(() => abortController.abort(), timeoutMs);
 
 	// 构建 Toolkit — 含 progress config，供 fewshot 和 agentLoop 共用
-	const runtime = getRuntime();
-	const toolsConfig = buildToolsConfig(runtime, {
+	const toolsConfig = buildToolsConfig(options.editBackend, options.agentConfig, options.securityConfig, {
 		workspace: paths.workspace,
 		tempDir: paths.temp,
 	});
+	const client = options.client;
 	const toolkit = await makeToolkit(
 		codeProgressConfig,
 		toolsConfig,
-		runtime.client.modelId,
+		client.modelId,
 	);
 	const contextFewshot = await buildContextFewshot(
 		toolkit,
@@ -133,6 +143,7 @@ export async function runHeadless(
 	try {
 		while (true) {
 			const agentResult = await agentLoop<CodeProgressResult>(history, {
+				client,
 				toolkit,
 				maxIterations,
 				renderer,

@@ -13,6 +13,9 @@
 
 import type { LLMConfig, ProviderConfig } from "./config.ts";
 
+/** 扁平 key-value 配置源 — 从 .env / 环境变量加载后的纯数据 */
+export type ConfigSource = Record<string, string>;
+
 /** Anthropic thinking 模式的默认 token 预算 */
 const DEFAULT_ANTHROPIC_THINKING_BUDGET = 1024;
 
@@ -25,18 +28,18 @@ const DEFAULT_ANTHROPIC_THINKING_BUDGET = 1024;
  * @param field 字段名（拼接为 `${prefix}_${field}`）
  * @param fallbackValue 环境变量未设置时的回退值
  */
-function env(prefix: string, field: string, fallbackValue = ""): string {
-	return process.env[`${prefix}_${field}`] || fallbackValue;
+function env(source: ConfigSource, prefix: string, field: string, fallbackValue = ""): string {
+	return source[`${prefix}_${field}`] || fallbackValue;
 }
 
 /** 读取布尔值环境变量（"true" → true，其他 → false） */
-function envBool(prefix: string, field: string): boolean {
-	return process.env[`${prefix}_${field}`] === "true";
+function envBool(source: ConfigSource, prefix: string, field: string): boolean {
+	return source[`${prefix}_${field}`] === "true";
 }
 
 /** 读取整数环境变量，无效值返回 undefined */
-function envInt(prefix: string, field: string): number | undefined {
-	const raw = process.env[`${prefix}_${field}`];
+function envInt(source: ConfigSource, prefix: string, field: string): number | undefined {
+	const raw = source[`${prefix}_${field}`];
 	if (!raw) return undefined;
 	const parsed = Number.parseInt(raw, 10);
 	return Number.isNaN(parsed) ? undefined : parsed;
@@ -50,11 +53,12 @@ function envInt(prefix: string, field: string): number | undefined {
  * @param allowed 合法值列表
  */
 function envEnum<T extends string>(
+	source: ConfigSource,
 	prefix: string,
 	field: string,
 	allowed: readonly T[],
 ): T | undefined {
-	const raw = process.env[`${prefix}_${field}`];
+	const raw = source[`${prefix}_${field}`];
 	if (!raw) return undefined;
 	return (allowed as readonly string[]).includes(raw)
 		? (raw as T)
@@ -107,17 +111,18 @@ export function resolveProvider(explicit?: string): ProviderConfig["provider"] {
  * @param fallback 回退配置（如 EDITOR_LLM 回退到主 LLM）
  */
 export function buildProviderConfigFromEnv(
+	source: ConfigSource,
 	prefix: string,
 	fallback?: ProviderConfig,
 ): ProviderConfig {
-	const apiKey = env(prefix, "API_KEY", fallback?.apiKey);
-	const model = env(prefix, "MODEL", fallback?.model);
+	const apiKey = env(source, prefix, "API_KEY", fallback?.apiKey);
+	const model = env(source, prefix, "MODEL", fallback?.model);
 	const baseUrl =
-		env(prefix, "BASE_URL") ||
+		env(source, prefix, "BASE_URL") ||
 		(fallback && "baseUrl" in fallback
 			? (fallback as { baseUrl?: string }).baseUrl
 			: undefined);
-	const provider = resolveProvider(env(prefix, "PROVIDER"));
+	const provider = resolveProvider(env(source, prefix, "PROVIDER"));
 
 	switch (provider) {
 		case "openai":
@@ -129,8 +134,8 @@ export function buildProviderConfigFromEnv(
 			};
 
 		case "anthropic": {
-			const validBudget = envInt(prefix, "THINKING_BUDGET_TOKENS");
-			const enableFlag = envBool(prefix, "ENABLE_THINKING");
+			const validBudget = envInt(source, prefix, "THINKING_BUDGET_TOKENS");
+			const enableFlag = envBool(source, prefix, "ENABLE_THINKING");
 			// 兼容：ENABLE_THINKING=true 但没设 budget 时，用默认 budget
 			const hasThinking = validBudget !== undefined || enableFlag;
 			return {
@@ -149,7 +154,7 @@ export function buildProviderConfigFromEnv(
 		}
 
 		case "google": {
-			const thinkingEffort = envEnum(prefix, "THINKING_EFFORT", [
+			const thinkingEffort = envEnum(source, prefix, "THINKING_EFFORT", [
 				"low",
 				"medium",
 				"high",
@@ -164,12 +169,12 @@ export function buildProviderConfigFromEnv(
 		}
 
 		case "openai-compatible": {
-			const backendProvider = envEnum(prefix, "BACKEND_PROVIDER", [
+			const backendProvider = envEnum(source, prefix, "BACKEND_PROVIDER", [
 				"anthropic",
 				"google",
 				"openai",
 			] as const);
-			const enableThinking = envBool(prefix, "ENABLE_THINKING");
+			const enableThinking = envBool(source, prefix, "ENABLE_THINKING");
 			return {
 				provider: "openai-compatible",
 				apiKey,
@@ -181,8 +186,8 @@ export function buildProviderConfigFromEnv(
 		}
 
 		case "deepseek": {
-			const enableThinking = envBool(prefix, "ENABLE_THINKING");
-			const thinkingEffort = envEnum(prefix, "THINKING_EFFORT", [
+			const enableThinking = envBool(source, prefix, "ENABLE_THINKING");
+			const thinkingEffort = envEnum(source, prefix, "THINKING_EFFORT", [
 				"high",
 				"max",
 			] as const);
@@ -205,10 +210,11 @@ export function buildProviderConfigFromEnv(
  * @param fallbackProvider 回退 ProviderConfig
  */
 export function buildLLMConfigFromEnv(
+	source: ConfigSource,
 	prefix: string,
 	fallbackProvider?: ProviderConfig,
 ): LLMConfig {
 	return {
-		providerConfig: buildProviderConfigFromEnv(prefix, fallbackProvider),
+		providerConfig: buildProviderConfigFromEnv(source, prefix, fallbackProvider),
 	};
 }

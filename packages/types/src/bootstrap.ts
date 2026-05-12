@@ -46,8 +46,8 @@ export interface EnvSpec {
 export interface BootstrapResult {
 	/** 是否全部通过 */
 	ok: boolean;
-	/** 最终生效的环境变量 */
-	env: Record<string, string>;
+	/** 最终生效的配置源（扁平 key-value） */
+	source: Record<string, string>;
 	/** 跳过的检测项 */
 	skipped: string[];
 }

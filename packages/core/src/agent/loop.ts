@@ -12,6 +12,7 @@
 import type { Toolkit } from "@n0n/tools";
 import type {
 	DomainMessage,
+	LLMClient,
 	TokenUsage,
 	PartialToolCallRecord,
 	Renderer,
@@ -19,7 +20,7 @@ import type {
 	ToolDefinition,
 } from "@n0n/types";
 import { FinishReason, findLastUsage } from "@n0n/types";
-import { getRuntime } from "../runtime.ts";
+
 import { PlainRenderer } from "../ui/renderer.ts";
 import {
 	buildToolCallMessage,
@@ -41,9 +42,12 @@ export interface AgentResult<T = unknown> {
 }
 
 export interface AgentOptions<T = unknown> {
+	/** 主 LLM Client 实例 */
+	client: LLMClient;
 	/** 工具集实例 — 由 app 层通过 makeToolkit 构造并注入 */
 	toolkit: Toolkit;
 	maxIterations?: number;
+	maxIdleRounds?: number;
 	renderer?: Renderer;
 	confirmFn?: (question: string) => Promise<string>;
 	signal?: AbortSignal;
@@ -55,10 +59,10 @@ export async function agentLoop<T = unknown>(
 	history: DomainMessage[],
 	options: AgentOptions<T>,
 ): Promise<AgentResult<T>> {
-	const runtime = getRuntime();
-	const maxIter = options.maxIterations ?? runtime.agent.maxIterations;
+	const maxIter = options.maxIterations ?? 50;
+	const maxIdleRounds = options.maxIdleRounds ?? 5;
 	const renderer: Renderer = options.renderer ?? new PlainRenderer();
-	const client = runtime.client;
+	const client = options.client;
 	const toolkit = options.toolkit;
 	const messages: DomainMessage[] = [...history];
 	let idleCount = 0;
@@ -145,7 +149,7 @@ export async function agentLoop<T = unknown>(
 
 		// ── 2. 分类本轮结果，决定后续动作 ──
 		// biome-ignore lint/style/noNonNullAssertion: streamResult is always set by the stream loop above
-		const outcome = classifyRound(streamResult!, idleCount, runtime.agent.maxIdleRounds);
+		const outcome = classifyRound(streamResult!, idleCount, maxIdleRounds);
 
 		const roundUsage = streamResult!.accumulator.usage;
 		const roundFinishReason = streamResult!.accumulator.finishReason ?? "unknown";
@@ -172,7 +176,7 @@ export async function agentLoop<T = unknown>(
 			messages.push(outcome.assistantMessage);
 			pushTokenUsage(messages, roundUsage, roundFinishReason);
 			idleCount++;
-			if (idleCount >= runtime.agent.maxIdleRounds) {
+			if (idleCount >= maxIdleRounds) {
 				renderer.agentTerminated("max idle rounds exceeded (no tool calls)");
 				renderer.roundEnd();
 				return {
@@ -186,7 +190,7 @@ export async function agentLoop<T = unknown>(
 			messages.push({
 				type: "idle_nudge",
 				idleCount,
-				maxIdleRounds: runtime.agent.maxIdleRounds,
+				maxIdleRounds: maxIdleRounds,
 			});
 			renderer.roundEnd();
 			continue;

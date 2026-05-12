@@ -28,6 +28,7 @@ export {
 // Deep parse JSON strings
 export { deepParseJsonStrings } from "./deep-parse-json-strings.ts";
 // Format Prompt
+export type { FormatOptions } from "./format-prompt/index.ts";
 export { formatPrompt } from "./format-prompt/index.ts";
 // Frontmatter
 export type { RawFrontmatter, TypedFrontmatter } from "./frontmatter.ts";

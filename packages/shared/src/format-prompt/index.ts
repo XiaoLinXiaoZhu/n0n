@@ -41,11 +41,6 @@ import { formatTurnFeedback } from "./format-turn-feedback.ts";
 import { formatWriteResult } from "./format-write.ts";
 import type { FormattedToolResult } from "./utils.ts";
 
-// ── 环境变量控制 hint 剥离开关 ──
-
-/** N0N_STRIP_HINT=0 关闭剥离（所有轮次都保留 hint），其他值或未设置则启用剥离 */
-const STRIP_HINT_ENABLED = process.env.N0N_STRIP_HINT !== "0";
-
 // ── tool result 分发 ──
 
 function toolResultToStructured(
@@ -109,6 +104,14 @@ function findLastAssistantToolCallIndex(messages: DomainMessage[]): number {
 	return -1;
 }
 
+// ── 格式化选项 ──
+
+/** 格式化选项 — 由 LLMClient 构造时注入 */
+export interface FormatOptions {
+	/** 是否剥离历史轮次的 system-hint（默认 true） */
+	stripHint?: boolean;
+}
+
 // ── 主函数 ──
 
 /**
@@ -120,7 +123,9 @@ function findLastAssistantToolCallIndex(messages: DomainMessage[]): number {
 export function formatPrompt(
 	messages: DomainMessage[],
 	tags: TagAdapter,
+	options?: FormatOptions,
 ): PromptMessage[] {
+	const stripHintEnabled = options?.stripHint ?? true;
 	const result: PromptMessage[] = [];
 
 	// 预扫描：找到最后一个 assistant_tool_call 的原始 index，用于判断"最新轮"
@@ -180,7 +185,7 @@ export function formatPrompt(
 				const isLatestRound = originalIndex > lastAtcIndex;
 				let content: string;
 
-				if (!STRIP_HINT_ENABLED || isLatestRound) {
+				if (!stripHintEnabled || isLatestRound) {
 					// 剥离未启用 或 最新轮：包含 hint
 					content = formatted.hint
 						? `${formatted.fact}\n${tags.wrapTag("system-hint", formatted.hint)}`
@@ -282,7 +287,7 @@ export function formatPrompt(
 	}
 
 	// ── 自动 cache breakpoint：标记最后一个含 toolCalls 的 assistant 消息 ──
-	if (STRIP_HINT_ENABLED) {
+	if (stripHintEnabled) {
 		for (let j = result.length - 1; j >= 0; j--) {
 			const m = result[j];
 			if (m && m.role === "assistant" && m.toolCalls?.length) {

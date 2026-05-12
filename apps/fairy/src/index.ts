@@ -9,13 +9,17 @@ import { createInterface } from "node:readline";
 import { isTTY, label, RichRenderer, style, writeln } from "@n0n/cli-ui";
 import {
 	agentLoop,
+	buildAgentConfig,
+	buildSecurityConfig,
 	buildToolsConfig,
-	createRuntimeContext,
-	initRuntime,
 	PlainRenderer,
 } from "@n0n/core";
-import { buildLLMConfigFromEnv, createLLMClient } from "@n0n/llm";
-import { parseWorkspaceArg } from "@n0n/shared";
+import {
+	buildLLMConfigFromEnv,
+	type ConfigSource,
+	createLLMClient,
+} from "@n0n/llm";
+import { parseWorkspaceArg, type FormatOptions } from "@n0n/shared";
 import { makeToolkit } from "@n0n/tools";
 import type { DomainMessage } from "@n0n/types";
 import { type FairyProgressResult } from "./schema.ts";
@@ -29,6 +33,13 @@ import {
 } from "./state.ts";
 import { buildView } from "./view.ts";
 
+// ── 配置源（Fairy 无 bootstrap，直接从 process.env 快照构造） ──
+
+const source: ConfigSource = {};
+for (const [k, v] of Object.entries(process.env)) {
+	if (v !== undefined) source[k] = v;
+}
+
 // ── 初始化 ──
 
 const { workspace, remainingArgs } = parseWorkspaceArg(
@@ -39,19 +50,27 @@ const { workspace, remainingArgs } = parseWorkspaceArg(
 
 const paths = resolveFairyPaths(workspace);
 ensureFairyFiles(paths);
-const llmConfig = buildLLMConfigFromEnv("LLM");
+
+const llmConfig = buildLLMConfigFromEnv(source, "LLM");
 const editorLlmConfig = buildLLMConfigFromEnv(
+	source,
 	"EDITOR_LLM",
 	llmConfig.providerConfig,
 );
-const runtime = createRuntimeContext({
-	client: createLLMClient(llmConfig),
-	editBackend: {
-		type: "str-replace",
-		editorClient: createLLMClient(editorLlmConfig),
-	},
-});
-initRuntime(runtime);
+const formatOptions: FormatOptions = {
+	stripHint: source.N0N_STRIP_HINT !== "0",
+};
+
+const client = createLLMClient(llmConfig, formatOptions);
+const editorClient = createLLMClient(editorLlmConfig, formatOptions);
+const agentConfig = buildAgentConfig(source);
+const securityConfig = buildSecurityConfig(source);
+const toolsConfig = buildToolsConfig(
+	{ type: "str-replace", editorClient },
+	agentConfig,
+	securityConfig,
+	{ workspace: paths.workspace, tempDir: paths.temp },
+);
 
 // ── REPL ──
 
@@ -66,14 +85,10 @@ async function main(): Promise<void> {
 		new Promise((resolve) => rl.question(query, resolve));
 
 	const renderer = isTTY ? new RichRenderer() : new PlainRenderer();
-	const toolsConfig = buildToolsConfig(runtime, {
-		workspace: paths.workspace,
-		tempDir: paths.temp,
-	});
 	const toolkit = await makeToolkit(
 		fairyProgressConfig,
 		toolsConfig,
-		runtime.client.modelId,
+		client.modelId,
 	);
 
 	let abortController = new AbortController();
@@ -121,8 +136,10 @@ async function main(): Promise<void> {
 		let agentResult: Awaited<ReturnType<typeof agentLoop<FairyProgressResult>>>;
 		try {
 			agentResult = await agentLoop<FairyProgressResult>(viewMessages, {
+				client,
 				toolkit,
-				maxIterations: 30,
+				maxIterations: agentConfig.maxIterations,
+				maxIdleRounds: agentConfig.maxIdleRounds,
 				renderer,
 				signal: abortController.signal,
 			});
@@ -168,14 +185,6 @@ async function main(): Promise<void> {
 
 /**
  * 追加本轮新消息到全局对话记录。
- *
- * buildView 构建了 viewSize 条消息作为上下文注入 agentLoop。
- * agentLoop 返回的 history 前 viewSize 条是注入的上下文（含 system、旧历史、stimulus），
- * 之后的是本轮 agent 新产生的消息（tool calls、results 等）。
- *
- * 我们需要保存的是：
- * - 本轮的 stimulus（user_input，即 viewMessages 的最后一条）
- * - agent 新产生的所有消息
  */
 function appendNewMessages(
 	paths: FairyPaths,
@@ -183,11 +192,8 @@ function appendNewMessages(
 	agentHistory: DomainMessage[],
 	viewSize: number,
 ): void {
-	// stimulus 是 buildView 的最后一条消息（user_input）
 	const stimulusIdx = viewSize - 1;
 	const stimulus = agentHistory[stimulusIdx];
-
-	// agent 新产生的消息从 viewSize 开始
 	const agentNewMessages = agentHistory.slice(viewSize);
 
 	const toAppend: DomainMessage[] = [];

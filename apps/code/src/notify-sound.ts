@@ -1,27 +1,36 @@
 /**
  * Submit 完成提示音
  *
- * 默认关闭，通过 N0N_NOTIFY_SOUND=1 环境变量开启。
- * 可通过 N0N_NOTIFY_SOUND_PATH 指定自定义音频文件路径，
- * 未指定时使用内置的 knock-knock.wav。
+ * 默认关闭，通过配置开启。
+ * 可指定自定义音频文件路径，未指定时使用内置的 knock-knock.wav。
  */
 
 import { existsSync } from "node:fs";
 import defaultSoundPath from "./assets/knock-knock.wav" with { type: "file" };
 
-/** 判断提示音是否启用 */
-export function isNotifySoundEnabled(): boolean {
-	const val = process.env.N0N_NOTIFY_SOUND;
-	return val === "1" || val === "true";
+/** 提示音配置 */
+export interface NotifyConfig {
+	enabled: boolean;
+	soundPath?: string;
+}
+
+/** 从 ConfigSource 构建 NotifyConfig */
+export function buildNotifyConfig(source: Record<string, string>): NotifyConfig {
+	const val = source.N0N_NOTIFY_SOUND;
+	return {
+		enabled: val === "1" || val === "true",
+		soundPath: source.N0N_NOTIFY_SOUND_PATH || undefined,
+	};
 }
 
 /** 播放提示音（异步、不阻塞、失败静默） */
-export function playNotifySound(): void {
-	if (!isNotifySoundEnabled()) return;
+export function playNotifySound(config: NotifyConfig): void {
+	if (!config.enabled) return;
 
-	const customPath = process.env.N0N_NOTIFY_SOUND_PATH;
 	const soundPath =
-		customPath && existsSync(customPath) ? customPath : defaultSoundPath;
+		config.soundPath && existsSync(config.soundPath)
+			? config.soundPath
+			: defaultSoundPath;
 
 	try {
 		const platform = process.platform;

@@ -13,12 +13,13 @@ import { createInterface } from "node:readline";
 import { isTTY, label, style, writeln } from "@n0n/cli-ui";
 import {
 	agentLoop,
-	buildToolsConfig,
-	getRuntime,
+	type AgentConfig,
 	HeartbeatKeeper,
 	HeartbeatState,
 	PlainRenderer,
 } from "@n0n/core";
+import type { LLMClient } from "@n0n/types";
+import type { ToolsConfig } from "@n0n/tools";
 import { readMultilineInput } from "@n0n/multiline-input";
 import {
 	type BaseWorkspacePaths,
@@ -31,7 +32,7 @@ import type { DomainMessage, ProgressToolResult } from "@n0n/types";
 import { CodeRenderer } from "./code-renderer.ts";
 import { parseAndInjectSkills } from "./skill-inject.ts";
 import { buildContextFewshot } from "./context-fewshot.ts";
-import { playNotifySound } from "./notify-sound.ts";
+import { playNotifySound, type NotifyConfig } from "./notify-sound.ts";
 import { codeProgressConfig } from "./progress-config.ts";
 import { formatProgressResult } from "./progress-formatter.ts";
 import { getPrompt } from "./prompts/index.ts";
@@ -42,6 +43,10 @@ export interface CodeReplOptions {
 	resumeFile?: string;
 	saveEveryLoop?: boolean;
 	promptVersion?: string;
+	client: LLMClient;
+	toolsConfig: ToolsConfig;
+	agentConfig: AgentConfig;
+	notifyConfig?: NotifyConfig;
 }
 
 type CodeWorkspacePaths = BaseWorkspacePaths;
@@ -130,7 +135,7 @@ function createStdinController(): StdinController {
 
 export async function startCodeRepl(
 	paths: CodeWorkspacePaths,
-	options: CodeReplOptions = {},
+	options: CodeReplOptions,
 ): Promise<void> {
 	const {
 		initialInput,
@@ -143,15 +148,12 @@ export async function startCodeRepl(
 	const baseSystemPrompt = getPrompt(promptVersion);
 
 	// 构建 Toolkit — 含 progress config，供 fewshot 和 agentLoop 共用
-	const runtime = getRuntime();
-	const toolsConfig = buildToolsConfig(runtime, {
-		workspace: paths.workspace,
-		tempDir: paths.temp,
-	});
+	const { client, toolsConfig, agentConfig } = options;
+	const notifyConfig = options.notifyConfig ?? { enabled: false };
 	const toolkit = await makeToolkit(
 		codeProgressConfig,
 		toolsConfig,
-		runtime.client.modelId,
+		client.modelId,
 	);
 	const contextFewshot = await buildContextFewshot(
 		toolkit,
@@ -181,7 +183,6 @@ export async function startCodeRepl(
 	const stdin = canInteract ? createStdinController() : null;
 
 	// ── 心跳保活（仅 Anthropic 等支持 prompt caching 的 provider） ──
-	const client = runtime.client;
 	const keeper = client.heartbeat
 		? new HeartbeatKeeper({
 				sendHeartbeat: async (request) => {
@@ -414,8 +415,10 @@ export async function startCodeRepl(
 		let agentResult: Awaited<ReturnType<typeof agentLoop<CodeProgressResult>>>;
 		try {
 			agentResult = await agentLoop<CodeProgressResult>(history, {
+				client,
 				toolkit,
-				maxIterations: 100,
+				maxIterations: agentConfig.maxIterations,
+				maxIdleRounds: agentConfig.maxIdleRounds,
 				renderer,
 				confirmFn,
 				signal: stdin?.abortController.signal,
@@ -494,7 +497,7 @@ export async function startCodeRepl(
 					}
 				}
 				writeln();
-				playNotifySound();
+				playNotifySound(notifyConfig);
 				userInput = await promptUser();
 				if (userInput !== null) {
 					injectUserResponse(history, userInput);
@@ -515,7 +518,7 @@ export async function startCodeRepl(
 					writeln(style.gray(`  ${agentResult.report}`));
 				}
 				writeln();
-				playNotifySound();
+				playNotifySound(notifyConfig);
 				userInput = await promptUser();
 				break;
 			}

@@ -16,9 +16,10 @@ import type { DomainMessage } from "@n0n/types";
 import { buildLLMConfigFromEnv } from "../config-from-env.ts";
 import { createLLMClient } from "../factory.ts";
 
-function loadGlobalEnv(): boolean {
+function loadGlobalEnv(): Record<string, string> | null {
 	try {
 		const content = readFileSync(resolve(homedir(), ".n0n", ".env"), "utf-8");
+		const env: Record<string, string> = {};
 		for (const line of content.split("\n")) {
 			const t = line.trim();
 			if (!t || t.startsWith("#")) continue;
@@ -26,11 +27,11 @@ function loadGlobalEnv(): boolean {
 			if (eq < 0) continue;
 			const key = t.slice(0, eq).trim();
 			const value = t.slice(eq + 1).trim();
-			if (key && !process.env[key]) process.env[key] = value;
+			if (key) env[key] = value;
 		}
-		return true;
+		return env;
 	} catch {
-		return false;
+		return null;
 	}
 }
 
@@ -113,13 +114,15 @@ function makeLargeContext(): DomainMessage[] {
 
 describe("heartbeat integration", () => {
 	const loaded = loadGlobalEnv();
+	// Also apply loaded env vars to process.env for downstream usage
+	if (loaded) Object.assign(process.env, loaded);
 	const isAnthropic = process.env.LLM_PROVIDER === "anthropic";
 	const integrationEnabled = process.env.N0N_INTEGRATION === "1";
 
 	test.skipIf(!loaded || !isAnthropic || !integrationEnabled)(
 		"stream 建立缓存 → heartbeat 命中缓存",
 		async () => {
-			const config = buildLLMConfigFromEnv("LLM");
+			const config = buildLLMConfigFromEnv(loaded!, "LLM");
 			const client = createLLMClient(config);
 
 			expect(client.heartbeat).toBeDefined();
