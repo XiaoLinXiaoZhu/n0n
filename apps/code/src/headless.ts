@@ -113,7 +113,7 @@ export async function runHeadless(
 		tempDir: paths.temp,
 	});
 	const client = options.client;
-	const toolkit = await makeToolkit(
+	const toolkit = makeToolkit(
 		codeProgressConfig,
 		toolsConfig,
 		client.modelId,

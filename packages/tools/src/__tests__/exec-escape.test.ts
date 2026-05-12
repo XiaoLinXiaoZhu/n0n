@@ -24,6 +24,7 @@ async function collectExecResult(script: string, runtime?: string) {
 		tempDir: ".temp",
 		blockedCommands: [],
 		defaultExecWaitfor: 120,
+		platform: process.platform as "win32" | "darwin" | "linux",
 	})) {
 		if (
 			event.type === "tool_result" &&

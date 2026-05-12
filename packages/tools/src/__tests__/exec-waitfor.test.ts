@@ -34,6 +34,7 @@ async function collectWithHardTimeout(
 			tempDir: ".temp",
 			blockedCommands: [],
 			defaultExecWaitfor: execWaitfor,
+			platform: process.platform as "win32" | "darwin" | "linux",
 		})) {
 			if (event.type === "tool_result" && event.tool === "exec") {
 				return { status: "completed" as const, result: event };

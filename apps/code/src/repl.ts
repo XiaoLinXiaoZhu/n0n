@@ -150,7 +150,7 @@ export async function startCodeRepl(
 	// 构建 Toolkit — 含 progress config，供 fewshot 和 agentLoop 共用
 	const { client, toolsConfig, agentConfig } = options;
 	const notifyConfig = options.notifyConfig ?? { enabled: false };
-	const toolkit = await makeToolkit(
+	const toolkit = makeToolkit(
 		codeProgressConfig,
 		toolsConfig,
 		client.modelId,

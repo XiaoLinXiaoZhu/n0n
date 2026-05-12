@@ -36,13 +36,14 @@ const modelId = "qwen3-235b-a22b";
 const toolsConfig = {
 	workspace,
 	tempDir: resolve(workspace, ".temp"),
+	platform: process.platform as "win32" | "darwin" | "linux",
 	security: { blockedCommands: [] as string[] },
 	agent: { defaultExecWaitfor: 120 },
 	editBackendType: "str-replace" as const,
 	editorClient: { modelId: "", tagStyle: "default" as const, tags: createTagAdapter("default"), async *stream() { throw new Error("unused"); }, async complete() { throw new Error("unused"); }, async ping() { return { ok: true as const }; } },
 };
 
-const toolkit = await makeToolkit(codeProgressConfig, toolsConfig, modelId);
+const toolkit = makeToolkit(codeProgressConfig, toolsConfig, modelId);
 const toolDefinitions: ToolDefinition[] = toolkit.tools;
 
 // ── 构建 messages（模拟首轮请求） ──

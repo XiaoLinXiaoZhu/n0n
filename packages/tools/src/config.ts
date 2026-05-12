@@ -15,6 +15,7 @@ interface ToolsConfigBase {
 	agent: {
 		defaultExecWaitfor: number;
 	};
+	platform: "win32" | "darwin" | "linux";
 	workspace: string;
 	tempDir: string;
 }

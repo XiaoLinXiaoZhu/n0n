@@ -85,7 +85,7 @@ async function main(): Promise<void> {
 		new Promise((resolve) => rl.question(query, resolve));
 
 	const renderer = isTTY ? new RichRenderer() : new PlainRenderer();
-	const toolkit = await makeToolkit(
+	const toolkit = makeToolkit(
 		fairyProgressConfig,
 		toolsConfig,
 		client.modelId,

@@ -7,7 +7,7 @@
  * - executor: 脚本执行（含 waitfor 等待超限转后台机制）
  */
 
-export { EXEC_TOOL_DEFINITION, ExecArgsSchema } from "./definition.ts";
+export { makeExecToolDefinition, ExecArgsSchema } from "./definition.ts";
 export { execToolStream } from "./executor.ts";
 export {
 	extractCommandNames,

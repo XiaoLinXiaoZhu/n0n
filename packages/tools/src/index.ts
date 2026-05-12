@@ -23,7 +23,6 @@ import type {
 	ToolStreamEvent,
 	WriteToolCall,
 } from "@n0n/types";
-import type { ZodType } from "zod";
 import type { ToolsConfig } from "./config.ts";
 import type { EditBackend } from "./edit/index.ts";
 import {
@@ -33,9 +32,8 @@ import {
 	FreeformPatchBackend,
 	StrReplaceBackend,
 } from "./edit/index.ts";
-import { detectEnv } from "./env.ts";
 import {
-	EXEC_TOOL_DEFINITION,
+	makeExecToolDefinition,
 	ExecArgsSchema,
 	execToolStream,
 } from "./exec/index.ts";
@@ -116,6 +114,7 @@ function buildBaseRegistry(
 	const execConfig = {
 		workspace: toolsConfig.workspace,
 		tempDir: toolsConfig.tempDir,
+		platform: toolsConfig.platform,
 		blockedCommands: toolsConfig.security.blockedCommands,
 		defaultExecWaitfor: toolsConfig.agent.defaultExecWaitfor,
 	};
@@ -127,7 +126,7 @@ function buildBaseRegistry(
 
 	return {
 		exec: {
-			definition: EXEC_TOOL_DEFINITION,
+			definition: makeExecToolDefinition(toolsConfig.platform),
 			stream: true,
 			execute: (tc, confirmFn) => {
 				const call: ExecToolCall = {
@@ -185,18 +184,16 @@ export const REGISTERED_TOOLS = new Set([
 
 /**
  * 构建完整的工具集（含 progress）。
- * 异步：首次调用会探测系统可用 runtime（~1-2s），后续调用使用缓存。
  *
  * @param progressConfig progress 工具的状态配置列表。
  * @param toolsConfig 工具配置，包含 workspace、tempDir、security、editorClient 等。
  * @param model LLM 模型名称，用于选择 XML tag 风格（可选）。
  */
-export async function makeToolkit(
+export function makeToolkit(
 	progressConfig: ProgressStatusConfig[],
 	toolsConfig: ToolsConfig,
 	_model?: string,
-): Promise<Toolkit> {
-	await detectEnv();
+): Toolkit {
 	const progressEntry: ToolEntry = {
 		definition: makeProgressTool(progressConfig),
 		stream: false,
@@ -226,12 +223,6 @@ export async function makeToolkit(
 
 export type { CanStartFn } from "@n0n/types";
 export type { ResponsesClient, ToolsConfig } from "./config.ts";
-export type {
-	CliToolProbe,
-	EnvSnapshot,
-	RuntimeProbe,
-	UserPathEntry,
-} from "./env.ts";
-export { detectEnv, getCachedEnv } from "./env.ts";
+
 export type { ProgressStatusConfig } from "./progress.ts";
 

@@ -37,8 +37,6 @@ import type {
 } from "@n0n/types";
 import { findBlockedCommand, handleBlockedCommand } from "./security.ts";
 
-const IS_WINDOWS = process.platform === "win32";
-
 /** 生成简短的截断输出文件名，自动避让已有文件 */
 function makeShortOutputPath(tempDir: string): string {
 	const rand = Math.random().toString(36).slice(2, 8);
@@ -48,8 +46,6 @@ function makeShortOutputPath(tempDir: string): string {
 	if (existsSync(full)) return makeShortOutputPath(tempDir);
 	return full;
 }
-
-const DEFAULT_RUNTIME = IS_WINDOWS ? "cmd" : "sh";
 
 /** runtime → 临时文件扩展名 */
 const RUNTIME_EXT: Record<string, string> = {
@@ -111,9 +107,11 @@ export async function* execToolStream(
 		tempDir: string;
 		blockedCommands: string[];
 		defaultExecWaitfor: number;
+		platform: "win32" | "darwin" | "linux";
 	},
 ): AsyncGenerator<ToolStreamEvent> {
-	const runtime = call.args.runtime ?? DEFAULT_RUNTIME;
+	const defaultRuntime = toolsConfig.platform === "win32" ? "cmd" : "sh";
+	const runtime = call.args.runtime ?? defaultRuntime;
 	const workspace = toolsConfig.workspace;
 	const cwd = call.args.cwd
 		? isAbsolute(call.args.cwd)
@@ -133,12 +131,14 @@ export async function* execToolStream(
 	const blockedCmd = findBlockedCommand(
 		call.args.script,
 		toolsConfig.blockedCommands,
+		toolsConfig.platform,
 	);
 	if (blockedCmd !== null) {
 		const blocked = await handleBlockedCommand(
 			call,
 			cwd,
 			blockedCmd,
+			toolsConfig.platform,
 			confirmFn,
 		);
 		if (blocked) {

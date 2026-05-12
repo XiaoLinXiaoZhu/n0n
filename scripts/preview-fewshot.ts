@@ -41,13 +41,14 @@ const systemPrompt = codePromptText;
 const toolsConfig = {
 	workspace,
 	tempDir: resolve(workspace, ".temp"),
+	platform: process.platform as "win32" | "darwin" | "linux",
 	security: { blockedCommands: [] as string[] },
 	agent: { defaultExecWaitfor: 120 },
 	editBackendType: "str-replace" as const,
 	editorClient: { modelId: "", tagStyle: "default" as const, tags: createTagAdapter("default"), async *stream() { throw new Error("unused"); }, async complete() { throw new Error("unused"); }, async ping() { return { ok: true as const }; } },
 };
 
-const toolkit = await makeToolkit(codeProgressConfig, toolsConfig, modelId);
+const toolkit = makeToolkit(codeProgressConfig, toolsConfig, modelId);
 const toolDefs: ToolDefinition[] = toolkit.tools;
 
 // ── 组装完整 DomainMessage 序列（与 repl.ts 首轮一致） ──

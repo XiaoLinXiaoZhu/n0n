@@ -18,9 +18,10 @@ const PREVIEW_DIR = join(import.meta.dir, "preview-output");
 mkdirSync(PREVIEW_DIR, { recursive: true });
 
 // 构建完整 toolkit（触发环境探测，与生产一致）
-const toolkit = await makeToolkit(CodeResultSchema, {
+const toolkit = makeToolkit(CodeResultSchema, {
 	workspace: process.cwd(),
 	tempDir: join(process.cwd(), ".temp"),
+	platform: process.platform as "win32" | "darwin" | "linux",
 	security: { blockedCommands: [] },
 	agent: { defaultExecWaitfor: 120 },
 	editBackendType: "str-replace" as const,

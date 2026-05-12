@@ -14,9 +14,6 @@ import {
 
 export { ExecArgsSchema };
 
-const IS_WINDOWS = process.platform === "win32";
-const DEFAULT_RUNTIME = IS_WINDOWS ? "cmd" : "sh";
-
 const STATIC_DESCRIPTION = `Execute a script. Content is written to a temp file and run with the specified runtime. Returns stdout, stderr, and exit code.
 
 Runtimes and CLI tools available in the current environment are listed in the bootstrap context above — use them directly without probing.
@@ -26,20 +23,23 @@ Output exceeding ~4 000 tokens is auto-truncated: only the last ~1 000 tokens ar
 const ALL_RUNTIMES =
 	"sh, bash, pwsh, cmd, bun, node, deno, python, python3, uv";
 
-const EXEC_FIELD_DESCRIPTIONS: FieldDescriptions<ExecArgs> = {
-	script:
-		"Script content. Single command or multi-line code with imports, loops, etc.",
-	runtime: `Runtime (default: "${DEFAULT_RUNTIME}"). Options: ${ALL_RUNTIMES}. Shell runtimes are generally always available; language runtimes depend on installation — check bootstrap context.`,
-	cwd: "Working directory (default: injected workspace root)",
-	waitfor:
-		"Max seconds to wait for process (default: 120, max: 240). Process continues in background if exceeded.",
-};
+export function makeExecToolDefinition(platform: "win32" | "darwin" | "linux"): ToolDefinition {
+	const defaultRuntime = platform === "win32" ? "cmd" : "sh";
 
-const PARAMETERS = zodToParameters(ExecArgsSchema, EXEC_FIELD_DESCRIPTIONS);
+	const EXEC_FIELD_DESCRIPTIONS: FieldDescriptions<ExecArgs> = {
+		script:
+			"Script content. Single command or multi-line code with imports, loops, etc.",
+		runtime: `Runtime (default: "${defaultRuntime}"). Options: ${ALL_RUNTIMES}. Shell runtimes are generally always available; language runtimes depend on installation — check bootstrap context.`,
+		cwd: "Working directory (default: injected workspace root)",
+		waitfor:
+			"Max seconds to wait for process (default: 120, max: 240). Process continues in background if exceeded.",
+	};
 
-/** 静态 exec 工具定义 — 不依赖环境探测 */
-export const EXEC_TOOL_DEFINITION: ToolDefinition = {
-	name: "exec",
-	description: STATIC_DESCRIPTION,
-	parameters: PARAMETERS,
-};
+	const PARAMETERS = zodToParameters(ExecArgsSchema, EXEC_FIELD_DESCRIPTIONS);
+
+	return {
+		name: "exec",
+		description: STATIC_DESCRIPTION,
+		parameters: PARAMETERS,
+	};
+}

@@ -7,8 +7,6 @@
 
 import type { ExecToolCall, ExecToolResult } from "@n0n/types";
 
-const IS_WINDOWS = process.platform === "win32";
-
 /** 从脚本内容中提取命令名列表 */
 export function extractCommandNames(script: string): string[] {
 	const parts = script.split(/\r?\n|&&|\|\||;|\||&/);
@@ -27,15 +25,17 @@ export function extractCommandNames(script: string): string[] {
 export function findBlockedCommand(
 	script: string,
 	blockedCommands: string[],
+	platform: "win32" | "darwin" | "linux",
 ): string | null {
 	if (blockedCommands.length === 0) return null;
-	const blockedNormalized = IS_WINDOWS
+	const isWindows = platform === "win32";
+	const blockedNormalized = isWindows
 		? blockedCommands.map((b) => b.toLowerCase())
 		: blockedCommands;
 	const names = extractCommandNames(script);
 	for (const name of names) {
 		const basename = name.split(/[\\/]/).at(-1) ?? name;
-		const basenameNormalized = IS_WINDOWS ? basename.toLowerCase() : basename;
+		const basenameNormalized = isWindows ? basename.toLowerCase() : basename;
 		if (blockedNormalized.includes(basenameNormalized)) return basename;
 	}
 	return null;
@@ -46,9 +46,10 @@ export async function handleBlockedCommand(
 	call: ExecToolCall,
 	_cwd: string,
 	blockedCmd: string,
+	platform: "win32" | "darwin" | "linux",
 	confirmFn?: (question: string) => Promise<string>,
 ): Promise<ExecToolResult | null> {
-	const runtime = call.args.runtime ?? (IS_WINDOWS ? "cmd" : "sh");
+	const runtime = call.args.runtime ?? (platform === "win32" ? "cmd" : "sh");
 	if (confirmFn) {
 		const safeScript = [...call.args.script]
 			.map((ch) => {
