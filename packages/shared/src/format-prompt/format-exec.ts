@@ -56,9 +56,9 @@ const backgroundedFactTemplates = [
 
 /** backgrounded hint 模板：操作建议（隔轮后不需要） */
 const backgroundedHintTemplates = [
-	"The log file is updated every few seconds — read it anytime to check output and process status.",
-	"The file syncs every few seconds — check it anytime for progress and status.",
-	"Log file updates every few seconds; read it to check progress.",
+	"The log file is updated every few seconds — read it anytime to check output and process status.\nBefore continuing other tasks, decide whether this process still needs to run in the background. If not, kill it by PID — do not leave it running unattended.",
+	"The file syncs every few seconds — check it anytime for progress and status.\nBefore moving on, judge whether you still need this process running. If not, terminate it by PID rather than leaving it idle.",
+	"Log file updates every few seconds; read it to check progress.\nDecide now: does this process need to keep running? If not, kill it by PID. Do not leave background processes running without purpose.",
 ];
 
 /** 格式化截断分块的读取建议（fact 部分：客观分块数据） */

@@ -86,6 +86,10 @@ function runtimesSection(): string {
 		lines.push(`(default runtime: cmd)`);
 	}
 
+	lines.push(
+		`To run inline code (TS/Python/PowerShell), use the runtime param directly — do NOT invoke interpreters through the default shell (e.g. don't write script="bun -e '...'" or script="python -c '...'"). Instead: exec(runtime="bun", script="<your TS code>") or exec(runtime="uv", script="<your Python code>").`,
+	);
+
 	return lines.join("\n");
 }
 
