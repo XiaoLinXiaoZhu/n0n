@@ -43,6 +43,17 @@ export function buildCodeEnvSpec(provider: string): EnvSpec {
 				],
 			},
 			{
+				title: "提示格式化",
+				vars: [
+					{
+						key: "N0N_STRIP_HINT",
+						desc: "剥离 tool result 中的 system-hint（设为 0 关闭剥离，用于对比测试）",
+						example: "1",
+						default: "1",
+					},
+				],
+			},
+			{
 				title: "提示音",
 				vars: [
 					{
