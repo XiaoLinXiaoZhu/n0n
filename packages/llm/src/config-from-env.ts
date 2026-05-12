@@ -16,6 +16,53 @@ import type { LLMConfig, ProviderConfig } from "./config.ts";
 /** Anthropic thinking 模式的默认 token 预算 */
 const DEFAULT_ANTHROPIC_THINKING_BUDGET = 1024;
 
+// ── 环境变量读取工具 ──
+
+/**
+ * 从环境变量读取值，支持 fallback 和类型转换。
+ *
+ * @param prefix 环境变量前缀
+ * @param field 字段名（拼接为 `${prefix}_${field}`）
+ * @param fallbackValue 环境变量未设置时的回退值
+ */
+function env(prefix: string, field: string, fallbackValue = ""): string {
+	return process.env[`${prefix}_${field}`] || fallbackValue;
+}
+
+/** 读取布尔值环境变量（"true" → true，其他 → false） */
+function envBool(prefix: string, field: string): boolean {
+	return process.env[`${prefix}_${field}`] === "true";
+}
+
+/** 读取整数环境变量，无效值返回 undefined */
+function envInt(prefix: string, field: string): number | undefined {
+	const raw = process.env[`${prefix}_${field}`];
+	if (!raw) return undefined;
+	const parsed = Number.parseInt(raw, 10);
+	return Number.isNaN(parsed) ? undefined : parsed;
+}
+
+/**
+ * 读取枚举环境变量，值不在合法列表中时返回 undefined。
+ *
+ * @param prefix 环境变量前缀
+ * @param field 字段名
+ * @param allowed 合法值列表
+ */
+function envEnum<T extends string>(
+	prefix: string,
+	field: string,
+	allowed: readonly T[],
+): T | undefined {
+	const raw = process.env[`${prefix}_${field}`];
+	if (!raw) return undefined;
+	return (allowed as readonly string[]).includes(raw)
+		? (raw as T)
+		: undefined;
+}
+
+// ── Provider 类型解析 ──
+
 /** 所有合法的 provider 类型 — 从 ProviderConfig union 推导 */
 export const PROVIDER_TYPES: readonly ProviderConfig["provider"][] = [
 	"openai",
@@ -49,6 +96,8 @@ export function resolveProvider(explicit?: string): ProviderConfig["provider"] {
 	return "openai";
 }
 
+// ── 主函数 ──
+
 /**
  * 从环境变量前缀构造 ProviderConfig
  *
@@ -61,16 +110,14 @@ export function buildProviderConfigFromEnv(
 	prefix: string,
 	fallback?: ProviderConfig,
 ): ProviderConfig {
-	const apiKey =
-		process.env[`${prefix}_API_KEY`] || (fallback ? fallback.apiKey : "");
-	const model =
-		process.env[`${prefix}_MODEL`] || (fallback ? fallback.model : "");
+	const apiKey = env(prefix, "API_KEY", fallback?.apiKey);
+	const model = env(prefix, "MODEL", fallback?.model);
 	const baseUrl =
-		process.env[`${prefix}_BASE_URL`] ||
+		env(prefix, "BASE_URL") ||
 		(fallback && "baseUrl" in fallback
 			? (fallback as { baseUrl?: string }).baseUrl
 			: undefined);
-	const provider = resolveProvider(process.env[`${prefix}_PROVIDER`]);
+	const provider = resolveProvider(env(prefix, "PROVIDER"));
 
 	switch (provider) {
 		case "openai":
@@ -80,18 +127,11 @@ export function buildProviderConfigFromEnv(
 				model,
 				...(baseUrl ? { baseUrl } : {}),
 			};
+
 		case "anthropic": {
-			const budgetRaw = process.env[`${prefix}_THINKING_BUDGET_TOKENS`];
-			const parsedBudget = budgetRaw
-				? Number.parseInt(budgetRaw, 10)
-				: undefined;
-			// NaN → undefined: 归一化后只需判断 undefined
-			const validBudget =
-				parsedBudget !== undefined && !Number.isNaN(parsedBudget)
-					? parsedBudget
-					: undefined;
+			const validBudget = envInt(prefix, "THINKING_BUDGET_TOKENS");
+			const enableFlag = envBool(prefix, "ENABLE_THINKING");
 			// 兼容：ENABLE_THINKING=true 但没设 budget 时，用默认 budget
-			const enableFlag = process.env[`${prefix}_ENABLE_THINKING`] === "true";
 			const hasThinking = validBudget !== undefined || enableFlag;
 			return {
 				provider: "anthropic",
@@ -107,12 +147,13 @@ export function buildProviderConfigFromEnv(
 					: {}),
 			};
 		}
+
 		case "google": {
-			const effortRaw = process.env[`${prefix}_THINKING_EFFORT`];
-			const thinkingEffort =
-				effortRaw === "low" || effortRaw === "medium" || effortRaw === "high"
-					? effortRaw
-					: undefined;
+			const thinkingEffort = envEnum(prefix, "THINKING_EFFORT", [
+				"low",
+				"medium",
+				"high",
+			] as const);
 			return {
 				provider: "google",
 				apiKey,
@@ -121,14 +162,14 @@ export function buildProviderConfigFromEnv(
 				...(thinkingEffort ? { thinkingEffort } : {}),
 			};
 		}
+
 		case "openai-compatible": {
-			const backendProvider = process.env[`${prefix}_BACKEND_PROVIDER`] as
-				| "anthropic"
-				| "google"
-				| "openai"
-				| undefined;
-			const enableThinking =
-				process.env[`${prefix}_ENABLE_THINKING`] === "true";
+			const backendProvider = envEnum(prefix, "BACKEND_PROVIDER", [
+				"anthropic",
+				"google",
+				"openai",
+			] as const);
+			const enableThinking = envBool(prefix, "ENABLE_THINKING");
 			return {
 				provider: "openai-compatible",
 				apiKey,
@@ -138,12 +179,13 @@ export function buildProviderConfigFromEnv(
 				...(enableThinking ? { enableThinking } : {}),
 			};
 		}
+
 		case "deepseek": {
-			const enableThinking =
-				process.env[`${prefix}_ENABLE_THINKING`] === "true";
-			const effortRaw = process.env[`${prefix}_THINKING_EFFORT`];
-			const thinkingEffort =
-				effortRaw === "max" || effortRaw === "high" ? effortRaw : undefined;
+			const enableThinking = envBool(prefix, "ENABLE_THINKING");
+			const thinkingEffort = envEnum(prefix, "THINKING_EFFORT", [
+				"high",
+				"max",
+			] as const);
 			return {
 				provider: "deepseek",
 				apiKey,
