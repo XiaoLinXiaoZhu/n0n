@@ -94,7 +94,7 @@ function renderToolArgs(
 				lines.push(`  ${style.dim("│")} ${vl}`);
 			}
 			lines.push(
-				`  ${style.dim("│")} ${style.gray(`... (${valueLines.length - maxLines} more lines)`)}`,
+				`  ${style.dim(":")} ${style.gray(`(${valueLines.length - maxLines} more lines)`)}`,
 			);
 			for (const vl of valueLines.slice(-tailCount)) {
 				lines.push(`  ${style.dim("│")} ${vl}`);
@@ -126,7 +126,7 @@ function renderToolArgsStreaming(
 			}
 		} else {
 			lines.push(
-				`  ${style.dim("│")} ${style.gray(`... (${valueLines.length - maxTailLines} lines above)`)}`,
+				`  ${style.dim(":")} ${style.gray(`(${valueLines.length - maxTailLines} lines above)`)}`,
 			);
 			for (const vl of valueLines.slice(-maxTailLines)) {
 				lines.push(`  ${style.dim("│")} ${vl}`);
@@ -392,7 +392,7 @@ export class RichRenderer implements Renderer {
 			this.toolRegion.clear();
 			const total = this.execOutputLines.length;
 			if (total > TAIL_WINDOW) {
-				this.toolRegion.writeln(style.gray(`  ${style.dim("│")} ... (${total - TAIL_WINDOW} lines above)`));
+				this.toolRegion.writeln(`  ${style.dim(":")} ${style.gray(`(${total - TAIL_WINDOW} lines above)`)}`);
 			}
 			const start = Math.max(0, total - TAIL_WINDOW);
 			for (let i = start; i < total; i++) {
@@ -425,7 +425,7 @@ export class RichRenderer implements Renderer {
 				for (let i = 0; i < HEAD_LINES; i++) {
 					writeln(`  ${style.dim("│")} ${style.dim(lines[i]!)}`);
 				}
-				writeln(style.gray(`  ${style.dim("│")} ... (${lines.length - HEAD_LINES - TAIL_LINES} lines folded)`));
+				writeln(`  ${style.dim(":")} ${style.gray(`(${lines.length - HEAD_LINES - TAIL_LINES} lines folded)`)}`);
 				for (let i = lines.length - TAIL_LINES; i < lines.length; i++) {
 					writeln(`  ${style.dim("│")} ${style.dim(lines[i]!)}`);
 				}
