@@ -39,6 +39,40 @@
 
 ---
 
+## exec 拆分实验：observe / reason / act
+
+**状态**：实验中，可切换对比
+
+### 背景
+
+当前 exec 承担了四种认知角色（观察、推理、执行、验证），对弱模型负担重。
+
+### 方案：基于 JEPA 认知循环拆分
+
+拆分为 observe / reason / act 三个独立工具：
+
+- **observe**：读文件、搜索、检查环境状态。无副作用
+- **reason**：结构化思考、数据处理、假设验证。无副作用，输出供模型自己消费
+- **act**：执行有副作用的操作（测试、构建、提交）
+
+### 开关
+
+`ToolsConfig.execMode: "unified" | "split"`，默认 `unified`。
+
+### 实现
+
+三个工具共享同一 execToolStream executor，仅工具定义和描述不同。
+
+### 配套提示词
+
+`SPLIT_TOOLS_PROMPT` 导出，app 层按需注入。
+
+### 观测
+
+domain message 中保留原始 tool name（observe/reason/act），可做事后分析。
+
+---
+
 ## 上下文压缩
 
 **状态**：接口已设计，待实现

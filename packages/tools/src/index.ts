@@ -34,6 +34,9 @@ import {
 } from "./edit/index.ts";
 import {
 	makeExecToolDefinition,
+	makeObserveToolDefinition,
+	makeReasonToolDefinition,
+	makeActToolDefinition,
 	ExecArgsSchema,
 	execToolStream,
 } from "./exec/index.ts";
@@ -137,6 +140,42 @@ function buildBaseRegistry(
 				return execToolStream(call, confirmFn, execConfig);
 			},
 		},
+		observe: {
+			definition: makeObserveToolDefinition(toolsConfig.platform),
+			stream: true,
+			execute: (tc, confirmFn) => {
+				const call: ExecToolCall = {
+					id: tc.id,
+					tool: "exec" as const,
+					args: ExecArgsSchema.parse(tc.args),
+				};
+				return execToolStream(call, confirmFn, execConfig);
+			},
+		},
+		reason: {
+			definition: makeReasonToolDefinition(toolsConfig.platform),
+			stream: true,
+			execute: (tc, confirmFn) => {
+				const call: ExecToolCall = {
+					id: tc.id,
+					tool: "exec" as const,
+					args: ExecArgsSchema.parse(tc.args),
+				};
+				return execToolStream(call, confirmFn, execConfig);
+			},
+		},
+		act: {
+			definition: makeActToolDefinition(toolsConfig.platform),
+			stream: true,
+			execute: (tc, confirmFn) => {
+				const call: ExecToolCall = {
+					id: tc.id,
+					tool: "exec" as const,
+					args: ExecArgsSchema.parse(tc.args),
+				};
+				return execToolStream(call, confirmFn, execConfig);
+			},
+		},
 		write: {
 			definition: WRITE_TOOL_DEFINITION,
 			stream: false,
@@ -180,6 +219,9 @@ export const REGISTERED_TOOLS = new Set([
 	"write",
 	"edit",
 	"progress",
+	"observe",
+	"reason",
+	"act",
 ]);
 
 /**
@@ -210,7 +252,9 @@ export function makeToolkit(
 
 	// 工具顺序是隐性优先级信号——模型对前置工具有注意力偏向。
 	// 显式声明顺序，避免依赖 JS 对象属性的插入顺序。
-	const TOOL_ORDER = ["progress", "exec", "write", "edit"] as const;
+	const TOOL_ORDER = toolsConfig.execMode === "split"
+		? ["progress", "observe", "reason", "act", "write", "edit"] as const
+		: ["progress", "exec", "write", "edit"] as const;
 	const tools = TOOL_ORDER.map((name) => registry[name]!.definition);
 
 	return {
@@ -225,4 +269,6 @@ export type { CanStartFn } from "@n0n/types";
 export type { ResponsesClient, ToolsConfig } from "./config.ts";
 
 export type { ProgressStatusConfig } from "./progress.ts";
+
+export { SPLIT_TOOLS_PROMPT } from "./exec/index.ts";
 
