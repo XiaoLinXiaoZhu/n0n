@@ -122,60 +122,34 @@ function buildBaseRegistry(
 		defaultExecWaitfor: toolsConfig.agent.defaultExecWaitfor,
 	};
 
+	// observe/reason/act 的 call.tool 重写为 "exec"，因为：
+	// 1. ExecToolResult 类型要求 tool: "exec"（ToolMap 中只注册了 exec）
+	// 2. format-prompt 和 renderer 的 switch 依赖 result.tool === "exec"
+	// 原始工具名保留在 assistant_tool_call 消息的 toolCalls 数组中，
+	// 事后分析通过 toolCallId 配对即可还原。
+	const makeExecEntry = (definition: ToolDefinition): ToolEntry => ({
+		definition,
+		stream: true,
+		execute: (tc, confirmFn) => {
+			const call: ExecToolCall = {
+				id: tc.id,
+				tool: "exec" as const,
+				args: ExecArgsSchema.parse(tc.args),
+			};
+			return execToolStream(call, confirmFn, execConfig);
+		},
+	});
+
 	const editBackend: EditBackend =
 		toolsConfig.editBackendType === "freeform-patch"
 			? new FreeformPatchBackend(toolsConfig.responsesClient)
 			: new StrReplaceBackend(toolsConfig.editorClient);
 
 	return {
-		exec: {
-			definition: makeExecToolDefinition(toolsConfig.platform),
-			stream: true,
-			execute: (tc, confirmFn) => {
-				const call: ExecToolCall = {
-					id: tc.id,
-					tool: "exec" as const,
-					args: ExecArgsSchema.parse(tc.args),
-				};
-				return execToolStream(call, confirmFn, execConfig);
-			},
-		},
-		observe: {
-			definition: makeObserveToolDefinition(toolsConfig.platform),
-			stream: true,
-			execute: (tc, confirmFn) => {
-				const call: ExecToolCall = {
-					id: tc.id,
-					tool: "exec" as const,
-					args: ExecArgsSchema.parse(tc.args),
-				};
-				return execToolStream(call, confirmFn, execConfig);
-			},
-		},
-		reason: {
-			definition: makeReasonToolDefinition(toolsConfig.platform),
-			stream: true,
-			execute: (tc, confirmFn) => {
-				const call: ExecToolCall = {
-					id: tc.id,
-					tool: "exec" as const,
-					args: ExecArgsSchema.parse(tc.args),
-				};
-				return execToolStream(call, confirmFn, execConfig);
-			},
-		},
-		act: {
-			definition: makeActToolDefinition(toolsConfig.platform),
-			stream: true,
-			execute: (tc, confirmFn) => {
-				const call: ExecToolCall = {
-					id: tc.id,
-					tool: "exec" as const,
-					args: ExecArgsSchema.parse(tc.args),
-				};
-				return execToolStream(call, confirmFn, execConfig);
-			},
-		},
+		exec: makeExecEntry(makeExecToolDefinition(toolsConfig.platform)),
+		observe: makeExecEntry(makeObserveToolDefinition(toolsConfig.platform)),
+		reason: makeExecEntry(makeReasonToolDefinition(toolsConfig.platform)),
+		act: makeExecEntry(makeActToolDefinition(toolsConfig.platform)),
 		write: {
 			definition: WRITE_TOOL_DEFINITION,
 			stream: false,
@@ -257,9 +231,10 @@ export function makeToolkit(
 		: ["progress", "exec", "write", "edit"] as const;
 	const tools = TOOL_ORDER.map((name) => registry[name]!.definition);
 
+	const activeTools = new Set<string>(TOOL_ORDER);
 	return {
 		tools,
-		getEntry: (name) => registry[name],
+		getEntry: (name) => activeTools.has(name) ? registry[name] : undefined,
 	};
 }
 

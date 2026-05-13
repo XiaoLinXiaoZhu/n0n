@@ -23,10 +23,14 @@ Output exceeding ~4 000 tokens is auto-truncated: only the last ~1 000 tokens ar
 const ALL_RUNTIMES =
 	"sh, bash, pwsh, cmd, bun, node, deno, python, python3, uv";
 
-export function makeExecToolDefinition(platform: "win32" | "darwin" | "linux"): ToolDefinition {
+function makeExecLikeDefinition(
+	platform: "win32" | "darwin" | "linux",
+	name: string,
+	description: string,
+): ToolDefinition {
 	const defaultRuntime = platform === "win32" ? "cmd" : "sh";
 
-	const FIELD_DESCRIPTIONS: FieldDescriptions<ExecArgs> = {
+	const EXEC_FIELD_DESCRIPTIONS: FieldDescriptions<ExecArgs> = {
 		script:
 			"Script content. Single command or multi-line code with imports, loops, etc.",
 		runtime: `Runtime (default: "${defaultRuntime}"). Options: ${ALL_RUNTIMES}. Shell runtimes are generally always available; language runtimes depend on installation — check bootstrap context.`,
@@ -35,77 +39,26 @@ export function makeExecToolDefinition(platform: "win32" | "darwin" | "linux"): 
 			"Max seconds to wait for process (default: 120, max: 240). Process continues in background if exceeded.",
 	};
 
-	const PARAMETERS = zodToParameters(ExecArgsSchema, FIELD_DESCRIPTIONS);
+	const PARAMETERS = zodToParameters(ExecArgsSchema, EXEC_FIELD_DESCRIPTIONS);
 
-	return {
-		name: "exec",
-		description: STATIC_DESCRIPTION,
-		parameters: PARAMETERS,
-	};
+	return { name, description, parameters: PARAMETERS };
+}
+
+export function makeExecToolDefinition(platform: "win32" | "darwin" | "linux"): ToolDefinition {
+	return makeExecLikeDefinition(platform, "exec", STATIC_DESCRIPTION);
 }
 
 export function makeObserveToolDefinition(platform: "win32" | "darwin" | "linux"): ToolDefinition {
-	const defaultRuntime = platform === "win32" ? "cmd" : "sh";
-
-	const FIELD_DESCRIPTIONS: FieldDescriptions<ExecArgs> = {
-		script:
-			"Script content. Single command or multi-line code with imports, loops, etc.",
-		runtime: `Runtime (default: "${defaultRuntime}"). Options: ${ALL_RUNTIMES}. Shell runtimes are generally always available; language runtimes depend on installation — check bootstrap context.`,
-		cwd: "Working directory (default: injected workspace root)",
-		waitfor:
-			"Max seconds to wait for process (default: 120, max: 240). Process continues in background if exceeded.",
-	};
-
-	const PARAMETERS = zodToParameters(ExecArgsSchema, FIELD_DESCRIPTIONS);
-
-	return {
-		name: "observe",
-		description:
-			"Read files, search code, or check environment state. No side effects — use this for gathering information only.",
-		parameters: PARAMETERS,
-	};
+	return makeExecLikeDefinition(platform, "observe",
+		"Read files, search code, or check environment state. No side effects — use this for gathering information only.");
 }
 
 export function makeReasonToolDefinition(platform: "win32" | "darwin" | "linux"): ToolDefinition {
-	const defaultRuntime = platform === "win32" ? "cmd" : "sh";
-
-	const FIELD_DESCRIPTIONS: FieldDescriptions<ExecArgs> = {
-		script:
-			"Script content. Single command or multi-line code with imports, loops, etc.",
-		runtime: `Runtime (default: "${defaultRuntime}"). Options: ${ALL_RUNTIMES}. Shell runtimes are generally always available; language runtimes depend on installation — check bootstrap context.`,
-		cwd: "Working directory (default: injected workspace root)",
-		waitfor:
-			"Max seconds to wait for process (default: 120, max: 240). Process continues in background if exceeded.",
-	};
-
-	const PARAMETERS = zodToParameters(ExecArgsSchema, FIELD_DESCRIPTIONS);
-
-	return {
-		name: "reason",
-		description:
-			"Structured thinking, data processing, or hypothesis verification. No side effects — output is for the model's own consumption, not presented to the user.",
-		parameters: PARAMETERS,
-	};
+	return makeExecLikeDefinition(platform, "reason",
+		"Structured thinking, data processing, or hypothesis verification. No side effects — output is for the model's own consumption, not presented to the user.");
 }
 
 export function makeActToolDefinition(platform: "win32" | "darwin" | "linux"): ToolDefinition {
-	const defaultRuntime = platform === "win32" ? "cmd" : "sh";
-
-	const FIELD_DESCRIPTIONS: FieldDescriptions<ExecArgs> = {
-		script:
-			"Script content. Single command or multi-line code with imports, loops, etc.",
-		runtime: `Runtime (default: "${defaultRuntime}"). Options: ${ALL_RUNTIMES}. Shell runtimes are generally always available; language runtimes depend on installation — check bootstrap context.`,
-		cwd: "Working directory (default: injected workspace root)",
-		waitfor:
-			"Max seconds to wait for process (default: 120, max: 240). Process continues in background if exceeded.",
-	};
-
-	const PARAMETERS = zodToParameters(ExecArgsSchema, FIELD_DESCRIPTIONS);
-
-	return {
-		name: "act",
-		description:
-			"Execute actions that change environment state: run tests, build, commit, install dependencies, etc.",
-		parameters: PARAMETERS,
-	};
+	return makeExecLikeDefinition(platform, "act",
+		"Execute actions that change environment state: run tests, build, commit, install dependencies, etc.");
 }

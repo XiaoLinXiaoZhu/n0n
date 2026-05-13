@@ -125,6 +125,7 @@ export async function runHeadless(
 		toolkit,
 		paths.workspace,
 		paths.temp,
+		toolsConfig.execMode,
 	);
 
 	let history: DomainMessage[] = [

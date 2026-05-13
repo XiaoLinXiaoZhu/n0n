@@ -164,6 +164,7 @@ export async function startCodeRepl(
 		toolkit,
 		paths.workspace,
 		paths.temp,
+		toolsConfig.execMode,
 	);
 	// progress 结果文件编号（进程级，不随 renderer 生命周期绑定）
 	const nextSessionId = (() => {

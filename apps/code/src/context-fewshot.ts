@@ -463,9 +463,9 @@ async function runExec(
 	toolkit: Toolkit,
 	call: ExecToolCall,
 ): Promise<ToolResult> {
-	const entry = toolkit.getEntry("exec");
+	const entry = toolkit.getEntry("exec") ?? toolkit.getEntry("observe");
 	if (!entry?.stream)
-		throw new Error("exec tool entry not found or not stream");
+		throw new Error("exec-like tool entry not found or not stream");
 	const gen = (
 		entry.execute as (tc: ToolCallRecord) => AsyncGenerator<ToolStreamEvent>
 	)(call);
@@ -515,12 +515,40 @@ async function renderFewshot(
 	});
 }
 
+/** Split 模式下，将 fewshot 中的 exec 工具名映射为 observe/act */
+function remapExecToolNames(messages: DomainMessage[]): DomainMessage[] {
+	// 根据脚本内容判断应该是 observe 还是 act
+	const classifyScript = (script: string): "observe" | "act" => {
+		// 删除、构建等操作是 act
+		if (/\b(del|rm|mkdir|git commit|git push|bun run build|npm run)\b/i.test(script)) return "act";
+		// 默认都是 observe（读取环境信息）
+		return "observe";
+	};
+
+	return messages.map((msg) => {
+		if (msg.type === "assistant_tool_call") {
+			return {
+				...msg,
+				toolCalls: msg.toolCalls.map((tc) => {
+					if (tc.tool !== "exec") return tc;
+					const script = (tc.args as { script?: string })?.script ?? "";
+					return { ...tc, tool: classifyScript(script) } as unknown as typeof tc;
+				}),
+			};
+		}
+		return msg;
+	});
+}
+
 // ── 对外接口 ──
 
 export async function buildContextFewshot(
 	toolkit: Toolkit,
 	workspace: string,
 	_tempDir?: string,
+	execMode?: "unified" | "split",
 ): Promise<DomainMessage[]> {
-	return renderFewshot(FEWSHOT_TEMPLATE, toolkit, workspace);
+	const messages = await renderFewshot(FEWSHOT_TEMPLATE, toolkit, workspace);
+	if (execMode !== "split") return messages;
+	return remapExecToolNames(messages);
 }
