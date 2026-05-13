@@ -12,7 +12,7 @@
 
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { dirname, isAbsolute, resolve } from "node:path";
-import { RichRenderer } from "@n0n/cli-ui";
+import { RichRenderer, type RichRendererOptions } from "@n0n/cli-ui";
 import type { BaseWorkspacePaths } from "@n0n/shared";
 import type { ToolCallRecord } from "@n0n/types";
 import { parse as parsePartialJSON } from "partial-json";
@@ -43,8 +43,8 @@ export class CodeRenderer extends RichRenderer {
 	/** 活跃的 write 预览（index → preview state） */
 	private previews = new Map<number, WritePreview>();
 
-	constructor(private readonly paths: BaseWorkspacePaths) {
-		super();
+	constructor(private readonly paths: BaseWorkspacePaths, options?: RichRendererOptions) {
+		super(options);
 	}
 
 	override toolCallArgStart(index: number, name: string): void {

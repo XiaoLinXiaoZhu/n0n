@@ -75,12 +75,14 @@ const cliOpts = (globalThis as Record<string, unknown>).__n0n_cli_opts as
 			resumeFile?: string;
 			saveEveryLoop?: boolean;
 			promptVersion?: string;
+			foldExec?: boolean;
 			filteredArgs?: string[];
 		}
 	| undefined;
 const resumeFile = cliOpts?.resumeFile;
 const saveEveryLoop = cliOpts?.saveEveryLoop ?? false;
 const promptVersion = cliOpts?.promptVersion;
+const foldExec = cliOpts?.foldExec ?? false;
 
 const { workspace, remainingArgs } = parseWorkspaceArg(
 	cliOpts?.filteredArgs ?? process.argv.slice(2),
@@ -158,5 +160,6 @@ await startCodeRepl(paths, {
 	toolsConfig,
 	agentConfig,
 	notifyConfig,
+	foldExec,
 });
 process.exit(0);

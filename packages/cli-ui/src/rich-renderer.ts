@@ -94,9 +94,7 @@ function renderToolArgs(
 				lines.push(`  ${style.dim("│")} ${vl}`);
 			}
 			lines.push(
-				style.gray(
-					`  ${style.dim("│")} ... (${valueLines.length - maxLines} more lines)`,
-				),
+				`  ${style.dim("│")} ${style.gray(`... (${valueLines.length - maxLines} more lines)`)}`,
 			);
 			for (const vl of valueLines.slice(-tailCount)) {
 				lines.push(`  ${style.dim("│")} ${vl}`);
@@ -128,9 +126,7 @@ function renderToolArgsStreaming(
 			}
 		} else {
 			lines.push(
-				style.gray(
-					`  ${style.dim("│")} ... (${valueLines.length - maxTailLines} lines above)`,
-				),
+				`  ${style.dim("│")} ${style.gray(`... (${valueLines.length - maxTailLines} lines above)`)}`,
 			);
 			for (const vl of valueLines.slice(-maxTailLines)) {
 				lines.push(`  ${style.dim("│")} ${vl}`);
@@ -149,6 +145,11 @@ function tryParseArgs(s: string): Record<string, unknown> | null {
 		}
 	} catch {}
 	return null;
+}
+
+export interface RichRendererOptions {
+	/** 是否折叠 exec 工具输出：流式阶段展示尾部滚动窗口，结束后折叠为头尾摘要 */
+	foldExec?: boolean;
 }
 
 export class RichRenderer implements Renderer {
@@ -170,6 +171,15 @@ export class RichRenderer implements Renderer {
 
 	/** 本轮是否有流式工具参数（有则 toolExecStart 不重复渲染） */
 	private hadStreamingArgs = false;
+
+	/** foldExec 模式下累积的 exec 输出行（每个活跃工具的原始行） */
+	private execOutputLines: string[] = [];
+
+	protected readonly foldExec: boolean;
+
+	constructor(options?: RichRendererOptions) {
+		this.foldExec = options?.foldExec ?? false;
+	}
 
 	// ── FIFO 工具执行缓冲（CLI 终端是线性的，需要按序输出） ──
 	private renderBuffer = new RenderBuffer({
@@ -349,6 +359,7 @@ export class RichRenderer implements Renderer {
 		this.streamRegion.reset();
 		this.toolRegion.reset();
 		this.renderBuffer.reset();
+		this.execOutputLines = [];
 		writeln();
 		writeln(`${style.yellow("⚡")} ${style.gray("已中断输出")}`);
 	}
@@ -358,6 +369,9 @@ export class RichRenderer implements Renderer {
 	/** 渲染单个工具的 execStart */
 	private renderExecStart(tc: ToolCallRecord): void {
 		this.toolRegion.reset();
+		if (this.foldExec) {
+			this.execOutputLines = [];
+		}
 		// 流式模式下参数已由 toolCallArgEnd/streamEnd 渲染，不重复
 		if (this.hadStreamingArgs) return;
 		// 非流式回退：渲染结构化参数
@@ -368,15 +382,57 @@ export class RichRenderer implements Renderer {
 
 	/** 渲染工具执行的 chunk 输出 */
 	private renderExecChunk(chunk: string): void {
-		for (const line of chunk.split("\n")) {
-			if (line) {
-				this.toolRegion.writeln(`  ${style.dim("│")} ${style.dim(line)}`);
+		if (this.foldExec && isTTY) {
+			// 折叠模式：累积行，展示尾部滚动窗口
+			for (const line of chunk.split("\n")) {
+				if (line) this.execOutputLines.push(line);
+			}
+			const TAIL_WINDOW = 6;
+			beginSyncUpdate();
+			this.toolRegion.clear();
+			const total = this.execOutputLines.length;
+			if (total > TAIL_WINDOW) {
+				this.toolRegion.writeln(style.gray(`  ${style.dim("│")} ... (${total - TAIL_WINDOW} lines above)`));
+			}
+			const start = Math.max(0, total - TAIL_WINDOW);
+			for (let i = start; i < total; i++) {
+				this.toolRegion.writeln(`  ${style.dim("│")} ${style.dim(this.execOutputLines[i]!)}`);
+			}
+			endSyncUpdate();
+		} else {
+			for (const line of chunk.split("\n")) {
+				if (line) {
+					this.toolRegion.writeln(`  ${style.dim("│")} ${style.dim(line)}`);
+				}
 			}
 		}
 	}
 
 	/** 渲染工具执行结束 */
 	private renderExecEnd(result: ToolResult): void {
+		if (this.foldExec && isTTY) {
+			// 折叠模式：清除滚动窗口，展示头尾摘要
+			beginSyncUpdate();
+			this.toolRegion.clear();
+			const lines = this.execOutputLines;
+			const HEAD_LINES = 10;
+			const TAIL_LINES = 10;
+			if (lines.length <= HEAD_LINES + TAIL_LINES) {
+				for (const line of lines) {
+					writeln(`  ${style.dim("│")} ${style.dim(line)}`);
+				}
+			} else {
+				for (let i = 0; i < HEAD_LINES; i++) {
+					writeln(`  ${style.dim("│")} ${style.dim(lines[i]!)}`);
+				}
+				writeln(style.gray(`  ${style.dim("│")} ... (${lines.length - HEAD_LINES - TAIL_LINES} lines folded)`));
+				for (let i = lines.length - TAIL_LINES; i < lines.length; i++) {
+					writeln(`  ${style.dim("│")} ${style.dim(lines[i]!)}`);
+				}
+			}
+			this.execOutputLines = [];
+			endSyncUpdate();
+		}
 		const summary = this.formatToolResult(result);
 		writeln(summary);
 	}

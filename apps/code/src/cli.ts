@@ -39,6 +39,7 @@ if (args.includes("--help") || args.includes("-h")) {
   n0n --resume <file>     从对话日志文件恢复对话
   n0n --save-every-loop   每轮自动保存对话到 n0n-conversation-latest.json
   n0n --v <version>       切换提示词版本（如 --v 0.2）
+  n0n --fold-exec         折叠 exec 输出（流式尾部滚动 + 结束后头尾摘要）
 
   n0n -v, --version       显示版本号
   n0n -h, --help          显示帮助信息
@@ -89,11 +90,18 @@ if (vIdx !== -1) {
 	args.splice(vIdx, 2);
 }
 
+let foldExec = false;
+if (args.includes("--fold-exec")) {
+	foldExec = true;
+	args.splice(args.indexOf("--fold-exec"), 1);
+}
+
 // 将解析结果挂载到全局，供 index.ts 读取
 (globalThis as Record<string, unknown>).__n0n_cli_opts = {
 	resumeFile,
 	saveEveryLoop,
 	promptVersion,
+	foldExec,
 	filteredArgs: [...args],
 };
 
