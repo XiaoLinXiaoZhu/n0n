@@ -131,6 +131,7 @@ const securityConfig = buildSecurityConfig(source);
 const toolsConfig = buildToolsConfig(editBackend, agentConfig, securityConfig, {
 	workspace: paths.workspace,
 	tempDir: paths.temp,
+	execMode: source.EXEC_MODE === "split" ? "split" : undefined,
 });
 
 const notifyConfig = buildNotifyConfig(source);

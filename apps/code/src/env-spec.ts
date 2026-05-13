@@ -54,6 +54,17 @@ export function buildCodeEnvSpec(provider: string): EnvSpec {
 				],
 			},
 			{
+				title: "工具模式",
+				vars: [
+					{
+						key: "EXEC_MODE",
+						desc: "exec 工具模式（unified: 单一 exec | split: observe/reason/act 三工具）",
+						example: "split",
+						default: "unified",
+					},
+				],
+			},
+			{
 				title: "提示音",
 				vars: [
 					{
