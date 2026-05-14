@@ -6,6 +6,7 @@ dist/
 bun.lock
 package-lock.json
 *.log
+_n0n_exec_*
 .temp/
 workflows/
 .runtime/**
