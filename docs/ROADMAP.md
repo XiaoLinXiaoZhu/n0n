@@ -41,35 +41,49 @@
 
 ## exec 拆分实验：observe / reason / act
 
-**状态**：实验中，可切换对比
+**状态**：已实现，实验中
 
 ### 背景
 
-当前 exec 承担了四种认知角色（观察、推理、执行、验证），对弱模型负担重。
-
-### 方案：基于 JEPA 认知循环拆分
-
-拆分为 observe / reason / act 三个独立工具：
-
-- **observe**：读文件、搜索、检查环境状态。无副作用
-- **reason**：结构化思考、数据处理、假设验证。无副作用，输出供模型自己消费
-- **act**：执行有副作用的操作（测试、构建、提交）
+当前 exec 承担了四种认知角色（观察、推理、执行、验证），对弱模型负担重。基于 JEPA 认知循环，拆分为三个语义工具进行对比实验。
 
 ### 开关
 
-`ToolsConfig.execMode: "unified" | "split"`，默认 `unified`。
+环境变量 `EXEC_MODE=split`（默认 `unified`）。
 
-### 实现
+### 影响范围
 
-三个工具共享同一 execToolStream executor，仅工具定义和描述不同。
+设置 `EXEC_MODE=split` 后，以下行为发生变化：
 
-### 配套提示词
+| 组件 | unified 模式 | split 模式 |
+|------|-------------|------------|
+| 工具定义（发送给 LLM） | exec | observe, reason, act |
+| 系统提示词 | 原始 code.md | code.md + SPLIT_TOOLS_PROMPT |
+| fewshot 示例 | 工具名 exec | 工具名映射为 observe/act |
+| getEntry 解析 | 仅 exec 可解析 | 仅 observe/reason/act 可解析 |
+| tool_result 格式化 | 不变（result.tool 始终为 "exec"） | 不变 |
+| domain message 记录 | assistant_tool_call 中 tool="exec" | assistant_tool_call 中 tool="observe"/"reason"/"act" |
 
-`SPLIT_TOOLS_PROMPT` 导出，app 层按需注入。
+不受影响的：executor 逻辑、安全检查、截断/后台机制、write/edit/progress。
 
-### 观测
+### 涉及文件
 
-domain message 中保留原始 tool name（observe/reason/act），可做事后分析。
+- `packages/tools/src/config.ts` — execMode 字段
+- `packages/tools/src/exec/definition.ts` — 三工具定义
+- `packages/tools/src/exec/split-prompt.ts` — 配套提示词
+- `packages/tools/src/index.ts` — 注册逻辑、activeTools 过滤
+- `packages/core/src/runtime.ts` — buildToolsConfig 透传
+- `apps/code/src/index.ts` — 读取环境变量
+- `apps/code/src/repl.ts` / `headless.ts` — 注入 prompt、传递 execMode 到 fewshot
+- `apps/code/src/context-fewshot.ts` — split 模式 tool name 重映射
+
+### 后续方向
+
+实验完成后，应选择一种模式作为 SSOT（Single Source of Truth），移除另一种的代码路径：
+
+- 若 split 模式效果更好 → 删除 unified 代码路径，observe/reason/act 成为正式工具，注册到 ToolMap 类型系统
+- 若 unified 模式更好 → 删除 split 相关的定义、prompt、fewshot 重映射逻辑
+- 不应长期保留两套并行维护——开关机制仅用于实验对比阶段
 
 ---
 
