@@ -7,10 +7,17 @@
  * - executor: 脚本执行（含 waitfor 等待超限转后台机制）
  */
 
-export { makeExecToolDefinition, ExecArgsSchema } from "./definition.ts";
+export {
+	makeExecToolDefinition,
+	ExecArgsSchema,
+	makeObserveToolDefinition,
+	makeReasonToolDefinition,
+	makeActToolDefinition,
+} from "./definition.ts";
 export { execToolStream } from "./executor.ts";
 export {
 	extractCommandNames,
 	findBlockedCommand,
 	handleBlockedCommand,
 } from "./security.ts";
+export { SPLIT_TOOLS_PROMPT } from "./split-prompt.ts";

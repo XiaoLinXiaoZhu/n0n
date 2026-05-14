@@ -23,7 +23,11 @@ Output exceeding ~4 000 tokens is auto-truncated: only the last ~1 000 tokens ar
 const ALL_RUNTIMES =
 	"sh, bash, pwsh, cmd, bun, node, deno, python, python3, uv";
 
-export function makeExecToolDefinition(platform: "win32" | "darwin" | "linux"): ToolDefinition {
+function makeExecLikeDefinition(
+	platform: "win32" | "darwin" | "linux",
+	name: string,
+	description: string,
+): ToolDefinition {
 	const defaultRuntime = platform === "win32" ? "cmd" : "sh";
 
 	const EXEC_FIELD_DESCRIPTIONS: FieldDescriptions<ExecArgs> = {
@@ -37,9 +41,24 @@ export function makeExecToolDefinition(platform: "win32" | "darwin" | "linux"): 
 
 	const PARAMETERS = zodToParameters(ExecArgsSchema, EXEC_FIELD_DESCRIPTIONS);
 
-	return {
-		name: "exec",
-		description: STATIC_DESCRIPTION,
-		parameters: PARAMETERS,
-	};
+	return { name, description, parameters: PARAMETERS };
+}
+
+export function makeExecToolDefinition(platform: "win32" | "darwin" | "linux"): ToolDefinition {
+	return makeExecLikeDefinition(platform, "exec", STATIC_DESCRIPTION);
+}
+
+export function makeObserveToolDefinition(platform: "win32" | "darwin" | "linux"): ToolDefinition {
+	return makeExecLikeDefinition(platform, "observe",
+		"Read files, search code, or check environment state. No side effects — use this for gathering information only.");
+}
+
+export function makeReasonToolDefinition(platform: "win32" | "darwin" | "linux"): ToolDefinition {
+	return makeExecLikeDefinition(platform, "reason",
+		"Structured thinking, data processing, or hypothesis verification. No side effects — output is for the model's own consumption, not presented to the user.");
+}
+
+export function makeActToolDefinition(platform: "win32" | "darwin" | "linux"): ToolDefinition {
+	return makeExecLikeDefinition(platform, "act",
+		"Execute actions that change environment state: run tests, build, commit, install dependencies, etc.");
 }
