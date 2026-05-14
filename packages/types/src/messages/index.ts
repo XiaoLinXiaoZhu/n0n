@@ -36,15 +36,14 @@ export type {
 	MakeResultBase,
 	ToolCallRecord,
 	ToolCallRecordMap,
-	ExecToolCall,
 	WriteToolCall,
 	EditToolCall,
+	ObserveToolCall,
+	ReasonToolCall,
+	ActToolCall,
 	ProgressToolCall,
 	PartialToolCallRecord,
 	// Exec
-	ExecCompleted,
-	ExecTruncated,
-	ExecBackgrounded,
 	ExecToolResult,
 	// Write
 	WriteCompleted,

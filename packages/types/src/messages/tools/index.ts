@@ -11,15 +11,17 @@ export type {
 	MakeResultBase,
 	ToolCallRecord,
 	ToolCallRecordMap,
-	ExecToolCall,
+	ObserveToolCall,
+	ReasonToolCall,
+	ActToolCall,
 	WriteToolCall,
 	EditToolCall,
 	ProgressToolCall,
 	PartialToolCallRecord,
 } from "./registry.ts";
 
-// Exec
-export type { ExecCompleted, ExecTruncated, ExecBackgrounded, ExecToolResult } from "./exec.ts";
+// Exec (shared by observe / reason / act)
+export type { ExecCompleted, ExecTruncated, ExecBackgrounded, ExecToolResult, ExecToolName } from "./exec.ts";
 
 // Write
 export type {
@@ -62,7 +64,7 @@ export type ToolExecOutcome =
 	| { status: "completed"; result: ToolResult }
 	| { status: "arg_error" };
 
-/** 工具执行过程中的流式输出 chunk（目前仅 exec 使用） */
+/** 工具执行过程中的流式输出 chunk */
 export interface ToolOutputChunk {
 	type: "tool_output_chunk";
 	callId: string;
