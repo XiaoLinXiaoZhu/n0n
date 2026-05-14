@@ -1,5 +1,5 @@
 /**
- * exec tool result 格式化 — 含 anti-few-shot 变体
+ * observe/reason/act tool result 格式化 — 含 anti-few-shot 变体
  *
  * 多部分拼装（meta、stdout/stderr tag、hint 等）各自使用
  * msgIndex+N 偏移独立选择变体，组合爆炸产生远超单维度的多样性。
@@ -114,6 +114,7 @@ export function formatExecResult(
 ): FormattedToolResult {
 	const runtime = msg.call.args.runtime ?? "unknown";
 	const cwd = msg.call.args.cwd ?? ".";
+	const toolLabel = msg.tool;
 	// 每个 pick 点用不同偏移：meta=+0, stdoutTag=+1, stderrTag=+2, notice/hint=+3, diagnostic=+4
 	const stdoutTag = pick(stdoutTagNames, msgIndex + 1);
 	const stderrTag = pick(stderrTagNames, msgIndex + 2);
@@ -122,7 +123,7 @@ export function formatExecResult(
 		case "backgrounded": {
 			const metaFn = pick(backgroundedMetaTemplates, msgIndex);
 			const factParts = [
-				tags.wrapTag("exec_meta", metaFn(runtime, cwd, msg.durationMs)),
+				tags.wrapTag(`${toolLabel}_meta`, metaFn(runtime, cwd, msg.durationMs)),
 			];
 
 			// PID + log file 路径：持久有效的客观信息，属于 fact
@@ -136,6 +137,11 @@ export function formatExecResult(
 			if (msg.stderrSoFar)
 				factParts.push(tags.wrapTag(stderrTag, msg.stderrSoFar));
 
+			// reason 的输出标注为内部思考
+			if (toolLabel === "reason") {
+				factParts.push(tags.wrapTag("reason_internal", "[reason — internal]"));
+			}
+
 			// 操作建议：隔轮后不需要
 			const hint = pick(backgroundedHintTemplates, msgIndex + 4);
 
@@ -145,7 +151,7 @@ export function formatExecResult(
 			const metaFn = pick(truncatedMetaTemplates, msgIndex);
 			const factParts = [
 				tags.wrapTag(
-					"exec_meta",
+					`${toolLabel}_meta`,
 					metaFn(runtime, cwd, msg.exitCode, msg.durationMs, msg.outputFile),
 				),
 			];
@@ -161,6 +167,11 @@ export function formatExecResult(
 				factParts.push(
 					tags.wrapTag(stderrTag, `... (truncated)\n${msg.stderrTail}`),
 				);
+
+			// reason 的输出标注为内部思考
+			if (toolLabel === "reason") {
+				factParts.push(tags.wrapTag("reason_internal", "[reason — internal]"));
+			}
 
 			// 输出文件路径和分块信息：持久有效，属于 fact
 			const chunkGuide = formatChunkGuide(msg.truncatedChunks, msg.outputFile);
@@ -181,13 +192,18 @@ export function formatExecResult(
 			const metaFn = pick(metaTemplates, msgIndex);
 			const factParts = [
 				tags.wrapTag(
-					"exec_meta",
+					`${toolLabel}_meta`,
 					metaFn(runtime, cwd, msg.exitCode, msg.durationMs),
 				),
 			];
 
 			if (msg.stdout) factParts.push(tags.wrapTag(stdoutTag, msg.stdout));
 			if (msg.stderr) factParts.push(tags.wrapTag(stderrTag, msg.stderr));
+
+			// reason 的输出标注为内部思考
+			if (toolLabel === "reason") {
+				factParts.push(tags.wrapTag("reason_internal", "[reason — internal]"));
+			}
 
 			const combined = (msg.stdout || "") + (msg.stderr || "");
 			let hint: string | null = null;
@@ -205,7 +221,7 @@ export function formatExecResult(
 		default: {
 			const _exhaustive: never = msg;
 			// biome-ignore lint/suspicious/noExplicitAny: exhaustive switch default
-			return { fact: `Unknown exec status: ${(msg as any).status}`, hint: null };
+			return { fact: `Unknown ${toolLabel} status: ${(msg as any).status}`, hint: null };
 		}
 	}
 }
