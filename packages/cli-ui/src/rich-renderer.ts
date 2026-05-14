@@ -148,8 +148,8 @@ function tryParseArgs(s: string): Record<string, unknown> | null {
 }
 
 export interface RichRendererOptions {
-	/** 是否折叠 exec 工具输出：流式阶段展示尾部滚动窗口，结束后折叠为头尾摘要 */
-	foldExec?: boolean;
+	/** 是否展开 exec 工具输出：流式阶段展示尾部滚动窗口，结束后折叠为头尾摘要 */
+	expandExec?: boolean;
 }
 
 export class RichRenderer implements Renderer {
@@ -172,13 +172,13 @@ export class RichRenderer implements Renderer {
 	/** 本轮是否有流式工具参数（有则 toolExecStart 不重复渲染） */
 	private hadStreamingArgs = false;
 
-	/** foldExec 模式下累积的 exec 输出行（每个活跃工具的原始行） */
+	/** 折叠模式（非 expandExec）下累积的 exec 输出行（每个活跃工具的原始行） */
 	private execOutputLines: string[] = [];
 
-	protected readonly foldExec: boolean;
+	protected readonly expandExec: boolean;
 
 	constructor(options?: RichRendererOptions) {
-		this.foldExec = options?.foldExec ?? false;
+		this.expandExec = options?.expandExec ?? false;
 	}
 
 	// ── FIFO 工具执行缓冲（CLI 终端是线性的，需要按序输出） ──
@@ -369,7 +369,7 @@ export class RichRenderer implements Renderer {
 	/** 渲染单个工具的 execStart */
 	private renderExecStart(tc: ToolCallRecord): void {
 		this.toolRegion.reset();
-		if (this.foldExec) {
+		if (!this.expandExec) {
 			this.execOutputLines = [];
 		}
 		// 流式模式下参数已由 toolCallArgEnd/streamEnd 渲染，不重复
@@ -382,7 +382,7 @@ export class RichRenderer implements Renderer {
 
 	/** 渲染工具执行的 chunk 输出 */
 	private renderExecChunk(chunk: string): void {
-		if (this.foldExec && isTTY) {
+		if (!this.expandExec && isTTY) {
 			// 折叠模式：累积行，展示尾部滚动窗口
 			for (const line of chunk.split("\n")) {
 				if (line) this.execOutputLines.push(line);
@@ -410,7 +410,7 @@ export class RichRenderer implements Renderer {
 
 	/** 渲染工具执行结束 */
 	private renderExecEnd(result: ToolResult): void {
-		if (this.foldExec && isTTY) {
+		if (!this.expandExec && isTTY) {
 			// 折叠模式：清除滚动窗口，展示头尾摘要
 			beginSyncUpdate();
 			this.toolRegion.clear();

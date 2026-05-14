@@ -47,7 +47,7 @@ export interface CodeReplOptions {
 	toolsConfig: ToolsConfig;
 	agentConfig: AgentConfig;
 	notifyConfig?: NotifyConfig;
-	foldExec?: boolean;
+	expandExec?: boolean;
 }
 
 type CodeWorkspacePaths = BaseWorkspacePaths;
@@ -143,7 +143,7 @@ export async function startCodeRepl(
 		resumeFile,
 		saveEveryLoop = false,
 		promptVersion,
-		foldExec = false,
+		expandExec = false,
 	} = options;
 
 	// 基础系统提示词（稳定前缀，不含 agents.md 和环境信息）
@@ -183,7 +183,7 @@ export async function startCodeRepl(
 	// renderer 选择也基于 canInteract：管道环境用 PlainRenderer（无光标控制）
 	const canInteract =
 		typeof process.stdin.setRawMode === "function";
-	const renderer = canInteract ? new CodeRenderer(paths, { foldExec }) : new PlainRenderer();
+	const renderer = canInteract ? new CodeRenderer(paths, { expandExec }) : new PlainRenderer();
 
 	// ── stdin 控制器（仅 TTY 模式） ──
 	const stdin = canInteract ? createStdinController() : null;
