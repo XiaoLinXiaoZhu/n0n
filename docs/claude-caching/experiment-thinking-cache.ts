@@ -62,7 +62,7 @@ const SYSTEM_PROMPT = [
 // ── 工具定义（用于验证 tools cache） ──
 const TOOLS = [
 	{
-		name: "exec",
+		name: "observe",
 		description:
 			"Execute a script on the system. Supports cmd, pwsh, bun, node, uv runtimes.",
 		input_schema: {

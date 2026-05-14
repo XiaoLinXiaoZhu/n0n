@@ -109,7 +109,7 @@ function makeToolRound(i: number): DomainMessage[] {
 			toolCalls: [
 				{
 					id: `e-${i}`,
-					tool: "exec",
+					tool: "observe",
 					args: {
 						script: "type apps\\fairy\\src\\view.ts",
 						runtime: "cmd",
@@ -120,11 +120,11 @@ function makeToolRound(i: number): DomainMessage[] {
 		},
 		{
 			type: "tool_result",
-			tool: "exec",
+			tool: "observe",
 			status: "completed" as const,
 			call: {
 				id: `e-${i}`,
-				tool: "exec",
+				tool: "observe",
 				args: {
 					script: "type apps\\fairy\\src\\view.ts",
 					runtime: "cmd",

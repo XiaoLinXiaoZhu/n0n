@@ -124,7 +124,7 @@ function makeHeavyToolRound(i: number): DomainMessage[] {
 			toolCalls: [
 				{
 					id: `e-${i}`,
-					tool: "exec",
+					tool: "observe",
 					args: {
 						script: `type src\\module-${i}.ts`,
 						runtime: "cmd",
@@ -135,11 +135,11 @@ function makeHeavyToolRound(i: number): DomainMessage[] {
 		},
 		{
 			type: "tool_result",
-			tool: "exec",
+			tool: "observe",
 			status: "completed" as const,
 			call: {
 				id: `e-${i}`,
-				tool: "exec",
+				tool: "observe",
 				args: { script: `type src\\module-${i}.ts`, runtime: "cmd", cwd: "." },
 			},
 			exitCode: 0,

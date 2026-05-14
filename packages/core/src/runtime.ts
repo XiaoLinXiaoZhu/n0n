@@ -53,7 +53,7 @@ export function buildToolsConfig(
 	editBackend: EditBackendConfig,
 	agent: AgentConfig,
 	security: SecurityConfig,
-	paths: { workspace: string; tempDir: string; platform?: "win32" | "darwin" | "linux"; execMode?: "unified" | "split" },
+	paths: { workspace: string; tempDir: string; platform?: "win32" | "darwin" | "linux" },
 ): ToolsConfig {
 	const base = {
 		security,
@@ -61,7 +61,6 @@ export function buildToolsConfig(
 		workspace: paths.workspace,
 		tempDir: paths.tempDir,
 		platform: paths.platform ?? (process.platform as "win32" | "darwin" | "linux"),
-		execMode: paths.execMode,
 	};
 	if (editBackend.type === "freeform-patch") {
 		return {

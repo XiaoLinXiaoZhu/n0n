@@ -112,9 +112,7 @@ export async function runHeadless(
 		workspace: paths.workspace,
 		tempDir: paths.temp,
 	});
-	const finalPrompt = toolsConfig.execMode === "split"
-		? effectivePrompt + "\n\n" + SPLIT_TOOLS_PROMPT
-		: effectivePrompt;
+	const finalPrompt = effectivePrompt + "\n\n" + SPLIT_TOOLS_PROMPT;
 	const client = options.client;
 	const toolkit = makeToolkit(
 		codeProgressConfig,
@@ -125,7 +123,6 @@ export async function runHeadless(
 		toolkit,
 		paths.workspace,
 		paths.temp,
-		toolsConfig.execMode,
 	);
 
 	let history: DomainMessage[] = [
