@@ -16,7 +16,7 @@ import {
 	PlainRenderer,
 } from "@n0n/core";
 import type { BaseWorkspacePaths } from "@n0n/shared";
-import { makeToolkit, SPLIT_TOOLS_PROMPT } from "@n0n/tools";
+import { makeToolkit } from "@n0n/tools";
 import type { DomainMessage, LLMClient, ProgressToolResult } from "@n0n/types";
 import { buildContextFewshot } from "./context-fewshot.ts";
 import { codeProgressConfig } from "./progress-config.ts";
@@ -112,7 +112,6 @@ export async function runHeadless(
 		workspace: paths.workspace,
 		tempDir: paths.temp,
 	});
-	const finalPrompt = effectivePrompt + "\n\n" + SPLIT_TOOLS_PROMPT;
 	const client = options.client;
 	const toolkit = makeToolkit(
 		codeProgressConfig,
@@ -126,7 +125,7 @@ export async function runHeadless(
 	);
 
 	let history: DomainMessage[] = [
-		{ type: "system", content: finalPrompt },
+		{ type: "system", content: effectivePrompt },
 		{ type: "cache_breakpoint" },
 		...contextFewshot,
 		{

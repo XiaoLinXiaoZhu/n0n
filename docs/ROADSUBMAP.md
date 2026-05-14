@@ -3,7 +3,7 @@
 > 将 exec 从"工具"降级为"执行后端"，observe / reason / act 成为正式工具。
 > 移除 unified/split 双模式开关，删除 exec 作为工具的所有痕迹。
 
-设计依据见 `docs/design/exec-split-rationale.md`。
+设计依据见 ROADMAP.md exec-split 章节。
 
 ---
 
@@ -29,11 +29,11 @@
 
 - 移除 `execMode` 字段（不再有 unified/split 切换）
 
-#### `packages/tools/src/exec/split-prompt.ts`
+#### `packages/tools/src/exec/split-prompt.ts（已删除）`
 
-- 从"补充提示词片段"变为"正式提示词片段"
-- 移除文件头注释中关于 `execMode === "split"` 的说明
-- 内容保持不变——它已经是 observe/reason/act 的正式使用说明
+- ~~从"补充提示词片段"变为"正式提示词片段"~~ 该文件已删除，内容内联到 code.md
+- ~~移除文件头注释中关于 execMode === "split" 的说明~~
+- ~~内容保持不变——它已经是 observe/reason/act 的正式使用说明~~
 
 ---
 
@@ -265,7 +265,7 @@ const toolColors = { observe: style.blue, reason: style.magenta, act: style.cyan
 | 文件 | 清理内容 |
 |------|---------|
 | `apps/code/src/index.ts` | 移除 `EXEC_MODE` 环境变量读取 |
-| `apps/code/src/repl.ts` | 移除 execMode 条件注入 SPLIT_TOOLS_PROMPT 的逻辑，改为始终注入 |
+| `apps/code/src/repl.ts` | 移除 SPLIT_TOOLS_PROMPT 导入，内容已内联到 code.md |
 | `apps/code/src/headless.ts` | 同上 |
 | `apps/code/src/context-fewshot.ts` | 移除 split 模式的 tool name 重映射逻辑（fewshot 中直接使用 observe/act） |
 | `packages/tools/src/config.ts` | 移除 `execMode` 字段 |

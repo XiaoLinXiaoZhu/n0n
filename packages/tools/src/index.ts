@@ -242,4 +242,3 @@ export type { ResponsesClient, ToolsConfig } from "./config.ts";
 
 export type { ProgressStatusConfig } from "./progress.ts";
 
-export { SPLIT_TOOLS_PROMPT } from "./exec/index.ts";

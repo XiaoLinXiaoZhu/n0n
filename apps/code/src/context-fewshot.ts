@@ -31,8 +31,8 @@ import type {
 
 // ── Slot 类型 ──
 
-interface ExecSlot {
-	_slot: "exec";
+interface ScriptSlot {
+	_slot: "script";
 	call: ObserveToolCall | ActToolCall;
 }
 
@@ -41,7 +41,7 @@ interface DerivedSlot {
 	build: (ctx: RuntimeCtx) => DomainMessage;
 }
 
-type FewshotEntry = DomainMessage | ExecSlot | DerivedSlot;
+type FewshotEntry = DomainMessage | ScriptSlot | DerivedSlot;
 
 interface RuntimeCtx {
 	results: Map<string, ToolResult>;
@@ -388,9 +388,9 @@ const FEWSHOT_TEMPLATE: FewshotEntry[] = [
 		toolCalls: [INIT_GLOBAL, INIT_PROJECT, SKILL_LIST, WORKING_1],
 	},
 
-	{ _slot: "exec", call: INIT_GLOBAL },
-	{ _slot: "exec", call: INIT_PROJECT },
-	{ _slot: "exec", call: SKILL_LIST },
+	{ _slot: "script", call: INIT_GLOBAL },
+	{ _slot: "script", call: INIT_PROJECT },
+	{ _slot: "script", call: SKILL_LIST },
 	WORKING_1_RESULT,
 
 	// ── Turn 2: progress(blocked) 索取验证任务 ──
@@ -445,11 +445,11 @@ const FEWSHOT_TEMPLATE: FewshotEntry[] = [
 // ██  渲染器
 // ════════════════════════════════════════════════════════════════
 
-function isSlot(entry: FewshotEntry): entry is ExecSlot | DerivedSlot {
+function isSlot(entry: FewshotEntry): entry is ScriptSlot | DerivedSlot {
 	return "_slot" in entry;
 }
 
-async function runExec(
+async function runTool(
 	toolkit: Toolkit,
 	call: ObserveToolCall | ActToolCall,
 ): Promise<ToolResult> {
@@ -487,15 +487,15 @@ async function renderFewshot(
 	workspace: string,
 ): Promise<DomainMessage[]> {
 	// Execute all exec slots in parallel
-	const execSlots = template.filter(
-		(e): e is ExecSlot => isSlot(e) && e._slot === "exec",
+	const scriptSlots = template.filter(
+		(e): e is ScriptSlot => isSlot(e) && e._slot === "script",
 	);
 	const execResults = await Promise.all(
-		execSlots.map((s) => runExec(toolkit, s.call)),
+		scriptSlots.map((s) => runTool(toolkit, s.call)),
 	);
 	const resultMap = new Map<string, ToolResult>();
-	for (let i = 0; i < execSlots.length; i++) {
-		resultMap.set(execSlots[i]!.call.id, execResults[i]!);
+	for (let i = 0; i < scriptSlots.length; i++) {
+		resultMap.set(scriptSlots[i]!.call.id, execResults[i]!);
 	}
 
 	const ctx: RuntimeCtx = { results: resultMap, workspace };
@@ -503,7 +503,7 @@ async function renderFewshot(
 	// Render template
 	return template.map((entry): DomainMessage => {
 		if (!isSlot(entry)) return entry;
-		if (entry._slot === "exec") return resultMap.get(entry.call.id)!;
+		if (entry._slot === "script") return resultMap.get(entry.call.id)!;
 		return entry.build(ctx);
 	});
 }

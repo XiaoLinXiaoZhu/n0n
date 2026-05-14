@@ -20,4 +20,4 @@ export {
 	findBlockedCommand,
 	handleBlockedCommand,
 } from "./security.ts";
-export { SPLIT_TOOLS_PROMPT } from "./split-prompt.ts";
+
