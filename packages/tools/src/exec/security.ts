@@ -5,7 +5,8 @@
  * 命中时可通过 confirmFn 请求用户确认，或直接拒绝执行。
  */
 
-import type { ExecToolCall, ExecToolResult } from "@n0n/types";
+import type { ExecToolResult } from "@n0n/types";
+import type { ExecCall } from "./executor.ts";
 
 /** 从脚本内容中提取命令名列表 */
 export function extractCommandNames(script: string): string[] {
@@ -43,7 +44,7 @@ export function findBlockedCommand(
 
 /** 处理被封禁的命令：请求用户确认或直接拒绝 */
 export async function handleBlockedCommand(
-	call: ExecToolCall,
+	call: ExecCall,
 	_cwd: string,
 	blockedCmd: string,
 	platform: "win32" | "darwin" | "linux",
@@ -70,7 +71,7 @@ export async function handleBlockedCommand(
 		if (normalized !== "y" && normalized !== "yes") {
 			return {
 				type: "tool_result",
-				tool: "exec" as const,
+				tool: call.tool,
 				call,
 				status: "completed" as const,
 				exitCode: 1,
@@ -83,7 +84,7 @@ export async function handleBlockedCommand(
 	}
 	return {
 		type: "tool_result",
-		tool: "exec" as const,
+		tool: call.tool,
 		call,
 		status: "completed" as const,
 		exitCode: 1,

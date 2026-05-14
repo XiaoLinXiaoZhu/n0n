@@ -30,12 +30,22 @@ import {
 	tailByTokens,
 } from "@n0n/shared";
 import type {
-	ExecToolCall,
+	ExecArgs,
 	ExecToolResult,
 	ToolOutputChunk,
 	ToolStreamEvent,
 } from "@n0n/types";
 import { findBlockedCommand, handleBlockedCommand } from "./security.ts";
+
+/**
+ * 内部执行调用类型 — carry 实际工具名（observe / reason / act）。
+ * 不依赖 @n0n/types 中的 ToolCallRecord 类型，避免循环依赖。
+ */
+export interface ExecCall {
+	id: string;
+	tool: "observe" | "reason" | "act";
+	args: ExecArgs;
+}
 
 /** 生成简短的截断输出文件名，自动避让已有文件 */
 function makeShortOutputPath(tempDir: string): string {
@@ -100,7 +110,7 @@ const TAIL_TOKENS = 2_000;
  * 已收集的输出和后续输出写入 .temp/ 日志文件。
  */
 export async function* execToolStream(
-	call: ExecToolCall,
+	call: ExecCall,
 	confirmFn: ((question: string) => Promise<string>) | undefined,
 	toolsConfig: {
 		workspace: string;
@@ -193,7 +203,7 @@ export async function* execToolStream(
 					pending.push({
 						type: "tool_output_chunk",
 						callId: call.id,
-						tool: "exec",
+						tool: call.tool,
 						chunk: text,
 					});
 					notify?.();
@@ -343,7 +353,7 @@ export async function* execToolStream(
 
 			yield {
 				type: "tool_result",
-				tool: "exec" as const,
+				tool: call.tool,
 				call,
 				status: "backgrounded",
 				pid,
@@ -391,7 +401,7 @@ export async function* execToolStream(
 
 			yield {
 				type: "tool_result",
-				tool: "exec" as const,
+				tool: call.tool,
 				call,
 				status: "truncated",
 				exitCode,
@@ -415,7 +425,7 @@ export async function* execToolStream(
 
 			yield {
 				type: "tool_result",
-				tool: "exec" as const,
+				tool: call.tool,
 				call,
 				status: "completed",
 				exitCode,
@@ -427,7 +437,7 @@ export async function* execToolStream(
 	} catch (err) {
 		yield {
 			type: "tool_result",
-			tool: "exec" as const,
+			tool: call.tool,
 			call,
 			status: "completed" as const,
 			exitCode: 1,
