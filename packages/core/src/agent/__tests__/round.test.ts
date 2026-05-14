@@ -52,12 +52,12 @@ function makeAccWithToolCalls(
 describe("recoverTruncatedCalls", () => {
 	it("无截断工具 → 空 pairs", async () => {
 		const acc = makeAccWithToolCalls([
-			{ index: 0, id: "tc_1", name: "exec", input: '{"script":"ls"}' },
+			{ index: 0, id: "tc_1", name: "observe", input: '{"script":"ls"}' },
 		]);
 		const readyTools = new Map<number, ToolCallRecord>();
 		readyTools.set(0, {
 			id: "tc_1",
-			tool: "exec",
+			tool: "observe",
 			args: { script: "ls" },
 		} as ToolCallRecord);
 
@@ -72,7 +72,7 @@ describe("recoverTruncatedCalls", () => {
 
 	it("截断的非 write 工具（无 recover）→ 占位 call + tool_arg_error", async () => {
 		const acc = makeAccWithToolCalls([
-			{ index: 0, id: "tc_1", name: "exec", input: '{"scri' },
+			{ index: 0, id: "tc_1", name: "observe", input: '{"scri' },
 		]);
 
 		const result = await recoverTruncatedCalls({
@@ -83,7 +83,7 @@ describe("recoverTruncatedCalls", () => {
 
 		expect(result.pairs).toHaveLength(1);
 		expect(result.pairs[0]!.status).toBe("unrecoverable");
-		expect(result.pairs[0]!.call.tool).toBe("exec");
+		expect(result.pairs[0]!.call.tool).toBe("observe");
 		expect(result.pairs[0]!.call.args as any).toEqual({});
 		expect(result.pairs[0]!.result.type).toBe("tool_arg_error");
 	});
@@ -146,7 +146,7 @@ describe("buildToolCallMessage", () => {
 
 		const tc: ToolCallRecord = {
 			id: "tc_1",
-			tool: "exec",
+			tool: "observe",
 			args: { script: "ls" },
 		} as ToolCallRecord;
 		const msg = buildToolCallMessage(acc, [tc]);
@@ -177,7 +177,7 @@ describe("collectJobMessages", () => {
 		const argError = {
 			type: "tool_arg_error",
 			callId: "tc_1",
-			tool: "exec",
+			tool: "observe",
 			error: "bad args",
 		};
 		const jobs = [mockFailedJob(tc, argError)];

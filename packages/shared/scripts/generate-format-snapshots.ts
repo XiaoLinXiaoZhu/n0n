@@ -98,7 +98,7 @@ const scenarios: Scenario[] = [
 				reasoning: null,
 				reasoningSignature: null,
 				toolCalls: [
-					{ id: "tc_1", tool: "exec", args: { script: "cat src/auth.ts" } },
+					{ id: "tc_1", tool: "observe", args: { script: "cat src/auth.ts" } },
 					{
 						id: "tc_2",
 						tool: "write",
@@ -116,11 +116,11 @@ const scenarios: Scenario[] = [
 		messages: [
 			{
 				type: "tool_result",
-				tool: "exec",
+				tool: "observe",
 				status: "completed",
 				call: {
 					id: "tc_1",
-					tool: "exec",
+					tool: "observe",
 					args: { script: "echo hello && ls", runtime: "sh", cwd: "src" },
 				},
 				exitCode: 0,
@@ -136,9 +136,9 @@ const scenarios: Scenario[] = [
 		messages: [
 			{
 				type: "tool_result",
-				tool: "exec",
+				tool: "observe",
 				status: "completed",
-				call: { id: "tc_2", tool: "exec", args: { script: "cat missing.txt" } },
+				call: { id: "tc_2", tool: "observe", args: { script: "cat missing.txt" } },
 				exitCode: 1,
 				stdout: "",
 				stderr: "cat: missing.txt: No such file or directory",
@@ -152,11 +152,11 @@ const scenarios: Scenario[] = [
 		messages: [
 			{
 				type: "tool_result",
-				tool: "exec",
+				tool: "observe",
 				status: "truncated",
 				call: {
 					id: "tc_3",
-					tool: "exec",
+					tool: "observe",
 					args: { script: "find . -name '*.ts'", runtime: "sh" },
 				},
 				exitCode: 0,
@@ -179,11 +179,11 @@ const scenarios: Scenario[] = [
 		messages: [
 			{
 				type: "tool_result",
-				tool: "exec",
+				tool: "observe",
 				status: "backgrounded",
 				call: {
 					id: "tc_4",
-					tool: "exec",
+					tool: "observe",
 					args: { script: "npm install", waitfor: 30 },
 				},
 				pid: 65432,
@@ -268,7 +268,7 @@ const scenarios: Scenario[] = [
 			{
 				type: "tool_arg_error",
 				callId: "tc_err",
-				tool: "exec",
+				tool: "observe",
 				error: {
 					kind: "invalid_args",
 					issues: [{ path: "script", message: "Required" }],

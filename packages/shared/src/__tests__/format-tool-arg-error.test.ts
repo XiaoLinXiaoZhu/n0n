@@ -39,7 +39,7 @@ describe("formatToolArgError", () => {
 			);
 
 			expect(result).toContain("read");
-			expect(result).toContain("exec");
+			expect(result).toContain("observe");
 			expect(result).toContain("write");
 			expect(result).toContain("edit");
 		});
@@ -65,7 +65,7 @@ describe("formatToolArgError", () => {
 				makeMsg({
 					kind: "invalid_args",
 					issues: [{ path: "script", message: "Required" }],
-				}, "exec"),
+				}, "observe"),
 				tags,
 				0,
 			);
@@ -80,7 +80,7 @@ describe("formatToolArgError", () => {
 					kind: "invalid_args",
 					issues: [{ path: "script", message: "Required" }],
 					schema: { type: "object", properties: { script: { type: "string" } }, required: ["script"] },
-				}, "exec"),
+				}, "observe"),
 				tags,
 				0,
 			);
@@ -93,7 +93,7 @@ describe("formatToolArgError", () => {
 	describe("truncated_recovery", () => {
 		it("应包含截断相关提示", () => {
 			const result = formatToolArgError(
-				makeMsg({ kind: "truncated_recovery" }, "exec"),
+				makeMsg({ kind: "truncated_recovery" }, "observe"),
 				tags,
 				0,
 			);
@@ -105,7 +105,7 @@ describe("formatToolArgError", () => {
 	describe("internal_error", () => {
 		it("应包含错误消息", () => {
 			const result = formatToolArgError(
-				makeMsg({ kind: "internal_error", message: "something broke" }, "exec"),
+				makeMsg({ kind: "internal_error", message: "something broke" }, "observe"),
 				tags,
 				0,
 			);

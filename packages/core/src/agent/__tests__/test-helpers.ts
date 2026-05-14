@@ -10,7 +10,7 @@ import type { PipelineJob } from "../scheduler.ts";
 // ── Mock ToolCallRecord 工厂 ──
 
 export function mockExecTC(id: string, script = "echo hi"): ToolCallRecord {
-	return { id, tool: "exec", args: { script } } as ToolCallRecord;
+	return { id, tool: "observe", args: { script } } as ToolCallRecord;
 }
 
 export function mockWriteTC(id: string, path: string): ToolCallRecord {
@@ -46,7 +46,7 @@ export function mockResult(tc: ToolCallRecord): ToolResult {
 export function mockExecResult(tc: ToolCallRecord): ToolResult {
 	return {
 		type: "tool_result",
-		tool: "exec",
+		tool: "observe",
 		call: tc,
 		status: "completed",
 		exitCode: 0,

@@ -29,7 +29,7 @@ async function collectStream(
 function mockExecEntry(): ToolEntry {
 	return {
 		definition: {
-			name: "exec",
+			name: "observe",
 			description: "Execute a script",
 			parameters: {
 				type: "object",
@@ -43,7 +43,7 @@ function mockExecEntry(): ToolEntry {
 		stream: false,
 		execute: async (_tc: any) => ({
 			type: "tool_result" as const,
-			tool: "exec" as const,
+			tool: "observe" as const,
 			call: _tc,
 			status: "completed" as const,
 			exitCode: 0,
@@ -101,13 +101,13 @@ describe("executeToolStream", () => {
 		it("应正常执行且不报 tool_arg_error", async () => {
 			const tc: ToolCallRecord = {
 				id: "call_exec",
-				tool: "exec",
+				tool: "observe",
 				args: { script: "echo hello", runtime: "sh" },
 			} as unknown as ToolCallRecord;
 
 			const mockEntry = mockExecEntry();
 			const getEntry: GetToolEntry = (name) =>
-				name === "exec" ? mockEntry : undefined;
+				name === "observe" ? mockEntry : undefined;
 			const events = await collectStream(tc, getEntry);
 
 			const argErrors = events.filter(

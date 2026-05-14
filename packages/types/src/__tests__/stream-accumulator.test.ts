@@ -50,7 +50,7 @@ describe("StreamAccumulator", () => {
 			type: "tool_call_delta",
 			index: 0,
 			id: "call_1",
-			name: "exec",
+			name: "observe",
 			arguments: '{"scr',
 		});
 		acc.push({
@@ -69,7 +69,7 @@ describe("StreamAccumulator", () => {
 		const msg = acc.toMessage();
 		expect(msg.toolCalls).toHaveLength(2);
 		expect(msg.toolCalls[0]?.toolCallId).toBe("call_1");
-		expect(msg.toolCalls[0]?.toolName).toBe("exec");
+		expect(msg.toolCalls[0]?.toolName).toBe("observe");
 		expect(msg.toolCalls[0]?.input).toBe('{"script":"ls"}');
 		expect(msg.toolCalls[1]?.toolCallId).toBe("call_2");
 		expect(msg.toolCalls[1]?.toolName).toBe("write");
@@ -125,7 +125,7 @@ describe("StreamAccumulator", () => {
 				type: "tool_call_delta",
 				index: 0,
 				id: "tc_1",
-				name: "exec",
+				name: "observe",
 				arguments: '{"script":',
 			},
 			{
@@ -154,7 +154,7 @@ describe("StreamAccumulator", () => {
 		expect(msg.reasoningSignature).toBe("sig_xyz");
 		expect(msg.content).toBe("Let me check");
 		expect(msg.toolCalls).toHaveLength(1);
-		expect(msg.toolCalls[0]?.toolName).toBe("exec");
+		expect(msg.toolCalls[0]?.toolName).toBe("observe");
 		expect(msg.toolCalls[0]?.input).toBe('{"script":"ls -la"}');
 		expect(acc.finishReason).toBe("tool_calls");
 	});

@@ -40,18 +40,18 @@ describe("RichRenderer 虚拟终端保真测试", () => {
 
 		renderer.toolExecStart("call_1", {
 			id: "call_1",
-			tool: "exec",
+			tool: "observe",
 			args: { script: "echo hello", runtime: "cmd" },
 		});
 		renderer.toolExecEnd("call_1", {
 			status: "completed",
 			result: {
 				type: "tool_result" as const,
-				tool: "exec",
+				tool: "observe",
 				status: "completed" as const,
 				call: {
 					id: "call_1",
-					tool: "exec",
+					tool: "observe",
 					args: { script: "echo hello", runtime: "cmd" },
 				},
 				stdout: "hello",
@@ -71,7 +71,7 @@ describe("RichRenderer 虚拟终端保真测试", () => {
 
 		// 应有结果行
 		const hasResult = cleanLines.some(
-			(l) => l.includes("exec") && l.includes("exit=0"),
+			(l) => l.includes("observe") && l.includes("exit=0"),
 		);
 		expect(hasResult).toBe(true);
 
@@ -151,25 +151,25 @@ describe("RichRenderer 虚拟终端保真测试", () => {
 			}
 			const tc: ToolCallRecord = {
 				id: "call_1",
-				tool: "exec",
+				tool: "observe",
 				args: JSON.parse(json) as ExecArgs,
 			};
 			renderer.toolCallArgEnd(0, tc);
 			renderer.streamEnd();
 			renderer.toolExecStart("call_1", {
 				id: "call_1",
-				tool: "exec",
+				tool: "observe",
 				args: JSON.parse(json),
 			});
 			renderer.toolExecEnd("call_1", {
 				status: "completed",
 				result: {
 					type: "tool_result" as const,
-					tool: "exec",
+					tool: "observe",
 					status: "completed" as const,
 					call: {
 						id: "call_1",
-						tool: "exec",
+						tool: "observe",
 						args: JSON.parse(json),
 					},
 					stdout: "output",
@@ -208,7 +208,7 @@ describe("RichRenderer 虚拟终端保真测试", () => {
 
 		renderer.toolExecStart("call_1", {
 			id: "call_1",
-			tool: "exec",
+			tool: "observe",
 			args: { script: "echo hi" },
 		});
 

@@ -50,7 +50,7 @@ describe("recoverPartialCalls", () => {
 				},
 			];
 
-			const knownTools = new Set(["exec", "write", "edit", "progress"]);
+			const knownTools = new Set(["observe", "write", "edit", "progress"]);
 			const result = await recoverPartialCalls(
 				partials,
 				makeTryRecover(knownTools),
@@ -75,7 +75,7 @@ describe("recoverPartialCalls", () => {
 				},
 			];
 
-			const knownTools = new Set(["exec", "write", "edit", "progress"]);
+			const knownTools = new Set(["observe", "write", "edit", "progress"]);
 			const result = await recoverPartialCalls(
 				partials,
 				makeTryRecover(knownTools),
@@ -94,12 +94,12 @@ describe("recoverPartialCalls", () => {
 				{
 					index: 0,
 					toolCallId: "call_003",
-					toolName: "exec",
+					toolName: "observe",
 					partialInput: '{"script":"ec', // 真正的截断
 				},
 			];
 
-			const knownTools = new Set(["exec", "write", "edit"]);
+			const knownTools = new Set(["observe", "write", "edit"]);
 			const result = await recoverPartialCalls(
 				partials,
 				makeTryRecover(knownTools),
