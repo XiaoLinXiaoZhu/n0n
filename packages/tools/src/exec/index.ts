@@ -8,13 +8,13 @@
  */
 
 export {
-	makeExecToolDefinition,
 	ExecArgsSchema,
 	makeObserveToolDefinition,
 	makeReasonToolDefinition,
 	makeActToolDefinition,
 } from "./definition.ts";
 export { execToolStream } from "./executor.ts";
+export type { ExecCall } from "./executor.ts";
 export {
 	extractCommandNames,
 	findBlockedCommand,

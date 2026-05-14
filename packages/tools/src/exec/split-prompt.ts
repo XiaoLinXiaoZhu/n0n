@@ -1,7 +1,7 @@
 /**
  * exec split mode — 补充提示词片段
  *
- * 当 execMode === "split" 时，注入到系统提示词中替换 exec 相关描述。
+ * 始终作为系统提示词的一部分注入，取代 exec 工具描述。
  * 供 app 层按需读取并插入 system prompt。
  */
 
