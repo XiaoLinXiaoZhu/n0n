@@ -49,7 +49,9 @@ function toolResultToStructured(
 	msgIndex: number,
 ): FormattedToolResult {
 	switch (msg.tool) {
-		case "exec":
+		case "observe":
+		case "reason":
+		case "act":
 			return formatExecResult(msg, tags, msgIndex);
 		case "write":
 			return formatWriteResult(msg, tags, msgIndex);
@@ -57,6 +59,9 @@ function toolResultToStructured(
 			return formatEditResult(msg, tags, msgIndex);
 		case "progress":
 			return formatProgressResult(msg, tags, msgIndex);
+		default:
+			const _exhaustive: never = msg;
+			throw new Error(`Unknown tool`);
 	}
 }
 

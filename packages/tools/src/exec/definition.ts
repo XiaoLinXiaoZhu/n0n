@@ -1,8 +1,14 @@
 /**
- * exec 工具定义 — 完全静态
+ * observe / reason / act 工具定义 — 完全静态
  *
+ * 三个工具共享完全相同的参数结构（ExecArgsSchema）和执行后端（execToolStream），
+ * 区分仅靠工具名和 description。
  * 工具描述和参数定义均为静态常量，不依赖任何环境探测结果。
  * 环境信息（可用 runtimes、CLI 工具）由 bootstrap fewshot 提供。
+ *
+ * waitfor 默认值和上限在不同工具间有差异：
+ * - observe / reason: 默认 60s, 上限 120s — 轻量、无副作用的读操作
+ * - act: 默认 120s, 上限 240s — 可能需要长时间等待的变更操作
  */
 
 import type { ExecArgs, ToolDefinition } from "@n0n/types";
@@ -14,19 +20,21 @@ import {
 
 export { ExecArgsSchema };
 
-const STATIC_DESCRIPTION = `Execute a script. Content is written to a temp file and run with the specified runtime. Returns stdout, stderr, and exit code.
-
-Runtimes and CLI tools available in the current environment are listed in the bootstrap context above — use them directly without probing.
-
-Output exceeding ~4 000 tokens is auto-truncated: only the last ~1 000 tokens are kept and the full output is saved to a file. To avoid losing important content, assess first then read selectively, or split across parallel tool calls.`;
-
 const ALL_RUNTIMES =
 	"sh, bash, pwsh, cmd, bun, node, deno, python, python3, uv";
+
+const OBSERVE_DESCRIPTION = "Read files, search code, or check environment state. No side effects — use this for gathering information only.";
+
+const REASON_DESCRIPTION = "Structured thinking, data processing, or hypothesis verification. No side effects — output is for the model's own consumption, not presented to the user.";
+
+const ACT_DESCRIPTION = "Execute actions that change environment state: run tests, build, commit, install dependencies, etc. Actions may be irreversible — verify your reasoning (via reason) before acting.";
 
 function makeExecLikeDefinition(
 	platform: "win32" | "darwin" | "linux",
 	name: string,
 	description: string,
+	waitforDefault: number,
+	waitforMax: number,
 ): ToolDefinition {
 	const defaultRuntime = platform === "win32" ? "cmd" : "sh";
 
@@ -35,8 +43,7 @@ function makeExecLikeDefinition(
 			"Script content. Single command or multi-line code with imports, loops, etc.",
 		runtime: `Runtime (default: "${defaultRuntime}"). Options: ${ALL_RUNTIMES}. Shell runtimes are generally always available; language runtimes depend on installation — check bootstrap context.`,
 		cwd: "Working directory (default: injected workspace root)",
-		waitfor:
-			"Max seconds to wait for process (default: 120, max: 240). Process continues in background if exceeded.",
+		waitfor: `Max seconds to wait for process (default: ${waitforDefault}, max: ${waitforMax}). Process continues in background if exceeded.`,
 	};
 
 	const PARAMETERS = zodToParameters(ExecArgsSchema, EXEC_FIELD_DESCRIPTIONS);
@@ -44,21 +51,14 @@ function makeExecLikeDefinition(
 	return { name, description, parameters: PARAMETERS };
 }
 
-export function makeExecToolDefinition(platform: "win32" | "darwin" | "linux"): ToolDefinition {
-	return makeExecLikeDefinition(platform, "exec", STATIC_DESCRIPTION);
-}
-
 export function makeObserveToolDefinition(platform: "win32" | "darwin" | "linux"): ToolDefinition {
-	return makeExecLikeDefinition(platform, "observe",
-		"Read files, search code, or check environment state. No side effects — use this for gathering information only.");
+	return makeExecLikeDefinition(platform, "observe", OBSERVE_DESCRIPTION, 60, 120);
 }
 
 export function makeReasonToolDefinition(platform: "win32" | "darwin" | "linux"): ToolDefinition {
-	return makeExecLikeDefinition(platform, "reason",
-		"Structured thinking, data processing, or hypothesis verification. No side effects — output is for the model's own consumption, not presented to the user.");
+	return makeExecLikeDefinition(platform, "reason", REASON_DESCRIPTION, 60, 120);
 }
 
 export function makeActToolDefinition(platform: "win32" | "darwin" | "linux"): ToolDefinition {
-	return makeExecLikeDefinition(platform, "act",
-		"Execute actions that change environment state: run tests, build, commit, install dependencies, etc.");
+	return makeExecLikeDefinition(platform, "act", ACT_DESCRIPTION, 120, 240);
 }

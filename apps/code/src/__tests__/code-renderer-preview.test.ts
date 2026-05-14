@@ -144,7 +144,7 @@ describe("CodeRenderer 流式 write 预览", () => {
 	test("非 write 工具不触发预览", () => {
 		const renderer = new CodeRenderer(TEST_PATHS);
 
-		simulateStream(renderer, 0, "exec", ['{"script": "echo hello"}'], {
+		simulateStream(renderer, 0, "observe", ['{"script": "echo hello"}'], {
 			script: "echo hello",
 		});
 

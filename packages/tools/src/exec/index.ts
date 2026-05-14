@@ -8,16 +8,16 @@
  */
 
 export {
-	makeExecToolDefinition,
 	ExecArgsSchema,
 	makeObserveToolDefinition,
 	makeReasonToolDefinition,
 	makeActToolDefinition,
 } from "./definition.ts";
 export { execToolStream } from "./executor.ts";
+export type { ExecCall } from "./executor.ts";
 export {
 	extractCommandNames,
 	findBlockedCommand,
 	handleBlockedCommand,
 } from "./security.ts";
-export { SPLIT_TOOLS_PROMPT } from "./split-prompt.ts";
+

@@ -11,14 +11,15 @@
  * 4 assistant turns 教学流程：
  * Turn 1: n0n-init global + project + n0n-skill + progress(working) — 多路并行
  * Turn 2: progress(blocked) 索取验证任务 — 教 blocked 用法
- * Turn 3: 2×write + 2×edit + 2×exec + progress(working) — 混合工具同批不等待
- * Turn 4: exec(清理) + progress(completed) — 收尾 + 结构化汇报
+ * Turn 3: 2×write + 2×edit + 2×observe + progress(working) — 混合工具同批不等待
+ * Turn 4: act(清理) + progress(completed) — 收尾 + 结构化汇报
  */
 
 import type { Toolkit } from "@n0n/tools";
 import type {
 	DomainMessage,
-	ExecToolCall,
+	ObserveToolCall,
+	ActToolCall,
 	ProgressToolCall,
 	ProgressToolResult,
 	ToolCallRecord,
@@ -30,9 +31,9 @@ import type {
 
 // ── Slot 类型 ──
 
-interface ExecSlot {
-	_slot: "exec";
-	call: ExecToolCall;
+interface ScriptSlot {
+	_slot: "script";
+	call: ObserveToolCall | ActToolCall;
 }
 
 interface DerivedSlot {
@@ -40,7 +41,7 @@ interface DerivedSlot {
 	build: (ctx: RuntimeCtx) => DomainMessage;
 }
 
-type FewshotEntry = DomainMessage | ExecSlot | DerivedSlot;
+type FewshotEntry = DomainMessage | ScriptSlot | DerivedSlot;
 
 interface RuntimeCtx {
 	results: Map<string, ToolResult>;
@@ -55,21 +56,21 @@ const IS_WINDOWS = process.platform === "win32";
 
 // ── Turn 1: 环境发现（4 并行）──
 
-const INIT_GLOBAL: ExecToolCall = {
+const INIT_GLOBAL: ObserveToolCall = {
 	id: "init_global",
-	tool: "exec",
+	tool: "observe",
 	args: { script: "n0n-init global" },
 };
 
-const INIT_PROJECT: ExecToolCall = {
+const INIT_PROJECT: ObserveToolCall = {
 	id: "init_project",
-	tool: "exec",
+	tool: "observe",
 	args: { script: "n0n-init project" },
 };
 
-const SKILL_LIST: ExecToolCall = {
+const SKILL_LIST: ObserveToolCall = {
 	id: "skill_list",
-	tool: "exec",
+	tool: "observe",
 	args: { script: IS_WINDOWS ? "n0n-skill" : "n0n-skill" },
 };
 
@@ -123,23 +124,17 @@ const EDIT_HELLO: ToolCallRecord = {
 	},
 };
 
-const EXEC_HELLO: ExecToolCall = {
+const OBSERVE_HELLO: ObserveToolCall = {
 	id: "x_hello",
-	tool: "exec",
-	args: {
-		script: IS_WINDOWS
-			? "bun .temp/hello.ts"
-			: "bun .temp/hello.ts",
-	},
+	tool: "observe",
+	args: { script: IS_WINDOWS ? "bun .temp/hello.ts" : "bun .temp/hello.ts" },
 };
 
-const EXEC_TEST: ExecToolCall = {
+const OBSERVE_TEST: ObserveToolCall = {
 	id: "x_test",
-	tool: "exec",
+	tool: "observe",
 	args: {
-		script: IS_WINDOWS
-			? "type .temp\\test.md"
-			: "cat .temp/test.md",
+		script: IS_WINDOWS ? "type .temp\\test.md" : "cat .temp/test.md",
 	},
 };
 
@@ -155,9 +150,9 @@ const WORKING_2: ProgressToolCall = {
 
 // ── Turn 4: 清理 + 提交 ──
 
-const EXEC_CLEANUP: ExecToolCall = {
+const ACT_CLEANUP: ActToolCall = {
 	id: "x_cleanup",
-	tool: "exec",
+	tool: "act",
 	args: {
 		script: IS_WINDOWS
 			? "del .temp\\hello.ts .temp\\test.md 2>nul & echo cleaned"
@@ -233,8 +228,8 @@ const EDIT_HELLO_RESULT: DomainMessage = {
 
 const EXEC_HELLO_RESULT: DomainMessage = {
 	type: "tool_result",
-	tool: "exec" as const,
-	call: EXEC_HELLO,
+	tool: "observe" as const,
+	call: OBSERVE_HELLO,
 	status: "completed" as const,
 	exitCode: 0,
 	stdout: "Hello World",
@@ -244,8 +239,8 @@ const EXEC_HELLO_RESULT: DomainMessage = {
 
 const EXEC_TEST_RESULT: DomainMessage = {
 	type: "tool_result",
-	tool: "exec" as const,
-	call: EXEC_TEST,
+	tool: "observe" as const,
+	call: OBSERVE_TEST,
 	status: "completed" as const,
 	exitCode: 0,
 	stdout: "# Test\nStatus: DONE",
@@ -261,10 +256,10 @@ const WORKING_2_RESULT: DomainMessage = {
 	userResponse: "继续",
 } satisfies ProgressToolResult as DomainMessage;
 
-const EXEC_CLEANUP_RESULT: DomainMessage = {
+const ACT_CLEANUP_RESULT: DomainMessage = {
 	type: "tool_result",
-	tool: "exec" as const,
-	call: EXEC_CLEANUP,
+	tool: "act" as const,
+	call: ACT_CLEANUP,
 	status: "completed" as const,
 	exitCode: 0,
 	stdout: "cleaned",
@@ -283,14 +278,10 @@ function buildCompletedCall(ctx: RuntimeCtx): DomainMessage {
 
 	// 从输出中提取关键信息
 	const os = globalOut.match(/\[OS\]\n(.+)/)?.[1] ?? process.platform;
-	const branch =
-		projectOut.match(/Branch: (.+)/)?.[1] ?? "unknown";
-	const workspace =
-		projectOut.match(/\[Workspace\]\n(.+)/)?.[1] ?? ctx.workspace;
-	const fileInfo =
-		projectOut.match(/Source files: (\d+)/)?.[1] ?? "?";
-	const lineInfo =
-		projectOut.match(/Total lines: (.+)/)?.[1] ?? "?";
+	const branch = projectOut.match(/Branch: (.+)/)?.[1] ?? "unknown";
+	const workspace = projectOut.match(/\[Workspace\]\n(.+)/)?.[1] ?? ctx.workspace;
+	const fileInfo = projectOut.match(/Source files: (\d+)/)?.[1] ?? "?";
+	const lineInfo = projectOut.match(/Total lines: (.+)/)?.[1] ?? "?";
 	const skills =
 		skillOut
 			.match(/  (\w+) —/g)
@@ -304,7 +295,7 @@ function buildCompletedCall(ctx: RuntimeCtx): DomainMessage {
 		`代码库：${fileInfo} 源文件，${lineInfo}。`,
 		`可用 skills: ${skills}。`,
 		``,
-		`并行工具调用验证通过：write/edit/exec 可同批执行、互不等待。`,
+		`并行工具调用验证通过：write/edit/observe 可同批执行、互不等待。`,
 		`收到实际请求后，我会结合环境信息判断是否有合适的 skill 可加载，然后执行任务。`,
 	].join("\n");
 
@@ -319,7 +310,7 @@ function buildCompletedCall(ctx: RuntimeCtx): DomainMessage {
 		content: null,
 		reasoning: null,
 		reasoningSignature: null,
-		toolCalls: [EXEC_CLEANUP, call],
+		toolCalls: [ACT_CLEANUP, call],
 	};
 }
 
@@ -346,7 +337,7 @@ function buildCompletedResults(ctx: RuntimeCtx): DomainMessage[] {
 		`代码库：${fileInfo} 源文件，${lineInfo}。`,
 		`可用 skills: ${skills}。`,
 		``,
-		`并行工具调用验证通过：write/edit/exec 可同批执行、互不等待。`,
+		`并行工具调用验证通过：write/edit/observe 可同批执行、互不等待。`,
 		`收到实际请求后，我会结合环境信息判断是否有合适的 skill 可加载，然后执行任务。`,
 	].join("\n");
 
@@ -357,7 +348,7 @@ function buildCompletedResults(ctx: RuntimeCtx): DomainMessage[] {
 	};
 
 	return [
-		EXEC_CLEANUP_RESULT,
+		ACT_CLEANUP_RESULT,
 		{
 			type: "tool_result",
 			tool: "progress" as const,
@@ -397,9 +388,9 @@ const FEWSHOT_TEMPLATE: FewshotEntry[] = [
 		toolCalls: [INIT_GLOBAL, INIT_PROJECT, SKILL_LIST, WORKING_1],
 	},
 
-	{ _slot: "exec", call: INIT_GLOBAL },
-	{ _slot: "exec", call: INIT_PROJECT },
-	{ _slot: "exec", call: SKILL_LIST },
+	{ _slot: "script", call: INIT_GLOBAL },
+	{ _slot: "script", call: INIT_PROJECT },
+	{ _slot: "script", call: SKILL_LIST },
 	WORKING_1_RESULT,
 
 	// ── Turn 2: progress(blocked) 索取验证任务 ──
@@ -424,8 +415,8 @@ const FEWSHOT_TEMPLATE: FewshotEntry[] = [
 			WRITE_TEST,
 			EDIT_TEST,
 			EDIT_HELLO,
-			EXEC_HELLO,
-			EXEC_TEST,
+			OBSERVE_HELLO,
+			OBSERVE_TEST,
 			WORKING_2,
 		],
 	},
@@ -440,7 +431,6 @@ const FEWSHOT_TEMPLATE: FewshotEntry[] = [
 
 	// ── Turn 4: 清理 + completed（derived）──
 	{ _slot: "derived", build: buildCompletedCall },
-	// Results also derived (contain dynamic env info)
 	{
 		_slot: "derived",
 		build: (ctx) => buildCompletedResults(ctx)[0]!,
@@ -455,17 +445,18 @@ const FEWSHOT_TEMPLATE: FewshotEntry[] = [
 // ██  渲染器
 // ════════════════════════════════════════════════════════════════
 
-function isSlot(entry: FewshotEntry): entry is ExecSlot | DerivedSlot {
+function isSlot(entry: FewshotEntry): entry is ScriptSlot | DerivedSlot {
 	return "_slot" in entry;
 }
 
-async function runExec(
+async function runTool(
 	toolkit: Toolkit,
-	call: ExecToolCall,
+	call: ObserveToolCall | ActToolCall,
 ): Promise<ToolResult> {
-	const entry = toolkit.getEntry("exec") ?? toolkit.getEntry("observe");
+	// observe 和 act 共享同一个执行后端
+	const entry = toolkit.getEntry(call.tool) ?? toolkit.getEntry("observe");
 	if (!entry?.stream)
-		throw new Error("exec-like tool entry not found or not stream");
+		throw new Error(`${call.tool} tool entry not found or not stream`);
 	const gen = (
 		entry.execute as (tc: ToolCallRecord) => AsyncGenerator<ToolStreamEvent>
 	)(call);
@@ -479,7 +470,9 @@ async function runExec(
 }
 
 function extractStdout(result: ToolResult | undefined): string {
-	if (!result || result.tool !== "exec") return "";
+	if (!result) return "";
+	const tool = result.tool;
+	if (tool !== "observe" && tool !== "act") return "";
 	if ("stdout" in result) return result.stdout;
 	if ("stdoutSoFar" in result)
 		return (result as { stdoutSoFar: string }).stdoutSoFar;
@@ -494,15 +487,15 @@ async function renderFewshot(
 	workspace: string,
 ): Promise<DomainMessage[]> {
 	// Execute all exec slots in parallel
-	const execSlots = template.filter(
-		(e): e is ExecSlot => isSlot(e) && e._slot === "exec",
+	const scriptSlots = template.filter(
+		(e): e is ScriptSlot => isSlot(e) && e._slot === "script",
 	);
 	const execResults = await Promise.all(
-		execSlots.map((s) => runExec(toolkit, s.call)),
+		scriptSlots.map((s) => runTool(toolkit, s.call)),
 	);
 	const resultMap = new Map<string, ToolResult>();
-	for (let i = 0; i < execSlots.length; i++) {
-		resultMap.set(execSlots[i]!.call.id, execResults[i]!);
+	for (let i = 0; i < scriptSlots.length; i++) {
+		resultMap.set(scriptSlots[i]!.call.id, execResults[i]!);
 	}
 
 	const ctx: RuntimeCtx = { results: resultMap, workspace };
@@ -510,33 +503,8 @@ async function renderFewshot(
 	// Render template
 	return template.map((entry): DomainMessage => {
 		if (!isSlot(entry)) return entry;
-		if (entry._slot === "exec") return resultMap.get(entry.call.id)!;
+		if (entry._slot === "script") return resultMap.get(entry.call.id)!;
 		return entry.build(ctx);
-	});
-}
-
-/** Split 模式下，将 fewshot 中的 exec 工具名映射为 observe/act */
-function remapExecToolNames(messages: DomainMessage[]): DomainMessage[] {
-	// 根据脚本内容判断应该是 observe 还是 act
-	const classifyScript = (script: string): "observe" | "act" => {
-		// 删除、构建等操作是 act
-		if (/\b(del|rm|mkdir|git commit|git push|bun run build|npm run)\b/i.test(script)) return "act";
-		// 默认都是 observe（读取环境信息）
-		return "observe";
-	};
-
-	return messages.map((msg) => {
-		if (msg.type === "assistant_tool_call") {
-			return {
-				...msg,
-				toolCalls: msg.toolCalls.map((tc) => {
-					if (tc.tool !== "exec") return tc;
-					const script = (tc.args as { script?: string })?.script ?? "";
-					return { ...tc, tool: classifyScript(script) } as unknown as typeof tc;
-				}),
-			};
-		}
-		return msg;
 	});
 }
 
@@ -546,9 +514,6 @@ export async function buildContextFewshot(
 	toolkit: Toolkit,
 	workspace: string,
 	_tempDir?: string,
-	execMode?: "unified" | "split",
 ): Promise<DomainMessage[]> {
-	const messages = await renderFewshot(FEWSHOT_TEMPLATE, toolkit, workspace);
-	if (execMode !== "split") return messages;
-	return remapExecToolNames(messages);
+	return renderFewshot(FEWSHOT_TEMPLATE, toolkit, workspace);
 }

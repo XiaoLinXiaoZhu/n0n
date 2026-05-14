@@ -2,9 +2,11 @@
  * @n0n/tools — 统一工具注册表
  *
  * 工具集：
+ * - observe: 读文件、搜索代码、检查环境状态（无副作用）
+ * - reason: 物化思考，将推理过程编码为可执行代码（无副作用）
+ * - act: 执行环境变更操作（有副作用，谨慎使用）
  * - write: 文件创建/覆盖
  * - edit: 文件内容修改（影子编辑 — 意图驱动）
- * - exec: 脚本执行（script + runtime）
  * - progress: 报告进度/提交结果（动态生成）
  *
  * 每个工具使用 ToolDefinition 格式定义 + 自定义执行器绑定。
@@ -15,7 +17,9 @@ import type {
 	CanStartFn,
 	DomainMessage,
 	EditToolCall,
-	ExecToolCall,
+	ObserveToolCall,
+	ReasonToolCall,
+	ActToolCall,
 	ProgressToolCall,
 	ToolCallRecord,
 	ToolDefinition,
@@ -33,7 +37,6 @@ import {
 	StrReplaceBackend,
 } from "./edit/index.ts";
 import {
-	makeExecToolDefinition,
 	makeObserveToolDefinition,
 	makeReasonToolDefinition,
 	makeActToolDefinition,
@@ -122,18 +125,16 @@ function buildBaseRegistry(
 		defaultExecWaitfor: toolsConfig.agent.defaultExecWaitfor,
 	};
 
-	// observe/reason/act 的 call.tool 重写为 "exec"，因为：
-	// 1. ExecToolResult 类型要求 tool: "exec"（ToolMap 中只注册了 exec）
-	// 2. format-prompt 和 renderer 的 switch 依赖 result.tool === "exec"
-	// 原始工具名保留在 assistant_tool_call 消息的 toolCalls 数组中，
-	// 事后分析通过 toolCallId 配对即可还原。
+	// observe / reason / act 共享同一个执行后端 execToolStream，
+	// call.tool 透传实际工具名（"observe" / "reason" / "act"），
+	// executor 将其写入 result.tool，供 formatter 和 renderer 作为围栏信号。
 	const makeExecEntry = (definition: ToolDefinition): ToolEntry => ({
 		definition,
 		stream: true,
 		execute: (tc, confirmFn) => {
-			const call: ExecToolCall = {
+			const call = {
 				id: tc.id,
-				tool: "exec" as const,
+				tool: tc.tool as "observe" | "reason" | "act",
 				args: ExecArgsSchema.parse(tc.args),
 			};
 			return execToolStream(call, confirmFn, execConfig);
@@ -146,7 +147,6 @@ function buildBaseRegistry(
 			: new StrReplaceBackend(toolsConfig.editorClient);
 
 	return {
-		exec: makeExecEntry(makeExecToolDefinition(toolsConfig.platform)),
 		observe: makeExecEntry(makeObserveToolDefinition(toolsConfig.platform)),
 		reason: makeExecEntry(makeReasonToolDefinition(toolsConfig.platform)),
 		act: makeExecEntry(makeActToolDefinition(toolsConfig.platform)),
@@ -189,13 +189,12 @@ export interface Toolkit {
 }
 
 export const REGISTERED_TOOLS = new Set([
-	"exec",
-	"write",
-	"edit",
-	"progress",
 	"observe",
 	"reason",
 	"act",
+	"write",
+	"edit",
+	"progress",
 ]);
 
 /**
@@ -226,9 +225,7 @@ export function makeToolkit(
 
 	// 工具顺序是隐性优先级信号——模型对前置工具有注意力偏向。
 	// 显式声明顺序，避免依赖 JS 对象属性的插入顺序。
-	const TOOL_ORDER = toolsConfig.execMode === "split"
-		? ["progress", "observe", "reason", "act", "write", "edit"] as const
-		: ["progress", "exec", "write", "edit"] as const;
+	const TOOL_ORDER = ["progress", "observe", "reason", "act", "write", "edit"] as const;
 	const tools = TOOL_ORDER.map((name) => registry[name]!.definition);
 
 	const activeTools = new Set<string>(TOOL_ORDER);
@@ -244,6 +241,4 @@ export type { CanStartFn } from "@n0n/types";
 export type { ResponsesClient, ToolsConfig } from "./config.ts";
 
 export type { ProgressStatusConfig } from "./progress.ts";
-
-export { SPLIT_TOOLS_PROMPT } from "./exec/index.ts";
 

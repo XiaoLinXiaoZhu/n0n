@@ -27,7 +27,7 @@ import {
 	parseDsl,
 	saveConversation,
 } from "@n0n/shared";
-import { makeToolkit, SPLIT_TOOLS_PROMPT } from "@n0n/tools";
+import { makeToolkit } from "@n0n/tools";
 import type { DomainMessage, ProgressToolResult } from "@n0n/types";
 import { CodeRenderer } from "./code-renderer.ts";
 import { parseAndInjectSkills } from "./skill-inject.ts";
@@ -151,9 +151,7 @@ export async function startCodeRepl(
 
 	// 构建 Toolkit — 含 progress config，供 fewshot 和 agentLoop 共用
 	const { client, toolsConfig, agentConfig } = options;
-	const systemPrompt = toolsConfig.execMode === "split"
-		? baseSystemPrompt + "\n\n" + SPLIT_TOOLS_PROMPT
-		: baseSystemPrompt;
+	const systemPrompt = baseSystemPrompt;
 	const notifyConfig = options.notifyConfig ?? { enabled: false };
 	const toolkit = makeToolkit(
 		codeProgressConfig,
@@ -164,7 +162,6 @@ export async function startCodeRepl(
 		toolkit,
 		paths.workspace,
 		paths.temp,
-		toolsConfig.execMode,
 	);
 	// progress 结果文件编号（进程级，不随 renderer 生命周期绑定）
 	const nextSessionId = (() => {

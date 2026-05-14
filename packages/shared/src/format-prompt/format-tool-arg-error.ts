@@ -12,11 +12,11 @@ import { pick } from "./utils.ts";
 
 const unknownToolVariants = [
 	(tool: string) =>
-		`Unknown tool: '${tool}'. Available tools: exec, write, edit, reminder, submit. To read files, use the exec tool with a script.`,
+		`Unknown tool: '${tool}'. Available tools: observe, reason, act, write, edit, progress. To read files, use the observe tool.`,
 	(tool: string) =>
-		`Tool '${tool}' does not exist. Use one of: exec, write, edit, reminder, submit. For reading files, exec is the right choice.`,
+		`Tool '${tool}' does not exist. Use one of: observe, reason, act, write, edit, progress. For reading files, observe is the right choice.`,
 	(tool: string) =>
-		`'${tool}' is not a recognized tool. Recognized tools: exec, write, edit, reminder, submit. Use exec to read file contents.`,
+		`'${tool}' is not a recognized tool. Recognized tools: observe, reason, act, write, edit, progress. Use observe to read file contents.`,
 ];
 
 const invalidArgsVariants = [

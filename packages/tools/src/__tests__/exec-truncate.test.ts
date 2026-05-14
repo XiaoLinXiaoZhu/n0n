@@ -15,13 +15,20 @@
 
 import { describe, expect, test } from "bun:test";
 import { existsSync } from "node:fs";
-import type { ExecToolCall } from "@n0n/types";
+import type { ExecToolResult } from "@n0n/types";
 import { ExecArgsSchema, execToolStream } from "../exec/index.ts";
+
+/** 内部调用类型 — 与 ExecCall 对齐 */
+interface TestCall {
+	id: string;
+	tool: "observe";
+	args: { script: string; runtime?: string; cwd?: string; waitfor?: number };
+}
 
 /** 收集 exec 结果 */
 async function collectResult(script: string, runtime?: string) {
 	const args = ExecArgsSchema.parse({ script, runtime });
-	const call: ExecToolCall = { id: "trunc-test", tool: "exec", args };
+	const call: TestCall = { id: "trunc-test", tool: "observe", args };
 
 	for await (const event of execToolStream(call, undefined, {
 		workspace: process.cwd(),
@@ -30,8 +37,8 @@ async function collectResult(script: string, runtime?: string) {
 		defaultExecWaitfor: 120,
 		platform: process.platform as "win32" | "darwin" | "linux",
 	})) {
-		if (event.type === "tool_result" && event.tool === "exec") {
-			return event;
+		if (event.type === "tool_result" && event.tool === "observe") {
+			return event as ExecToolResult;
 		}
 	}
 	throw new Error("No tool_result yielded");
@@ -57,21 +64,17 @@ describe("exec 输出截断", () => {
 
 		expect(result.status).toBe("truncated");
 		if (result.status === "truncated") {
-			// stdoutTail 应包含末尾内容
 			expect(result.stdoutTail).toContain("line_500");
-			expect(result.stdoutTail.length).toBeLessThanOrEqual(8500); // ~TAIL_TOKENS(2000) 对应的字符数 + 余量
+			expect(result.stdoutTail.length).toBeLessThanOrEqual(8500);
 
-			// outputFile 应存在
 			expect(existsSync(result.outputFile)).toBe(true);
 
-			// 长度信息应正确
 			expect(result.stdoutLength).toBeGreaterThan(8000);
 			expect(result.exitCode).toBe(0);
 		}
 	});
 
 	test("超长 stderr — 应返回 status: truncated", async () => {
-		// 使用 bun runtime 向 stderr 输出大量内容
 		const script = [
 			"for (let i = 1; i <= 500; i++) {",
 			'  console.error(`err_${i}: ${"=".repeat(20)}`);',
@@ -87,7 +90,6 @@ describe("exec 输出截断", () => {
 	});
 
 	test("恰好在阈值内 — 应返回 status: completed", async () => {
-		// 使用 bun runtime 生成不超过阈值的输出（~300 行 × 25 字符 ≈ 7500 chars ≈ 2500 tokens < 4000）
 		const script = [
 			"for (let i = 1; i <= 300; i++) {",
 			"  console.log(`short_line_${i}_padding`);",

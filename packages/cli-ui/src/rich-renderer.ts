@@ -441,19 +441,21 @@ export class RichRenderer implements Renderer {
 
 	private formatToolResult(result: ToolResult): string {
 		switch (result.tool) {
-			case "exec": {
+			case "observe":
+			case "reason":
+			case "act": {
 				const duration = style.gray(
 					`${(result.durationMs / 1000).toFixed(1)}s`,
 				);
 				switch (result.status) {
 					case "backgrounded":
-						return `${style.dim("◂")} ${style.cyan("exec")} ${duration} ${style.yellow(`waitfor exceeded → bg PID=${result.pid}`)}`;
+						return `${style.dim("◂")} ${style.cyan(result.tool)} ${duration} ${style.yellow(`waitfor exceeded → bg PID=${result.pid}`)}`;
 					case "truncated": {
 						const exit =
 							result.exitCode === 0
 								? style.green(`exit=${result.exitCode}`)
 								: style.red(`exit=${result.exitCode}`);
-						return `${style.dim("◂")} ${style.cyan("exec")} ${duration} ${exit} ${style.yellow(`truncated → ${result.outputFile}`)}`;
+						return `${style.dim("◂")} ${style.cyan(result.tool)} ${duration} ${exit} ${style.yellow(`truncated → ${result.outputFile}`)}`;
 					}
 					case "completed": {
 						const exit =
@@ -462,12 +464,9 @@ export class RichRenderer implements Renderer {
 								: style.red(`exit=${result.exitCode}`);
 						const outLen = result.stdout.length + result.stderr.length;
 						const estTk = estimateTokens(result.stdout + result.stderr);
-						return `${style.dim("◂")} ${style.cyan("exec")} ${duration} ${exit} ${style.gray(`${outLen} chars`)} ${style.dim(`~${estTk} tok`)}`;
+						return `${style.dim("◂")} ${style.cyan(result.tool)} ${duration} ${exit} ${style.gray(`${outLen} chars`)} ${style.dim(`~${estTk} tok`)}`;
 					}
-					default: {
-						const _exhaustive: never = result;
-						return `${style.dim("◂")} ${style.cyan("exec")} unknown status`;
-					}
+					default: return `${style.dim("◂")} ${style.yellow("unknown tool:")}`;
 				}
 			}
 			case "write": {

@@ -133,7 +133,7 @@ describe("heartbeat integration", () => {
 				messages,
 				tools: [
 					{
-						name: "exec",
+						name: "observe",
 						description: "Execute a command",
 						parameters: {
 							type: "object" as const,

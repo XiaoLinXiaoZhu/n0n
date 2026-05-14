@@ -1,3 +1,4 @@
+// biome-ignore-all lint/suspicious/noTemplateCurlyInString: test scripts contain template literals as string content
 /**
  * exec 工具测试
  *
@@ -8,13 +9,19 @@
  */
 
 import { describe, expect, test } from "bun:test";
-import type { ExecToolCall } from "@n0n/types";
 import { ExecArgsSchema, execToolStream } from "../exec/index.ts";
+
+/** 内部调用类型 — 与 ExecCall 对齐，用于测试 */
+interface TestCall {
+	id: string;
+	tool: "observe";
+	args: { script: string; runtime?: string; cwd?: string; waitfor?: number };
+}
 
 /** 收集 exec 流式输出的最终结果 */
 async function collectExecResult(script: string, runtime?: string) {
 	const args = ExecArgsSchema.parse({ script, runtime });
-	const call: ExecToolCall = { id: "test-id", tool: "exec", args };
+	const call: TestCall = { id: "test-id", tool: "observe", args };
 	let stdout = "";
 	let stderr = "";
 	let exitCode = -1;
@@ -28,7 +35,7 @@ async function collectExecResult(script: string, runtime?: string) {
 	})) {
 		if (
 			event.type === "tool_result" &&
-			event.tool === "exec" &&
+			event.tool === "observe" &&
 			event.status === "completed"
 		) {
 			stdout = event.stdout;
@@ -62,8 +69,6 @@ describe("exec tool — script+runtime model", () => {
 	});
 
 	test("bun runtime with string containing newlines (no escape issues)", async () => {
-		// This was the original pain point — newlines in strings caused
-		// cmd.exe quote-stripping failures. With file execution, it just works.
 		const script = `const s = 'a\\nb'; console.log(s.split('\\n').length);`;
 		const result = await collectExecResult(script, "bun");
 		expect(result.exitCode).toBe(0);
@@ -77,7 +82,6 @@ describe("exec tool — script+runtime model", () => {
 		].join("\n");
 		const result = await collectExecResult(script, "bun");
 		expect(result.exitCode).toBe(0);
-		// path.join output varies by platform
 		expect(result.stdout.trim()).toMatch(/a[/\\]b/);
 	});
 

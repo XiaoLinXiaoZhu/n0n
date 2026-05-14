@@ -18,8 +18,6 @@ interface ToolsConfigBase {
 	platform: "win32" | "darwin" | "linux";
 	workspace: string;
 	tempDir: string;
-	/** @default "unified" */
-	execMode?: "unified" | "split";
 }
 
 interface StrReplaceToolsConfig extends ToolsConfigBase {

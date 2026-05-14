@@ -15,7 +15,9 @@ import type {
 // ── 核心注册表 ──
 
 export interface ToolMap {
-	exec: ExecArgs;
+	observe: ExecArgs;
+	reason: ExecArgs;
+	act: ExecArgs;
 	write: WriteArgs;
 	edit: EditArgs;
 	progress: ProgressArgs;
@@ -63,7 +65,9 @@ export type ToolCallRecordMap = {
 };
 
 // 快捷导出
-export type ExecToolCall = ToolCallRecordMap["exec"];
+export type ObserveToolCall = ToolCallRecordMap["observe"];
+export type ReasonToolCall = ToolCallRecordMap["reason"];
+export type ActToolCall = ToolCallRecordMap["act"];
 export type WriteToolCall = ToolCallRecordMap["write"];
 export type EditToolCall = ToolCallRecordMap["edit"];
 export type ProgressToolCall = ToolCallRecordMap["progress"];

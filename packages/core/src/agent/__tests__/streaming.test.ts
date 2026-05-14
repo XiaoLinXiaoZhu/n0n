@@ -102,7 +102,7 @@ describe("parseStream", () => {
 					type: "tool_call_delta",
 					index: 0,
 					id: "tc_1",
-					name: "exec",
+					name: "observe",
 					arguments: '{"script":"ls"}',
 				},
 				{ type: "done", finishReason: "tool_calls", usage: null },
@@ -125,7 +125,7 @@ describe("parseStream", () => {
 					type: "tool_call_delta",
 					index: 0,
 					id: "tc_1",
-					name: "exec",
+					name: "observe",
 					arguments: '{"script":"ls"}',
 				},
 				{ type: "done", finishReason: "tool_calls", usage: null },
@@ -149,19 +149,19 @@ describe("parseStream", () => {
 					type: "tool_call_delta",
 					index: 0,
 					id: "tc_1",
-					name: "exec",
+					name: "observe",
 					arguments: '{"script":"ls"}',
 				},
 				{ type: "done", finishReason: "tool_calls", usage: null },
 			]);
 
 			expect(ofType(events, "tool_arg_start")).toHaveLength(1);
-			expect(ofType(events, "tool_arg_start")[0]!.name).toBe("exec");
+			expect(ofType(events, "tool_arg_start")[0]!.name).toBe("observe");
 			expect(ofType(events, "tool_arg_chunk")).toHaveLength(1);
 
 			const ready = ofType(events, "tool_ready");
 			expect(ready).toHaveLength(1);
-			expect(ready[0]!.tc.tool).toBe("exec");
+			expect(ready[0]!.tc.tool).toBe("observe");
 			expect(ready[0]!.tc.args).toEqual({ script: "ls" });
 
 			const done = ofType(events, "done")[0]!;
@@ -174,7 +174,7 @@ describe("parseStream", () => {
 					type: "tool_call_delta",
 					index: 0,
 					id: "tc_1",
-					name: "exec",
+					name: "observe",
 					arguments: '{"scr',
 				},
 				{ type: "tool_call_delta", index: 0, arguments: 'ipt":' },
