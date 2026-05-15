@@ -8,7 +8,7 @@
 import { existsSync, mkdirSync, rmSync } from "node:fs";
 import { resolve } from "node:path";
 import { Glob } from "bun";
-import { getBuiltinSkillsDir } from "../paths.ts";
+import { getBuiltinSkillsDir, getUserSkillsDir } from "../paths.ts";
 
 /** skill 源目录：项目根 data/skills/ */
 const BUILTIN_SOURCE = resolve(import.meta.dir, "../../../../data/skills");
@@ -50,6 +50,15 @@ export async function initCommand(): Promise<void> {
 			await copyDir(skillDir, destDir);
 			count++;
 		}
+	}
+
+	// 确保 builtin 和 user 目录下四个分类子目录都存在（即使为空）
+	const userDir = getUserSkillsDir();
+	for (const category of CATEGORIES) {
+		const builtinCatDir = resolve(targetDir, category);
+		if (!existsSync(builtinCatDir)) mkdirSync(builtinCatDir, { recursive: true });
+		const userCatDir = resolve(userDir, category);
+		if (!existsSync(userCatDir)) mkdirSync(userCatDir, { recursive: true });
 	}
 
 	console.log(`✓ 已初始化 ${count} 个内置 skill 到 ${targetDir}`);
