@@ -106,15 +106,16 @@ data/skills/
 
 | 改动项 | 文件 | 状态 |
 |--------|------|------|
-| SkillActivation 加 "init" | `packages/shared/src/skills/types.ts` | 待实现 |
-| SkillMeta 加 order 字段 | `packages/shared/src/skills/types.ts` | 待实现 |
-| zod schema 加 "init" + order | `packages/shared/src/skills/discovery.ts` | 待实现 |
-| help 命令过滤 init | `apps/n0n-skill/src/commands/help.ts` | 待实现 |
-| repl 加载 init skills 拼接 system prompt | `apps/code/src/repl.ts` | 待实现 |
-| 空壳 system prompt | `apps/code/src/prompts/code.md` | 待实现 |
-| init 命令源目录改为 data/skills/ | `apps/n0n-skill/src/commands/init.ts` | 待实现 |
+| SkillActivation 加 "init" | `packages/shared/src/skills/types.ts` | 已完成 |
+| SkillMeta 加 order 字段 | `packages/shared/src/skills/types.ts` | 已完成 |
+| zod schema 加 "init" + order | `packages/shared/src/skills/discovery.ts` | 已完成 |
+| help 命令过滤 init | `apps/n0n-skill/src/commands/help.ts` | 已完成 |
+| repl 加载 init skills 拼接 system prompt | `apps/code/src/repl.ts` | 已完成 |
+| 空壳 system prompt | `apps/code/src/prompts/code.md` | 已完成 |
+| init 命令源目录改为 data/skills/ | `apps/n0n-skill/src/commands/init.ts` | 已完成 |
 | init skills 文件 | `data/skills/` | **已完成** |
-| 删除旧 builtin 目录 | `apps/n0n-skill/builtin/` | 待实现（代码改动后） |
+| 删除旧 builtin 目录 | `apps/n0n-skill/builtin/` | 已完成 |
+| z.coerce.number for order | `packages/shared/src/skills/discovery.ts` | 已完成（额外修复：YAML 返回字符串需要 coerce） |
 
 ## 拼接示意
 
