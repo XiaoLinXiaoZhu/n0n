@@ -12,14 +12,12 @@ import { resolve } from "node:path";
 import { createInterface } from "node:readline";
 import { isTTY, label, style, writeln } from "@n0n/cli-ui";
 import {
-	agentLoop,
 	type AgentConfig,
+	agentLoop,
 	HeartbeatKeeper,
 	HeartbeatState,
 	PlainRenderer,
 } from "@n0n/core";
-import type { LLMClient } from "@n0n/types";
-import type { ToolsConfig } from "@n0n/tools";
 import { readMultilineInput } from "@n0n/multiline-input";
 import {
 	type BaseWorkspacePaths,
@@ -27,17 +25,18 @@ import {
 	parseDsl,
 	saveConversation,
 } from "@n0n/shared";
-import { makeToolkit } from "@n0n/tools";
-import type { DomainMessage, ProgressToolResult } from "@n0n/types";
-import { CodeRenderer } from "./code-renderer.ts";
-import { parseAndInjectSkills } from "./skill-inject.ts";
 import { loadInitSkills } from "@n0n/skill";
+import type { ToolsConfig } from "@n0n/tools";
+import { makeToolkit } from "@n0n/tools";
+import type { DomainMessage, LLMClient, ProgressToolResult } from "@n0n/types";
+import { CodeRenderer } from "./code-renderer.ts";
 import { buildContextFewshot } from "./context-fewshot.ts";
-import { playNotifySound, type NotifyConfig } from "./notify-sound.ts";
+import { type NotifyConfig, playNotifySound } from "./notify-sound.ts";
 import { codeProgressConfig } from "./progress-config.ts";
 import { formatProgressResult } from "./progress-formatter.ts";
 import { getPrompt } from "./prompts/index.ts";
 import type { CodeProgressResult } from "./schema.ts";
+import { parseAndInjectSkills } from "./skill-inject.ts";
 
 export interface CodeReplOptions {
 	initialInput?: string;
@@ -161,11 +160,7 @@ export async function startCodeRepl(
 		? `${baseSystemPrompt}\n\n${initSkillBodies}`
 		: baseSystemPrompt;
 	const notifyConfig = options.notifyConfig ?? { enabled: false };
-	const toolkit = makeToolkit(
-		codeProgressConfig,
-		toolsConfig,
-		client.modelId,
-	);
+	const toolkit = makeToolkit(codeProgressConfig, toolsConfig, client.modelId);
 	const contextFewshot = await buildContextFewshot(
 		toolkit,
 		paths.workspace,
@@ -175,20 +170,24 @@ export async function startCodeRepl(
 	const nextSessionId = (() => {
 		try {
 			const existing = readdirSync(paths.temp)
-				.filter(d => d.startsWith("session-"))
-				.map(d => Number.parseInt(d.slice("session-".length), 10))
-				.filter(n => !Number.isNaN(n));
+				.filter((d) => d.startsWith("session-"))
+				.map((d) => Number.parseInt(d.slice("session-".length), 10))
+				.filter((n) => !Number.isNaN(n));
 			return existing.length > 0 ? Math.max(...existing) + 1 : 1;
 		} catch {
 			return 1;
 		}
 	})();
-	const sessionDir = resolve(paths.temp, `session-${String(nextSessionId).padStart(4, "0")}`);
+	const sessionDir = resolve(
+		paths.temp,
+		`session-${String(nextSessionId).padStart(4, "0")}`,
+	);
 	let progressSeq = 0;
 	// renderer 选择也基于 canInteract：管道环境用 PlainRenderer（无光标控制）
-	const canInteract =
-		typeof process.stdin.setRawMode === "function";
-	const renderer = canInteract ? new CodeRenderer(paths, { expandExec }) : new PlainRenderer();
+	const canInteract = typeof process.stdin.setRawMode === "function";
+	const renderer = canInteract
+		? new CodeRenderer(paths, { expandExec })
+		: new PlainRenderer();
 
 	// ── stdin 控制器（仅 TTY 模式） ──
 	const stdin = canInteract ? createStdinController() : null;
@@ -493,7 +492,11 @@ export async function startCodeRepl(
 		try {
 			if (!existsSync(sessionDir)) mkdirSync(sessionDir, { recursive: true });
 			writeFileSync(resolve(sessionDir, progressFilename), formatted, "utf-8");
-			writeFileSync(resolve(sessionDir, "current-progress.md"), formatted, "utf-8");
+			writeFileSync(
+				resolve(sessionDir, "current-progress.md"),
+				formatted,
+				"utf-8",
+			);
 		} catch {}
 
 		switch (ir.status) {

@@ -11,8 +11,8 @@
  */
 
 import { globalCommand } from "./commands/global.ts";
-import { projectCommand } from "./commands/project.ts";
 import { helpCommand } from "./commands/help.ts";
+import { projectCommand } from "./commands/project.ts";
 
 const args = process.argv.slice(2);
 const command = args[0];

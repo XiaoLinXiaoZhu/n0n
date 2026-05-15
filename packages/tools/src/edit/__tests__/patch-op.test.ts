@@ -43,9 +43,7 @@ describe("PatchOp", () => {
 	});
 
 	it("单 patch → newText 直接输出", () => {
-		const patches: PatchOp[] = [
-			{ oldText: "old", newText: "new content" },
-		];
+		const patches: PatchOp[] = [{ oldText: "old", newText: "new content" }];
 		expect(formatPatches(patches)).toBe("new content");
 	});
 
@@ -76,25 +74,19 @@ describe("PatchOp", () => {
 	// ── countAdded / countRemoved ──
 
 	it("单行插入 → added=1, removed=0", () => {
-		const patches: PatchOp[] = [
-			{ oldText: "b\nc", newText: "b\nX\nc" },
-		];
+		const patches: PatchOp[] = [{ oldText: "b\nc", newText: "b\nX\nc" }];
 		expect(countAdded(patches)).toBe(3);
 		expect(countRemoved(patches)).toBe(2);
 	});
 
 	it("单行删除 → added=0, removed=1", () => {
-		const patches: PatchOp[] = [
-			{ oldText: "X", newText: "" },
-		];
+		const patches: PatchOp[] = [{ oldText: "X", newText: "" }];
 		expect(countAdded(patches)).toBe(0);
 		expect(countRemoved(patches)).toBe(1);
 	});
 
 	it("多行替换 → 各自计数", () => {
-		const patches: PatchOp[] = [
-			{ oldText: "a\nb\nc", newText: "x\ny" },
-		];
+		const patches: PatchOp[] = [{ oldText: "a\nb\nc", newText: "x\ny" }];
 		expect(countAdded(patches)).toBe(2);
 		expect(countRemoved(patches)).toBe(3);
 	});
@@ -130,7 +122,8 @@ describe("PatchOp", () => {
 			{ oldText: "readFile(path)", newText: "readFileSync(path, 'utf8')" },
 			{
 				oldText: "  return data;\n}",
-				newText: "  try {\n    return JSON.parse(data);\n  } catch {\n    return data;\n  }\n}",
+				newText:
+					"  try {\n    return JSON.parse(data);\n  } catch {\n    return data;\n  }\n}",
 			},
 		];
 		const formatted = formatPatches(patches);

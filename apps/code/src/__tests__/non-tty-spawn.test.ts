@@ -11,7 +11,7 @@
  * 3. 如果 LLM 可用，进程最终应正常退出（exit 0）
  */
 
-import { describe, test, expect } from "bun:test";
+import { describe, expect, test } from "bun:test";
 import { spawn } from "node:child_process";
 import { resolve } from "node:path";
 
@@ -67,10 +67,9 @@ function spawnN0n(
 
 describe("非 TTY 环境启动", () => {
 	test("不因 setRawMode 崩溃", async () => {
-		const result = await spawnN0n(
-			["请你使用submit提交下面的答案：1+1=？"],
-			{ timeoutMs: 15_000 },
-		);
+		const result = await spawnN0n(["请你使用submit提交下面的答案：1+1=？"], {
+			timeoutMs: 15_000,
+		});
 
 		// 核心断言：不应该出现 setRawMode 错误
 		expect(result.stderr).not.toContain("setRawMode is not a function");

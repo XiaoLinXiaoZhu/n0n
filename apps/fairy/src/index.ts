@@ -19,11 +19,11 @@ import {
 	type ConfigSource,
 	createLLMClient,
 } from "@n0n/llm";
-import { parseWorkspaceArg, type FormatOptions } from "@n0n/shared";
+import { type FormatOptions, parseWorkspaceArg } from "@n0n/shared";
 import { makeToolkit } from "@n0n/tools";
 import type { DomainMessage } from "@n0n/types";
-import { type FairyProgressResult } from "./schema.ts";
 import { fairyProgressConfig } from "./progress-config.ts";
+import type { FairyProgressResult } from "./schema.ts";
 import {
 	ensureFairyFiles,
 	type FairyPaths,
@@ -85,11 +85,7 @@ async function main(): Promise<void> {
 		new Promise((resolve) => rl.question(query, resolve));
 
 	const renderer = isTTY ? new RichRenderer() : new PlainRenderer();
-	const toolkit = makeToolkit(
-		fairyProgressConfig,
-		toolsConfig,
-		client.modelId,
-	);
+	const toolkit = makeToolkit(fairyProgressConfig, toolsConfig, client.modelId);
 
 	let abortController = new AbortController();
 	let agentRunning = false;

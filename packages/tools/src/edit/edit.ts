@@ -207,7 +207,13 @@ export async function* editToolStream(
 			} satisfies ToolOutputChunk;
 		}
 
-		const { content: newContent, feedback, error, rounds, patches } = await loopPromise;
+		const {
+			content: newContent,
+			feedback,
+			error,
+			rounds,
+			patches,
+		} = await loopPromise;
 		const durationMs = Date.now() - startTime;
 
 		if (error) {

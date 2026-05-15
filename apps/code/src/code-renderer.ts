@@ -43,7 +43,10 @@ export class CodeRenderer extends RichRenderer {
 	/** 活跃的 write 预览（index → preview state） */
 	private previews = new Map<number, WritePreview>();
 
-	constructor(private readonly paths: BaseWorkspacePaths, options?: RichRendererOptions) {
+	constructor(
+		private readonly paths: BaseWorkspacePaths,
+		options?: RichRendererOptions,
+	) {
 		super(options);
 	}
 
@@ -101,7 +104,11 @@ export class CodeRenderer extends RichRenderer {
 	 * 从累积的 partial JSON 中提取 path/content，写入目标文件。
 	 * @param force 是否强制写入（跳过节流，用于 streamEnd/argEnd）
 	 */
-	private flushPreview(index: number, preview: WritePreview, force: boolean): void {
+	private flushPreview(
+		index: number,
+		preview: WritePreview,
+		force: boolean,
+	): void {
 		const now = Date.now();
 		if (!force && now - preview.lastWriteTime < THROTTLE_MS) return;
 

@@ -9,7 +9,12 @@ import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { getUserSkillsDir } from "../paths.ts";
 
-const VALID_CATEGORIES = ["capability", "directive", "standard", "task"] as const;
+const VALID_CATEGORIES = [
+	"capability",
+	"directive",
+	"standard",
+	"task",
+] as const;
 
 const SKILL_TEMPLATE = (displayName: string) => `---
 description: TODO - 描述此 skill 的用途和触发条件
@@ -49,10 +54,7 @@ export async function createCommand(input: string | undefined): Promise<void> {
 
 	// 验证每个路径段
 	for (const part of nameParts) {
-		if (
-			!/^[a-z0-9]([a-z0-9-]*[a-z0-9])?$/.test(part) ||
-			part.includes("--")
-		) {
+		if (!/^[a-z0-9]([a-z0-9-]*[a-z0-9])?$/.test(part) || part.includes("--")) {
 			console.error(
 				`无效的名称段 "${part}"。必须是小写字母、数字和连字符，不能包含连续连字符。`,
 			);

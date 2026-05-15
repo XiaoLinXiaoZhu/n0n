@@ -40,10 +40,15 @@ export function buildAgentConfig(source: Record<string, string>): AgentConfig {
 }
 
 /** 从 ConfigSource 构建 SecurityConfig */
-export function buildSecurityConfig(source: Record<string, string>): SecurityConfig {
+export function buildSecurityConfig(
+	source: Record<string, string>,
+): SecurityConfig {
 	const raw = source.BLOCKED_COMMANDS;
 	const blockedCommands = raw
-		? raw.split(",").map((c) => c.trim()).filter((c) => c.length > 0)
+		? raw
+				.split(",")
+				.map((c) => c.trim())
+				.filter((c) => c.length > 0)
 		: [];
 	return { blockedCommands };
 }
@@ -53,14 +58,19 @@ export function buildToolsConfig(
 	editBackend: EditBackendConfig,
 	agent: AgentConfig,
 	security: SecurityConfig,
-	paths: { workspace: string; tempDir: string; platform?: "win32" | "darwin" | "linux" },
+	paths: {
+		workspace: string;
+		tempDir: string;
+		platform?: "win32" | "darwin" | "linux";
+	},
 ): ToolsConfig {
 	const base = {
 		security,
 		agent,
 		workspace: paths.workspace,
 		tempDir: paths.tempDir,
-		platform: paths.platform ?? (process.platform as "win32" | "darwin" | "linux"),
+		platform:
+			paths.platform ?? (process.platform as "win32" | "darwin" | "linux"),
 	};
 	if (editBackend.type === "freeform-patch") {
 		return {

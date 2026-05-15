@@ -4,12 +4,12 @@
  * 供 apps/code 等消费者直接调用（不走 CLI），确保行为一致。
  */
 
+import type { SkillContent, SkillMeta } from "@n0n/skills";
 import {
 	discoverSkillsMultiDir,
 	findSkillsByNameOrAlias,
 	loadSkillContentWithMeta,
 } from "@n0n/skills";
-import type { SkillContent, SkillMeta } from "@n0n/skills";
 import { getSkillDirs } from "./paths.ts";
 
 export type { SkillContent, SkillMeta };
@@ -24,9 +24,7 @@ export async function listSkills(): Promise<SkillMeta[]> {
  *
  * 当 query 匹配多个 skill 的 name 或 alias 时，返回所有匹配项。
  */
-export async function readSkill(
-	query: string,
-): Promise<SkillContent[]> {
+export async function readSkill(query: string): Promise<SkillContent[]> {
 	const skills = await discoverSkillsMultiDir(getSkillDirs());
 	const matched = findSkillsByNameOrAlias(skills, query);
 	if (matched.length === 0) return [];

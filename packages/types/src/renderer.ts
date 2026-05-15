@@ -14,7 +14,11 @@
  *   roundEnd
  */
 
-import type { DomainMessage, ToolCallRecord, ToolExecOutcome } from "./domain.ts";
+import type {
+	DomainMessage,
+	ToolCallRecord,
+	ToolExecOutcome,
+} from "./domain.ts";
 
 /** 单轮 LLM 调用的 token 用量统计 */
 export interface RoundTokenUsage {

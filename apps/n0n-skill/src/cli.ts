@@ -1,4 +1,5 @@
 #!/usr/bin/env bun
+
 /**
  * n0n-skill CLI 入口
  *
@@ -10,12 +11,12 @@
  *   create  — 创建新 skill 脚手架
  */
 
+import { createCommand } from "./commands/create.ts";
 import { helpCommand } from "./commands/help.ts";
-import { readCommand } from "./commands/read.ts";
 import { initCommand } from "./commands/init.ts";
 import { installCommand } from "./commands/install.ts";
-import { createCommand } from "./commands/create.ts";
 import { listCommand } from "./commands/list.ts";
+import { readCommand } from "./commands/read.ts";
 
 const args = process.argv.slice(2);
 const command = args[0];

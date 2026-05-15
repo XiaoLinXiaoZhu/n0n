@@ -62,8 +62,9 @@ function adaptTagsByStyle(text: string, style: TagStyle): string {
 
 	if (style === "deepseek") {
 		return text
-			.replace(/<system-hint>([\s\S]*?)<\/system-hint>/g, (_, content) =>
-				`【system-hint】\n${content.trim()}\n---`,
+			.replace(
+				/<system-hint>([\s\S]*?)<\/system-hint>/g,
+				(_, content) => `【system-hint】\n${content.trim()}\n---`,
 			)
 			.replace(/<(\w+)>/g, (_, name) => openTag(style, name))
 			.replace(/<\/(\w+)>/g, (_, name) => closeTag(style, name));

@@ -17,16 +17,16 @@
 
 import type { Toolkit } from "@n0n/tools";
 import type {
-	DomainMessage,
-	ObserveToolCall,
 	ActToolCall,
+	DomainMessage,
+	EditToolCall,
+	ObserveToolCall,
 	ProgressToolCall,
 	ProgressToolResult,
 	ToolCallRecord,
 	ToolResult,
 	ToolStreamEvent,
 	WriteToolCall,
-	EditToolCall,
 } from "@n0n/types";
 
 // ── Slot 类型 ──
@@ -143,8 +143,7 @@ const WORKING_2: ProgressToolCall = {
 	tool: "progress",
 	args: {
 		status: "working",
-		content:
-			"验证工具并行调用：同时写入、编辑、执行多个文件，不等待中间结果。",
+		content: "验证工具并行调用：同时写入、编辑、执行多个文件，不等待中间结果。",
 	},
 };
 
@@ -279,13 +278,14 @@ function buildCompletedCall(ctx: RuntimeCtx): DomainMessage {
 	// 从输出中提取关键信息
 	const os = globalOut.match(/\[OS\]\n(.+)/)?.[1] ?? process.platform;
 	const branch = projectOut.match(/Branch: (.+)/)?.[1] ?? "unknown";
-	const workspace = projectOut.match(/\[Workspace\]\n(.+)/)?.[1] ?? ctx.workspace;
+	const workspace =
+		projectOut.match(/\[Workspace\]\n(.+)/)?.[1] ?? ctx.workspace;
 	const fileInfo = projectOut.match(/Source files: (\d+)/)?.[1] ?? "?";
 	const lineInfo = projectOut.match(/Total lines: (.+)/)?.[1] ?? "?";
 	const skills =
 		skillOut
-			.match(/  (\w+) —/g)
-			?.map((m) => m.match(/  (\w+) —/)?.[1])
+			.match(/ {2}(\w+) —/g)
+			?.map((m) => m.match(/ {2}(\w+) —/)?.[1])
 			.filter(Boolean)
 			.join(", ") ?? "none";
 
@@ -321,13 +321,14 @@ function buildCompletedResults(ctx: RuntimeCtx): DomainMessage[] {
 
 	const os = globalOut.match(/\[OS\]\n(.+)/)?.[1] ?? process.platform;
 	const branch = projectOut.match(/Branch: (.+)/)?.[1] ?? "unknown";
-	const workspace = projectOut.match(/\[Workspace\]\n(.+)/)?.[1] ?? ctx.workspace;
+	const workspace =
+		projectOut.match(/\[Workspace\]\n(.+)/)?.[1] ?? ctx.workspace;
 	const fileInfo = projectOut.match(/Source files: (\d+)/)?.[1] ?? "?";
 	const lineInfo = projectOut.match(/Total lines: (.+)/)?.[1] ?? "?";
 	const skills =
 		skillOut
-			.match(/  (\w+) —/g)
-			?.map((m) => m.match(/  (\w+) —/)?.[1])
+			.match(/ {2}(\w+) —/g)
+			?.map((m) => m.match(/ {2}(\w+) —/)?.[1])
 			.filter(Boolean)
 			.join(", ") ?? "none";
 

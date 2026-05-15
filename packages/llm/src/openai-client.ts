@@ -11,7 +11,6 @@
  * 同时处理 openai-compatible provider（如 DeepSeek、litellm 代理）。
  */
 
-import type { FormatFn } from "./factory.ts";
 import type {
 	CompleteRequest,
 	CompleteResponse,
@@ -29,6 +28,7 @@ import type {
 	OpenAIProviderConfig,
 } from "./config.ts";
 import { isAbortError, LLMError } from "./errors.ts";
+import type { FormatFn } from "./factory.ts";
 
 // ── OpenAI API Types ──
 
@@ -216,7 +216,12 @@ export class OpenAIClient implements LLMClient {
 	private readonly apiUrl: string;
 	private readonly format: FormatFn;
 
-	constructor(pc: OpenAIProviderConfig | OpenAICompatibleProviderConfig, tagStyle: TagStyle, tags: TagAdapter, format: FormatFn) {
+	constructor(
+		pc: OpenAIProviderConfig | OpenAICompatibleProviderConfig,
+		tagStyle: TagStyle,
+		tags: TagAdapter,
+		format: FormatFn,
+	) {
 		this.pc = pc;
 		this.modelId = this.pc.model;
 		this.tagStyle = tagStyle;

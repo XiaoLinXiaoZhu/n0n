@@ -9,8 +9,8 @@
  * 末尾附标签统计。
  */
 
-import { discoverSkillsMultiDir } from "@n0n/skills";
 import type { SkillMeta } from "@n0n/skills";
+import { discoverSkillsMultiDir } from "@n0n/skills";
 import { getSkillDirs } from "../paths.ts";
 
 export async function listCommand(rawArgs: string[]): Promise<void> {
@@ -27,7 +27,9 @@ export async function listCommand(rawArgs: string[]): Promise<void> {
 		return;
 	}
 
-	const filtered = showAll ? skills : skills.filter((s) => s.activation === "auto");
+	const filtered = showAll
+		? skills
+		: skills.filter((s) => s.activation === "auto");
 
 	if (filtered.length === 0) {
 		console.log(
@@ -70,7 +72,9 @@ export async function listCommand(rawArgs: string[]): Promise<void> {
 	} else {
 		const count = c ? c.bold(String(filtered.length)) : String(filtered.length);
 		console.log(`\n总计: ${count} auto skill`);
-		console.log("提示: 使用 `n0n-skill list --all` 查看全部 skill（含 auto/manual/init）。");
+		console.log(
+			"提示: 使用 `n0n-skill list --all` 查看全部 skill（含 auto/manual/init）。",
+		);
 	}
 }
 
@@ -79,7 +83,9 @@ function formatSkillLine(
 	showAll: boolean,
 	c: Styler | null,
 ): string {
-	const nameColored = c ? colorByActivation(skill.activation, skill.name, c) : skill.name;
+	const nameColored = c
+		? colorByActivation(skill.activation, skill.name, c)
+		: skill.name;
 	const aliasStr =
 		skill.alias.length > 0
 			? c
@@ -94,12 +100,20 @@ function formatSkillLine(
 	return `${nameColored}${aliasStr}${activationTag} — ${skill.description}`;
 }
 
-function colorByActivation(activation: string, text: string, c: Styler): string {
+function colorByActivation(
+	activation: string,
+	text: string,
+	c: Styler,
+): string {
 	switch (activation) {
-		case "auto": return c.green(text);
-		case "manual": return c.yellow(text);
-		case "init": return c.gray(text);
-		default: return text;
+		case "auto":
+			return c.green(text);
+		case "manual":
+			return c.yellow(text);
+		case "init":
+			return c.gray(text);
+		default:
+			return text;
 	}
 }
 
@@ -120,7 +134,10 @@ async function loadStyler(): Promise<Styler> {
 	return style as unknown as Styler;
 }
 
-function groupBy<T>(items: T[], keyFn: (item: T) => string): Record<string, T[]> {
+function groupBy<T>(
+	items: T[],
+	keyFn: (item: T) => string,
+): Record<string, T[]> {
 	const groups: Record<string, T[]> = {};
 	for (const item of items) {
 		const key = keyFn(item);

@@ -8,8 +8,8 @@
  * 每个根目录下按四个分类子目录组织，discoverSkills 会自动扫描这四个子目录。
  */
 
-import { resolve } from "node:path";
 import { homedir } from "node:os";
+import { resolve } from "node:path";
 
 const N0N_DIR = ".n0n";
 const BUILTIN_DIR = "builtin-skills";

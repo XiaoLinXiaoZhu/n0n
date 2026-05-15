@@ -10,14 +10,6 @@
  * 4. 可持久化/可重放 — 纯数据结构天然支持序列化、存储和测试回放。
  */
 
-// ── User 侧 ──
-export type {
-	GenericSystemMessage,
-	GenericUserTextMessage,
-	UserInputMessage,
-	UserImageMessage,
-} from "./user.ts";
-
 // ── Assistant 侧 ──
 export type {
 	AssistantTextMessage,
@@ -25,87 +17,90 @@ export type {
 	GenericAssistantToolCallMessage,
 	GenericToolResultMessage,
 } from "./assistant.ts";
-
+// ── 元数据/控制 ──
+export type {
+	CacheBreakpointMessage,
+	IdleNudgeMessage,
+	TokenUsageMessage,
+	TurnFeedbackMessage,
+} from "./base.ts";
+// ── Error 侧 ──
+export type {
+	InternalExecutionError,
+	InvalidArgsError,
+	ToolArgErrorMessage,
+	ToolError,
+	TruncatedRecoveryError,
+	UnknownToolError,
+} from "./errors.ts";
+// ── 调度 ──
+export type { CanStartFn } from "./scheduling.ts";
 // ── Tool 侧 ──
 export type {
-	// 注册表
-	ToolMap,
-	ToolName,
+	ActToolCall,
+	EditToolCall,
+	EditToolResult,
+	// Exec
+	ExecToolResult,
 	MakeCall,
 	MakeResult,
 	MakeResultBase,
+	ObserveToolCall,
+	PartialToolCallRecord,
+	// Edit
+	PatchOp,
+	ProgressToolCall,
+	// Progress
+	ProgressToolResult,
+	ReasonToolCall,
 	ToolCallRecord,
 	ToolCallRecordMap,
-	WriteToolCall,
-	EditToolCall,
-	ObserveToolCall,
-	ReasonToolCall,
-	ActToolCall,
-	ProgressToolCall,
-	PartialToolCallRecord,
-	// Exec
-	ExecToolResult,
+	ToolExecOutcome,
+	// 注册表
+	ToolMap,
+	ToolName,
+	ToolOutputChunk,
+	// 聚合
+	ToolResult,
+	ToolStreamEvent,
 	// Write
 	WriteCompleted,
 	WriteFailed,
 	WriteRecovered,
 	WriteRecoverFailed,
+	WriteToolCall,
 	WriteToolResult,
-	// Edit
-	PatchOp,
-	EditToolResult,
-	// Progress
-	ProgressToolResult,
-	// 聚合
-	ToolResult,
-	ToolExecOutcome,
-	ToolOutputChunk,
-	ToolStreamEvent,
 } from "./tools/index.ts";
-
-// ── Error 侧 ──
+// ── User 侧 ──
 export type {
-	UnknownToolError,
-	InvalidArgsError,
-	TruncatedRecoveryError,
-	InternalExecutionError,
-	ToolError,
-	ToolArgErrorMessage,
-} from "./errors.ts";
-
-// ── 元数据/控制 ──
-export type {
-	TurnFeedbackMessage,
-	IdleNudgeMessage,
-	CacheBreakpointMessage,
-	TokenUsageMessage,
-} from "./base.ts";
-
-// ── 调度 ──
-export type { CanStartFn } from "./scheduling.ts";
+	GenericSystemMessage,
+	GenericUserTextMessage,
+	UserImageMessage,
+	UserInputMessage,
+} from "./user.ts";
 
 // ── DomainMessage 联合类型 ──
 
-import type {
-	GenericSystemMessage,
-	GenericUserTextMessage,
-	UserInputMessage,
-	UserImageMessage,
-} from "./user.ts";
 import type {
 	AssistantTextMessage,
 	AssistantToolCallMessage,
 	GenericAssistantToolCallMessage,
 	GenericToolResultMessage,
 } from "./assistant.ts";
-import type { ToolResult } from "./tools/index.ts";
-import type { ToolArgErrorMessage } from "./errors.ts";
 import type {
-	TurnFeedbackMessage,
-	IdleNudgeMessage,
 	CacheBreakpointMessage,
+	IdleNudgeMessage,
 	TokenUsageMessage,
+	TurnFeedbackMessage,
 } from "./base.ts";
+import type { ToolArgErrorMessage } from "./errors.ts";
+import type { ToolResult } from "./tools/index.ts";
+import type {
+	GenericSystemMessage,
+	GenericUserTextMessage,
+	UserImageMessage,
+	UserInputMessage,
+} from "./user.ts";
 
 /** 领域消息主干联合 */
 export type DomainMessage =

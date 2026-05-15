@@ -3,7 +3,7 @@
  */
 
 import { readFileSync } from "node:fs";
-import { join, dirname } from "node:path";
+import { dirname, join } from "node:path";
 
 export interface PathToolsConfig {
 	whitelist: Set<string>;
@@ -35,13 +35,15 @@ export function loadPathToolsConfig(): PathToolsConfig {
 				for (const t of entry.tools) config.whitelist.add(t);
 				break;
 			case "blacklist-dir-pattern":
-				for (const p of entry.patterns) config.blacklistDirPatterns.push(new RegExp(p, "i"));
+				for (const p of entry.patterns)
+					config.blacklistDirPatterns.push(new RegExp(p, "i"));
 				break;
 			case "blacklist-name-prefix":
 				config.blacklistNamePrefixes.push(...entry.prefixes);
 				break;
 			case "blacklist-name-pattern":
-				for (const p of entry.patterns) config.blacklistNamePatterns.push(new RegExp(p, "i"));
+				for (const p of entry.patterns)
+					config.blacklistNamePatterns.push(new RegExp(p, "i"));
 				break;
 			case "blacklist-name-exact":
 				for (const t of entry.tools) config.blacklistNameExact.add(t);

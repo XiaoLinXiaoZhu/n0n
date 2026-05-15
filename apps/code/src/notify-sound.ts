@@ -15,7 +15,9 @@ export interface NotifyConfig {
 }
 
 /** 从 ConfigSource 构建 NotifyConfig */
-export function buildNotifyConfig(source: Record<string, string>): NotifyConfig {
+export function buildNotifyConfig(
+	source: Record<string, string>,
+): NotifyConfig {
 	const val = source.N0N_NOTIFY_SOUND;
 	return {
 		enabled: val === "1" || val === "true",

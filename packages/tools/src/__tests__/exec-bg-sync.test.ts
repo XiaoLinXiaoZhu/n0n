@@ -8,7 +8,7 @@
  * 4. 新输出能被同步到 bg 文件
  */
 
-import { describe, expect, test, afterAll } from "bun:test";
+import { afterAll, describe, expect, test } from "bun:test";
 import { existsSync, readFileSync, unlinkSync } from "node:fs";
 import type { ExecToolResult } from "@n0n/types";
 import { ExecArgsSchema, execToolStream } from "../exec/index.ts";
@@ -60,11 +60,7 @@ async function collectResult(
 
 describe("exec bg 文件同步验证", () => {
 	test("bg 文件初始写入包含 running 状态和元数据", async () => {
-		const result = await collectResult(
-			"await Bun.sleep(15000);",
-			2,
-			"bun",
-		);
+		const result = await collectResult("await Bun.sleep(15000);", 2, "bun");
 
 		expect(result.status).toBe("backgrounded");
 		if (result.status !== "backgrounded") return;
@@ -86,11 +82,7 @@ describe("exec bg 文件同步验证", () => {
 	}, 10000);
 
 	test("bg 文件定期更新 last_updated（即使无新输出）", async () => {
-		const result = await collectResult(
-			"await Bun.sleep(20000);",
-			2,
-			"bun",
-		);
+		const result = await collectResult("await Bun.sleep(20000);", 2, "bun");
 
 		expect(result.status).toBe("backgrounded");
 		if (result.status !== "backgrounded") return;

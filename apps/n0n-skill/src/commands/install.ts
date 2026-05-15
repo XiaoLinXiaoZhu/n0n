@@ -6,7 +6,7 @@
  */
 
 import { existsSync, mkdirSync } from "node:fs";
-import { resolve, basename } from "node:path";
+import { basename, resolve } from "node:path";
 import { Glob } from "bun";
 import { getUserSkillsDir } from "../paths.ts";
 

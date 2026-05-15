@@ -392,11 +392,15 @@ export class RichRenderer implements Renderer {
 			this.toolRegion.clear();
 			const total = this.execOutputLines.length;
 			if (total > TAIL_WINDOW) {
-				this.toolRegion.writeln(`  ${style.dim(":")} ${style.gray(`(${total - TAIL_WINDOW} lines above)`)}`);
+				this.toolRegion.writeln(
+					`  ${style.dim(":")} ${style.gray(`(${total - TAIL_WINDOW} lines above)`)}`,
+				);
 			}
 			const start = Math.max(0, total - TAIL_WINDOW);
 			for (let i = start; i < total; i++) {
-				this.toolRegion.writeln(`  ${style.dim("│")} ${style.dim(this.execOutputLines[i]!)}`);
+				this.toolRegion.writeln(
+					`  ${style.dim("│")} ${style.dim(this.execOutputLines[i]!)}`,
+				);
 			}
 			endSyncUpdate();
 		} else {
@@ -425,7 +429,9 @@ export class RichRenderer implements Renderer {
 				for (let i = 0; i < HEAD_LINES; i++) {
 					writeln(`  ${style.dim("│")} ${style.dim(lines[i]!)}`);
 				}
-				writeln(`  ${style.dim(":")} ${style.gray(`(${lines.length - HEAD_LINES - TAIL_LINES} lines folded)`)}`);
+				writeln(
+					`  ${style.dim(":")} ${style.gray(`(${lines.length - HEAD_LINES - TAIL_LINES} lines folded)`)}`,
+				);
 				for (let i = lines.length - TAIL_LINES; i < lines.length; i++) {
 					writeln(`  ${style.dim("│")} ${style.dim(lines[i]!)}`);
 				}
@@ -466,7 +472,8 @@ export class RichRenderer implements Renderer {
 						const estTk = estimateTokens(result.stdout + result.stderr);
 						return `${style.dim("◂")} ${style.cyan(result.tool)} ${duration} ${exit} ${style.gray(`${outLen} chars`)} ${style.dim(`~${estTk} tok`)}`;
 					}
-					default: return `${style.dim("◂")} ${style.yellow("unknown tool:")}`;
+					default:
+						return `${style.dim("◂")} ${style.yellow("unknown tool:")}`;
 				}
 			}
 			case "write": {
@@ -484,8 +491,14 @@ export class RichRenderer implements Renderer {
 				if (!result.success) {
 					return `${style.dim("◂")} ${style.cyan("edit")} ${path} ${duration} ${rounds} ${style.red(result.error ?? "failed")}`;
 				}
-				const added = result.patches.reduce((s, p) => s + (p.newText === "" ? 0 : p.newText.split("\n").length), 0);
-				const removed = result.patches.reduce((s, p) => s + (p.oldText === "" ? 0 : p.oldText.split("\n").length), 0);
+				const added = result.patches.reduce(
+					(s, p) => s + (p.newText === "" ? 0 : p.newText.split("\n").length),
+					0,
+				);
+				const removed = result.patches.reduce(
+					(s, p) => s + (p.oldText === "" ? 0 : p.oldText.split("\n").length),
+					0,
+				);
 				const lineStats =
 					[
 						added > 0 ? style.green(`+${added}`) : null,

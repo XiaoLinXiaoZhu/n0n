@@ -10,7 +10,9 @@ import { readdirSync } from "node:fs";
 import { loadPathToolsConfig, type PathToolsConfig } from "../config/load.ts";
 
 const IS_WINDOWS = process.platform === "win32";
-const EXE_EXTENSIONS = IS_WINDOWS ? new Set(["exe", "cmd", "bat", "ps1"]) : null;
+const EXE_EXTENSIONS = IS_WINDOWS
+	? new Set(["exe", "cmd", "bat", "ps1"])
+	: null;
 
 export async function globalCommand(detail = false): Promise<void> {
 	const sections: string[] = [];
@@ -175,7 +177,10 @@ interface ProbeResult {
 function probeRuntime(def: RuntimeDef): ProbeResult {
 	const base: ProbeResult = { def, available: false, version: null };
 
-	if (def.platforms && !def.platforms.includes(process.platform as "win32" | "darwin" | "linux")) {
+	if (
+		def.platforms &&
+		!def.platforms.includes(process.platform as "win32" | "darwin" | "linux")
+	) {
 		return base;
 	}
 
@@ -220,7 +225,9 @@ function runtimesSection(): string {
 			const isPreferred = r.def.name === preferredByGroup.get(group);
 			const versionStr = r.version ? `${r.version}` : "available";
 			const marker = isPreferred ? " (preferred)" : "";
-			lines.push(`${r.def.name}: ${versionStr}${marker}  →  ${r.def.execution}`);
+			lines.push(
+				`${r.def.name}: ${versionStr}${marker}  →  ${r.def.execution}`,
+			);
 		}
 	}
 
@@ -272,7 +279,9 @@ function pathToolsWhitelist(config: PathToolsConfig): string {
 		lines.push("(none detected)");
 	}
 
-	lines.push("(not exhaustive — use `n0n-init global --detail` for blacklist-filtered full list)");
+	lines.push(
+		"(not exhaustive — use `n0n-init global --detail` for blacklist-filtered full list)",
+	);
 
 	return lines.join("\n");
 }

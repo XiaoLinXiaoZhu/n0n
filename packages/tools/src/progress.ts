@@ -32,9 +32,11 @@ export interface ProgressStatusConfig {
  * - description: 包含所有 status 的含义和对应 content 格式（从配置拼接）
  * - parameters: { status: enum[...], content: string }
  */
-export function makeProgressTool(config: ProgressStatusConfig[]): ToolDefinition {
+export function makeProgressTool(
+	config: ProgressStatusConfig[],
+): ToolDefinition {
 	const statusDocs = config
-		.map(c => `- ${c.value}: ${c.statusDesc}\n  content: ${c.contentDesc}`)
+		.map((c) => `- ${c.value}: ${c.statusDesc}\n  content: ${c.contentDesc}`)
 		.join("\n");
 
 	const description = [
@@ -47,7 +49,7 @@ export function makeProgressTool(config: ProgressStatusConfig[]): ToolDefinition
 		"Validation is enforced — non-conforming calls will be rejected.",
 	].join("\n");
 
-	const statusEnum = config.map(c => c.value);
+	const statusEnum = config.map((c) => c.value);
 
 	return {
 		name: "progress",

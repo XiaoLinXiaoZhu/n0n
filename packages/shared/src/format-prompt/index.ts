@@ -59,9 +59,10 @@ function toolResultToStructured(
 			return formatEditResult(msg, tags, msgIndex);
 		case "progress":
 			return formatProgressResult(msg, tags, msgIndex);
-		default:
+		default: {
 			const _exhaustive: never = msg;
 			throw new Error(`Unknown tool`);
+		}
 	}
 }
 
@@ -215,7 +216,6 @@ export function formatPrompt(
 					content: formatIdleNudge(msg, tags, i),
 				});
 				break;
-
 
 			case "user_input":
 				result.push({

@@ -14,6 +14,6 @@ export { pick } from "./seed.ts";
  * hint: 系统提示（仅最新轮保留，历史轮次中剥离）
  */
 export interface FormattedToolResult {
-  fact: string;
-  hint: string | null;
+	fact: string;
+	hint: string | null;
 }

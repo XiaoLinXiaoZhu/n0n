@@ -26,10 +26,16 @@ export async function projectCommand(): Promise<void> {
 function gitSection(): string {
 	const lines = ["[Git]"];
 	try {
-		const branch = execSync("git branch --show-current", { encoding: "utf8", timeout: 5000 }).trim();
+		const branch = execSync("git branch --show-current", {
+			encoding: "utf8",
+			timeout: 5000,
+		}).trim();
 		lines.push(`Branch: ${branch || "(detached HEAD)"}`);
 
-		const status = execSync("git status --short", { encoding: "utf8", timeout: 5000 }).trim();
+		const status = execSync("git status --short", {
+			encoding: "utf8",
+			timeout: 5000,
+		}).trim();
 		if (status) {
 			const changed = status.split("\n").length;
 			lines.push(`Status: ${changed} changed file${changed > 1 ? "s" : ""}`);
@@ -68,9 +74,20 @@ function agentsMdSection(cwd: string): string {
 async function codebaseSection(cwd: string): Promise<string> {
 	const lines = ["[Codebase]"];
 	const IGNORE = new Set([
-		"node_modules", ".git", ".temp", "dist", ".turbo",
-		"bun.lock", "bun.lockb", ".next", ".nuxt", "coverage",
-		"__pycache__", ".venv", "venv", "target",
+		"node_modules",
+		".git",
+		".temp",
+		"dist",
+		".turbo",
+		"bun.lock",
+		"bun.lockb",
+		".next",
+		".nuxt",
+		"coverage",
+		"__pycache__",
+		".venv",
+		"venv",
+		"target",
 	]);
 
 	let fileCount = 0;
@@ -91,7 +108,8 @@ async function codebaseSection(cwd: string): Promise<string> {
 	}
 
 	// Walk and count source files
-	const SOURCE_EXTS = /\.(ts|js|tsx|jsx|py|rs|go|java|c|cpp|h|hpp|cs|rb|swift|kt)$/;
+	const SOURCE_EXTS =
+		/\.(ts|js|tsx|jsx|py|rs|go|java|c|cpp|h|hpp|cs|rb|swift|kt)$/;
 	async function walk(dir: string, depth: number): Promise<void> {
 		if (depth > 6) return;
 		try {
@@ -130,8 +148,16 @@ async function codebaseSection(cwd: string): Promise<string> {
 	if (existsSync(join(cwd, "package.json"))) markers.push("node/bun");
 	if (existsSync(join(cwd, "Cargo.toml"))) markers.push("rust");
 	if (existsSync(join(cwd, "go.mod"))) markers.push("go");
-	if (existsSync(join(cwd, "pyproject.toml")) || existsSync(join(cwd, "requirements.txt"))) markers.push("python");
-	if (existsSync(join(cwd, "turbo.json")) || existsSync(join(cwd, "pnpm-workspace.yaml"))) markers.push("monorepo");
+	if (
+		existsSync(join(cwd, "pyproject.toml")) ||
+		existsSync(join(cwd, "requirements.txt"))
+	)
+		markers.push("python");
+	if (
+		existsSync(join(cwd, "turbo.json")) ||
+		existsSync(join(cwd, "pnpm-workspace.yaml"))
+	)
+		markers.push("monorepo");
 	if (existsSync(join(cwd, ".venv"))) markers.push(".venv present");
 	if (markers.length > 0) lines.push(`Type: ${markers.join(", ")}`);
 

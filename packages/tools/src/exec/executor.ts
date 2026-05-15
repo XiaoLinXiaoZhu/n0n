@@ -268,7 +268,11 @@ export async function* execToolStream(
 				const stdoutSection = `--- stdout ---\n${opts.stdout || "(empty)"}`;
 				const stderrSection = `--- stderr ---\n${opts.stderr || "(empty)"}`;
 
-				const metaLines = [`pid: ${pid}`, `status: ${opts.status}`, `started_at: ${startedAt}`];
+				const metaLines = [
+					`pid: ${pid}`,
+					`status: ${opts.status}`,
+					`started_at: ${startedAt}`,
+				];
 
 				if (opts.status === "running") {
 					metaLines.push(`last_updated: ${now}`);
@@ -277,7 +281,8 @@ export async function* execToolStream(
 					);
 				} else {
 					// exited
-					if (opts.exitCode !== undefined) metaLines.push(`exit_code: ${opts.exitCode}`);
+					if (opts.exitCode !== undefined)
+						metaLines.push(`exit_code: ${opts.exitCode}`);
 					if (opts.endedAt) metaLines.push(`ended_at: ${opts.endedAt}`);
 					if (opts.totalDurationMs !== undefined) {
 						const secs = Math.round(opts.totalDurationMs / 1000);
@@ -295,7 +300,11 @@ export async function* execToolStream(
 			// 初始写入
 			await Bun.write(
 				logFile,
-				buildLogContent({ status: "running", stdout: stdoutSoFar, stderr: stderrSoFar }),
+				buildLogContent({
+					status: "running",
+					stdout: stdoutSoFar,
+					stderr: stderrSoFar,
+				}),
 			);
 
 			// 启动后台协程：定期同步 + 等待进程结束
@@ -309,7 +318,11 @@ export async function* execToolStream(
 					// 非阻塞写入（fire-and-forget 在 interval 中）
 					Bun.write(
 						logFile,
-						buildLogContent({ status: "running", stdout: currentStdout, stderr: currentStderr }),
+						buildLogContent({
+							status: "running",
+							stdout: currentStdout,
+							stderr: currentStderr,
+						}),
 					);
 				};
 

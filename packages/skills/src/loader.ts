@@ -9,8 +9,8 @@
 
 import { existsSync } from "node:fs";
 import { resolve } from "node:path";
-import { Glob } from "bun";
 import { parseFrontmatter as parseFM } from "@n0n/shared";
+import { Glob } from "bun";
 import { generateUid } from "./parser.ts";
 import type { SkillContent, SkillMeta } from "./types.ts";
 
@@ -21,39 +21,39 @@ import type { SkillContent, SkillMeta } from "./types.ts";
  * 会生成 fallback 元数据。
  */
 export async function loadSkillContent(
-  skillPath: string,
+	skillPath: string,
 ): Promise<SkillContent | null> {
-  try {
-    const content = await Bun.file(skillPath).text();
-    const fmResult = parseFM(content);
-    const { body } = fmResult;
+	try {
+		const content = await Bun.file(skillPath).text();
+		const fmResult = parseFM(content);
+		const { body } = fmResult;
 
-    const dir = resolve(skillPath, "..");
-    const scriptsDir = resolve(dir, "scripts");
-    const scripts: string[] = [];
-    if (existsSync(scriptsDir)) {
-      const scriptGlob = new Glob("**/*.{ts,js,sh}");
-      for (const s of scriptGlob.scanSync({ cwd: scriptsDir })) {
-        scripts.push(`scripts/${s.replace(/\\/g, "/")}`);
-      }
-    }
+		const dir = resolve(skillPath, "..");
+		const scriptsDir = resolve(dir, "scripts");
+		const scripts: string[] = [];
+		if (existsSync(scriptsDir)) {
+			const scriptGlob = new Glob("**/*.{ts,js,sh}");
+			for (const s of scriptGlob.scanSync({ cwd: scriptsDir })) {
+				scripts.push(`scripts/${s.replace(/\\/g, "/")}`);
+			}
+		}
 
-    const meta: Omit<SkillMeta, "body" | "scripts"> = {
-      uid: generateUid(),
-      name: "",
-      alias: [],
-      category: "task",
-      description: "",
-      activation: "auto",
-      order: 50,
-      path: resolve(skillPath),
-      dir,
-    };
+		const meta: Omit<SkillMeta, "body" | "scripts"> = {
+			uid: generateUid(),
+			name: "",
+			alias: [],
+			category: "task",
+			description: "",
+			activation: "auto",
+			order: 50,
+			path: resolve(skillPath),
+			dir,
+		};
 
-    return { ...meta, body, scripts };
-  } catch {
-    return null;
-  }
+		return { ...meta, body, scripts };
+	} catch {
+		return null;
+	}
 }
 
 /**
@@ -62,35 +62,35 @@ export async function loadSkillContent(
  * 推荐用法：先用 scanner 获取 SkillMeta，再通过此函数加载正文。
  */
 export async function loadSkillContentWithMeta(
-  skill: SkillMeta,
+	skill: SkillMeta,
 ): Promise<SkillContent | null> {
-  try {
-    const content = await Bun.file(skill.path).text();
-    const { body } = parseFM(content);
+	try {
+		const content = await Bun.file(skill.path).text();
+		const { body } = parseFM(content);
 
-    const scriptsDir = resolve(skill.dir, "scripts");
-    const scripts: string[] = [];
-    if (existsSync(scriptsDir)) {
-      const scriptGlob = new Glob("**/*.{ts,js,sh}");
-      for (const s of scriptGlob.scanSync({ cwd: scriptsDir })) {
-        scripts.push(`scripts/${s.replace(/\\/g, "/")}`);
-      }
-    }
+		const scriptsDir = resolve(skill.dir, "scripts");
+		const scripts: string[] = [];
+		if (existsSync(scriptsDir)) {
+			const scriptGlob = new Glob("**/*.{ts,js,sh}");
+			for (const s of scriptGlob.scanSync({ cwd: scriptsDir })) {
+				scripts.push(`scripts/${s.replace(/\\/g, "/")}`);
+			}
+		}
 
-    return { ...skill, body, scripts };
-  } catch {
-    return null;
-  }
+		return { ...skill, body, scripts };
+	} catch {
+		return null;
+	}
 }
 
 /**
  * 批量加载多个 skill 的完整内容
  */
 export async function loadSkillContents(
-  skills: SkillMeta[],
+	skills: SkillMeta[],
 ): Promise<SkillContent[]> {
-  const results = await Promise.all(
-    skills.map((s) => loadSkillContentWithMeta(s)),
-  );
-  return results.filter((r): r is SkillContent => r !== null);
+	const results = await Promise.all(
+		skills.map((s) => loadSkillContentWithMeta(s)),
+	);
+	return results.filter((r): r is SkillContent => r !== null);
 }

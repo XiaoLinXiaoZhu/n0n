@@ -23,11 +23,14 @@ export { ExecArgsSchema };
 const ALL_RUNTIMES =
 	"sh, bash, pwsh, cmd, bun, node, deno, python, python3, uv";
 
-const OBSERVE_DESCRIPTION = "Read files, search code, or check environment state. No side effects — use this for gathering information only.";
+const OBSERVE_DESCRIPTION =
+	"Read files, search code, or check environment state. No side effects — use this for gathering information only.";
 
-const REASON_DESCRIPTION = "Structured thinking, data processing, or hypothesis verification. No side effects — output is for the model's own consumption, not presented to the user.";
+const REASON_DESCRIPTION =
+	"Structured thinking, data processing, or hypothesis verification. No side effects — output is for the model's own consumption, not presented to the user.";
 
-const ACT_DESCRIPTION = "Execute actions that change environment state: run tests, build, commit, install dependencies, etc. Actions may be irreversible — verify your reasoning (via reason) before acting.";
+const ACT_DESCRIPTION =
+	"Execute actions that change environment state: run tests, build, commit, install dependencies, etc. Actions may be irreversible — verify your reasoning (via reason) before acting.";
 
 function makeExecLikeDefinition(
 	platform: "win32" | "darwin" | "linux",
@@ -51,14 +54,32 @@ function makeExecLikeDefinition(
 	return { name, description, parameters: PARAMETERS };
 }
 
-export function makeObserveToolDefinition(platform: "win32" | "darwin" | "linux"): ToolDefinition {
-	return makeExecLikeDefinition(platform, "observe", OBSERVE_DESCRIPTION, 60, 120);
+export function makeObserveToolDefinition(
+	platform: "win32" | "darwin" | "linux",
+): ToolDefinition {
+	return makeExecLikeDefinition(
+		platform,
+		"observe",
+		OBSERVE_DESCRIPTION,
+		60,
+		120,
+	);
 }
 
-export function makeReasonToolDefinition(platform: "win32" | "darwin" | "linux"): ToolDefinition {
-	return makeExecLikeDefinition(platform, "reason", REASON_DESCRIPTION, 60, 120);
+export function makeReasonToolDefinition(
+	platform: "win32" | "darwin" | "linux",
+): ToolDefinition {
+	return makeExecLikeDefinition(
+		platform,
+		"reason",
+		REASON_DESCRIPTION,
+		60,
+		120,
+	);
 }
 
-export function makeActToolDefinition(platform: "win32" | "darwin" | "linux"): ToolDefinition {
+export function makeActToolDefinition(
+	platform: "win32" | "darwin" | "linux",
+): ToolDefinition {
 	return makeExecLikeDefinition(platform, "act", ACT_DESCRIPTION, 120, 240);
 }

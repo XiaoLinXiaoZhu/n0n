@@ -2,7 +2,7 @@
  * 助手侧消息类型
  */
 
-import type { ToolCallRecord, PartialToolCallRecord } from "./tools/index.ts";
+import type { PartialToolCallRecord, ToolCallRecord } from "./tools/index.ts";
 
 // ── 助手消息 ──
 

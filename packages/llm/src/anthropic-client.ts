@@ -17,7 +17,6 @@
  * - system 消息拆离（Anthropic 格式要求 system 在消息体外）
  */
 
-import type { FormatFn } from "./factory.ts";
 import {
 	type CompleteRequest,
 	type CompleteResponse,
@@ -33,6 +32,7 @@ import {
 } from "@n0n/types";
 import type { AnthropicProviderConfig } from "./config.ts";
 import { isAbortError, LLMError } from "./errors.ts";
+import type { FormatFn } from "./factory.ts";
 
 // ── Anthropic 默认常量 ──
 
@@ -360,7 +360,12 @@ export class AnthropicClient implements LLMClient {
 	private readonly apiUrl: string;
 	private readonly format: FormatFn;
 
-	constructor(pc: AnthropicProviderConfig, tagStyle: TagStyle, tags: TagAdapter, format: FormatFn) {
+	constructor(
+		pc: AnthropicProviderConfig,
+		tagStyle: TagStyle,
+		tags: TagAdapter,
+		format: FormatFn,
+	) {
 		this.pc = pc;
 		this.modelId = this.pc.model;
 		this.tagStyle = tagStyle;
@@ -383,12 +388,16 @@ export class AnthropicClient implements LLMClient {
 		// 过滤空消息——防止提取后残留的空 user 或只有 thinking 无内容的 assistant
 		const filteredMessages = messages.filter((msg) => {
 			if (msg.role === "user") {
-				if (typeof msg.content === "string" && !msg.content.trim()) return false;
-				if (Array.isArray(msg.content) && msg.content.length === 0) return false;
+				if (typeof msg.content === "string" && !msg.content.trim())
+					return false;
+				if (Array.isArray(msg.content) && msg.content.length === 0)
+					return false;
 			}
 			if (msg.role === "assistant") {
-				if (Array.isArray(msg.content) && msg.content.length === 0) return false;
-				if (typeof msg.content === "string" && !msg.content.trim()) return false;
+				if (Array.isArray(msg.content) && msg.content.length === 0)
+					return false;
+				if (typeof msg.content === "string" && !msg.content.trim())
+					return false;
 			}
 			return true;
 		});

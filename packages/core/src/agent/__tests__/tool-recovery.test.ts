@@ -8,11 +8,12 @@
  */
 
 import { describe, expect, it } from "bun:test";
-import type { ToolCallRecord, DomainMessage, ToolArgErrorMessage } from "@n0n/types";
-import {
-	type PartialToolCall,
-	recoverPartialCalls,
-} from "../tool-recovery.ts";
+import type {
+	DomainMessage,
+	ToolArgErrorMessage,
+	ToolCallRecord,
+} from "@n0n/types";
+import { type PartialToolCall, recoverPartialCalls } from "../tool-recovery.ts";
 
 // ── 辅助 ──
 

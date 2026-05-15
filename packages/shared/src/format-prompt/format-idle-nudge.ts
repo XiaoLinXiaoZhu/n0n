@@ -24,8 +24,5 @@ export function formatIdleNudge(
 	msgIndex: number,
 ): string {
 	const tpl = pick(templates, msgIndex);
-	return tags.wrapTag(
-		"system_warning",
-		tpl(msg.idleCount, msg.maxIdleRounds),
-	);
+	return tags.wrapTag("system_warning", tpl(msg.idleCount, msg.maxIdleRounds));
 }

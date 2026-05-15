@@ -8,16 +8,13 @@
  */
 
 import { describe, expect, it } from "bun:test";
-import type { ToolArgErrorMessage, ToolCallRecord } from "@n0n/types";
 import type { ToolEntry } from "@n0n/tools";
+import type { ToolArgErrorMessage, ToolCallRecord } from "@n0n/types";
 import { executeToolStream, type GetToolEntry } from "../tool.ts";
 
 // ── 辅助 ──
 
-async function collectStream(
-	tc: ToolCallRecord,
-	getEntry?: GetToolEntry,
-) {
+async function collectStream(tc: ToolCallRecord, getEntry?: GetToolEntry) {
 	const events: unknown[] = [];
 	for await (const e of executeToolStream(tc, undefined, getEntry)) {
 		events.push(e);
@@ -110,9 +107,7 @@ describe("executeToolStream", () => {
 				name === "observe" ? mockEntry : undefined;
 			const events = await collectStream(tc, getEntry);
 
-			const argErrors = events.filter(
-				(e: any) => e.type === "tool_arg_error",
-			);
+			const argErrors = events.filter((e: any) => e.type === "tool_arg_error");
 			expect(argErrors).toHaveLength(0);
 
 			const results = events.filter((e: any) => e.type === "tool_result");

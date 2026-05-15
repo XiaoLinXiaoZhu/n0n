@@ -7,8 +7,8 @@
  * 按名称或别名查找，支持返回多个匹配结果。
  */
 
-import { readSkills, listSkills } from "@n0n/skill";
 import type { SkillContent } from "@n0n/skill";
+import { listSkills, readSkills } from "@n0n/skill";
 
 export interface SkillInjectResult {
 	/** 移除了 @name 行后的用户文本 */
@@ -51,8 +51,7 @@ export async function parseAndInjectSkills(
 
 	const { found, notFound } = await readSkills(skillNames);
 
-	const hint =
-		found.length > 0 ? formatSkillHint(found) : null;
+	const hint = found.length > 0 ? formatSkillHint(found) : null;
 
 	return {
 		cleanedText: cleanedLines.join("\n").trim(),

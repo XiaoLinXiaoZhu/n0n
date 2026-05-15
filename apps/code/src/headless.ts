@@ -8,12 +8,12 @@
  */
 
 import {
-	agentLoop,
 	type AgentConfig,
-	type EditBackendConfig,
-	type SecurityConfig,
+	agentLoop,
 	buildToolsConfig,
+	type EditBackendConfig,
 	PlainRenderer,
+	type SecurityConfig,
 } from "@n0n/core";
 import type { BaseWorkspacePaths } from "@n0n/shared";
 import { makeToolkit } from "@n0n/tools";
@@ -74,7 +74,11 @@ function buildHeadlessHint(): string {
 function injectUserResponse(history: DomainMessage[], response: string): void {
 	for (let i = history.length - 1; i >= 0; i--) {
 		const msg = history[i];
-		if (msg?.type === "tool_result" && "tool" in msg && msg.tool === "progress") {
+		if (
+			msg?.type === "tool_result" &&
+			"tool" in msg &&
+			msg.tool === "progress"
+		) {
 			(msg as ProgressToolResult).userResponse = response;
 			return;
 		}
@@ -108,16 +112,17 @@ export async function runHeadless(
 	const timer = setTimeout(() => abortController.abort(), timeoutMs);
 
 	// 构建 Toolkit — 含 progress config，供 fewshot 和 agentLoop 共用
-	const toolsConfig = buildToolsConfig(options.editBackend, options.agentConfig, options.securityConfig, {
-		workspace: paths.workspace,
-		tempDir: paths.temp,
-	});
-	const client = options.client;
-	const toolkit = makeToolkit(
-		codeProgressConfig,
-		toolsConfig,
-		client.modelId,
+	const toolsConfig = buildToolsConfig(
+		options.editBackend,
+		options.agentConfig,
+		options.securityConfig,
+		{
+			workspace: paths.workspace,
+			tempDir: paths.temp,
+		},
 	);
+	const client = options.client;
+	const toolkit = makeToolkit(codeProgressConfig, toolsConfig, client.modelId);
 	const contextFewshot = await buildContextFewshot(
 		toolkit,
 		paths.workspace,

@@ -93,8 +93,7 @@ export type ProviderConfig =
 	| AnthropicProviderConfig
 	| GoogleProviderConfig
 	| OpenAICompatibleProviderConfig
-	| DeepSeekProviderConfig
-;
+	| DeepSeekProviderConfig;
 
 // ── LLMConfig ──
 

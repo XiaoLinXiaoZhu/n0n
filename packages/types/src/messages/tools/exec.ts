@@ -42,7 +42,8 @@ export interface ExecTruncated extends MakeResult<ExecToolName, "truncated"> {
 }
 
 /** 等待超限，进程转入后台继续执行 */
-export interface ExecBackgrounded extends MakeResult<ExecToolName, "backgrounded"> {
+export interface ExecBackgrounded
+	extends MakeResult<ExecToolName, "backgrounded"> {
 	/** 后台进程 PID */
 	pid: number;
 	/** 后台日志文件路径 */

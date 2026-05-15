@@ -77,7 +77,7 @@ const cliOpts = (globalThis as Record<string, unknown>).__n0n_cli_opts as
 			promptVersion?: string;
 			expandExec?: boolean;
 			filteredArgs?: string[];
-		}
+	  }
 	| undefined;
 const resumeFile = cliOpts?.resumeFile;
 const saveEveryLoop = cliOpts?.saveEveryLoop ?? false;
@@ -103,9 +103,7 @@ const formatOptions: FormatOptions = {
 
 // 编辑后端：通过配置切换，默认 str-replace
 const editBackendType =
-	source.EDIT_BACKEND === "freeform-patch"
-		? "freeform-patch"
-		: "str-replace";
+	source.EDIT_BACKEND === "freeform-patch" ? "freeform-patch" : "str-replace";
 
 const editBackend: EditBackendConfig =
 	editBackendType === "freeform-patch"

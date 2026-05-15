@@ -17,10 +17,8 @@ import type { SkillMeta } from "./types.ts";
  * - 一个 skill 的名称恰好是另一个 skill 的别名
  */
 export function findSkillsByNameOrAlias(
-  skills: SkillMeta[],
-  query: string,
+	skills: SkillMeta[],
+	query: string,
 ): SkillMeta[] {
-  return skills.filter(
-    (s) => s.name === query || s.alias.includes(query),
-  );
+	return skills.filter((s) => s.name === query || s.alias.includes(query));
 }

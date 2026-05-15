@@ -20,7 +20,8 @@ export async function helpCommand(): Promise<void> {
 
 	console.log("可用 Skills：\n");
 	for (const skill of autoSkills) {
-		const aliasStr = skill.alias.length > 0 ? ` [${skill.alias.join(", ")}]` : "";
+		const aliasStr =
+			skill.alias.length > 0 ? ` [${skill.alias.join(", ")}]` : "";
 		console.log(`  ${skill.name}${aliasStr} — ${skill.description}`);
 	}
 

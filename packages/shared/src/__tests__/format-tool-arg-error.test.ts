@@ -16,11 +16,15 @@ import { formatToolArgError } from "../format-prompt/format-tool-arg-error.ts";
 
 // TagAdapter mock
 const tags: TagAdapter = {
-	wrapTag: (name: string, content: string) => `<${name}>\n${content}\n</${name}>`,
+	wrapTag: (name: string, content: string) =>
+		`<${name}>\n${content}\n</${name}>`,
 	adaptTags: (content: string) => content,
 };
 
-function makeMsg(error: ToolArgErrorMessage["error"], tool = "test_tool"): ToolArgErrorMessage {
+function makeMsg(
+	error: ToolArgErrorMessage["error"],
+	tool = "test_tool",
+): ToolArgErrorMessage {
 	return {
 		type: "tool_arg_error",
 		callId: "call_01",
@@ -62,10 +66,13 @@ describe("formatToolArgError", () => {
 	describe("invalid_args", () => {
 		it("应包含校验问题", () => {
 			const result = formatToolArgError(
-				makeMsg({
-					kind: "invalid_args",
-					issues: [{ path: "script", message: "Required" }],
-				}, "observe"),
+				makeMsg(
+					{
+						kind: "invalid_args",
+						issues: [{ path: "script", message: "Required" }],
+					},
+					"observe",
+				),
 				tags,
 				0,
 			);
@@ -76,11 +83,18 @@ describe("formatToolArgError", () => {
 
 		it("有 schema 时应包含 JSON Schema", () => {
 			const result = formatToolArgError(
-				makeMsg({
-					kind: "invalid_args",
-					issues: [{ path: "script", message: "Required" }],
-					schema: { type: "object", properties: { script: { type: "string" } }, required: ["script"] },
-				}, "observe"),
+				makeMsg(
+					{
+						kind: "invalid_args",
+						issues: [{ path: "script", message: "Required" }],
+						schema: {
+							type: "object",
+							properties: { script: { type: "string" } },
+							required: ["script"],
+						},
+					},
+					"observe",
+				),
 				tags,
 				0,
 			);
@@ -105,7 +119,10 @@ describe("formatToolArgError", () => {
 	describe("internal_error", () => {
 		it("应包含错误消息", () => {
 			const result = formatToolArgError(
-				makeMsg({ kind: "internal_error", message: "something broke" }, "observe"),
+				makeMsg(
+					{ kind: "internal_error", message: "something broke" },
+					"observe",
+				),
 				tags,
 				0,
 			);

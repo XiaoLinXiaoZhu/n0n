@@ -28,7 +28,12 @@ const DEFAULT_ANTHROPIC_THINKING_BUDGET = 1024;
  * @param field 字段名（拼接为 `${prefix}_${field}`）
  * @param fallbackValue 环境变量未设置时的回退值
  */
-function env(source: ConfigSource, prefix: string, field: string, fallbackValue = ""): string {
+function env(
+	source: ConfigSource,
+	prefix: string,
+	field: string,
+	fallbackValue = "",
+): string {
 	return source[`${prefix}_${field}`] || fallbackValue;
 }
 
@@ -38,7 +43,11 @@ function envBool(source: ConfigSource, prefix: string, field: string): boolean {
 }
 
 /** 读取整数环境变量，无效值返回 undefined */
-function envInt(source: ConfigSource, prefix: string, field: string): number | undefined {
+function envInt(
+	source: ConfigSource,
+	prefix: string,
+	field: string,
+): number | undefined {
 	const raw = source[`${prefix}_${field}`];
 	if (!raw) return undefined;
 	const parsed = Number.parseInt(raw, 10);
@@ -60,9 +69,7 @@ function envEnum<T extends string>(
 ): T | undefined {
 	const raw = source[`${prefix}_${field}`];
 	if (!raw) return undefined;
-	return (allowed as readonly string[]).includes(raw)
-		? (raw as T)
-		: undefined;
+	return (allowed as readonly string[]).includes(raw) ? (raw as T) : undefined;
 }
 
 // ── Provider 类型解析 ──
@@ -215,6 +222,10 @@ export function buildLLMConfigFromEnv(
 	fallbackProvider?: ProviderConfig,
 ): LLMConfig {
 	return {
-		providerConfig: buildProviderConfigFromEnv(source, prefix, fallbackProvider),
+		providerConfig: buildProviderConfigFromEnv(
+			source,
+			prefix,
+			fallbackProvider,
+		),
 	};
 }

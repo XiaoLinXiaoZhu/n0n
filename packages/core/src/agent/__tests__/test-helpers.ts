@@ -26,7 +26,11 @@ export function mockEditTC(id: string, path: string): ToolCallRecord {
 }
 
 export function mockProgressTC(id: string): ToolCallRecord {
-	return { id, tool: "progress", args: { status: "completed", content: "test" } } as ToolCallRecord;
+	return {
+		id,
+		tool: "progress",
+		args: { status: "completed", content: "test" },
+	} as ToolCallRecord;
 }
 
 // ── Mock ToolResult 工厂 ──

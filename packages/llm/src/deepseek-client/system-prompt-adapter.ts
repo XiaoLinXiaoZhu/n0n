@@ -13,8 +13,8 @@
  * 最终结构：[前置工具定义] + [系统提示词] + [API 自动追加的工具定义]
  */
 
-import type { FormatFn } from "../factory.ts";
 import type { StreamRequest, ToolDefinition } from "@n0n/types";
+import type { FormatFn } from "../factory.ts";
 
 // ── DeepSeek DSML 常量（与官方 encoding_dsv4.py 一致） ──
 
@@ -87,7 +87,10 @@ function renderTools(tools: ToolDefinition[]): string {
  *
  * @param request 完整的流式请求（含 messages 和可选的 tools）
  */
-export function systemPromptAdapter(request: StreamRequest, systemFormat: FormatFn): string {
+export function systemPromptAdapter(
+	request: StreamRequest,
+	systemFormat: FormatFn,
+): string {
 	const promptMessages = systemFormat(request.messages);
 
 	const systemParts: string[] = [];

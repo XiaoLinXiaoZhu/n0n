@@ -13,21 +13,21 @@
  * 消费者也可按需导入子模块以避免冗余加载。
  */
 
-export { discoverSkills, discoverSkillsMultiDir } from "./scanner.ts";
-export { findSkillsByNameOrAlias } from "./resolver.ts";
 export {
-  formatSkillContents,
-  formatSkillSummaries,
+	formatSkillContents,
+	formatSkillSummaries,
 } from "./formatter.ts";
 export {
-  loadSkillContent,
-  loadSkillContentWithMeta,
-  loadSkillContents,
+	loadSkillContent,
+	loadSkillContents,
+	loadSkillContentWithMeta,
 } from "./loader.ts";
-export { parseSkillMeta, deriveNameFromPath, generateUid } from "./parser.ts";
+export { deriveNameFromPath, generateUid, parseSkillMeta } from "./parser.ts";
+export { findSkillsByNameOrAlias } from "./resolver.ts";
+export { discoverSkills, discoverSkillsMultiDir } from "./scanner.ts";
 export type {
-  SkillActivation,
-  SkillCategory,
-  SkillContent,
-  SkillMeta,
+	SkillActivation,
+	SkillCategory,
+	SkillContent,
+	SkillMeta,
 } from "./types.ts";

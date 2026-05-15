@@ -10,8 +10,8 @@ import { existsSync, mkdirSync, readdirSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import type { ToolCallRecord } from "@n0n/types";
 import { CodeRenderer } from "../code-renderer.ts";
-import type { CodeProgressResult } from "../schema.ts";
 import { formatProgressResult } from "../progress-formatter.ts";
+import type { CodeProgressResult } from "../schema.ts";
 
 // ── 测试用临时目录 ──
 const TEST_WORKSPACE = join(import.meta.dir, ".tmp-preview-test");

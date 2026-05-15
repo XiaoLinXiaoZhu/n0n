@@ -228,7 +228,12 @@ describe("formatPrompt 变体端到端", () => {
 		let bpIdx = -1;
 		for (let j = longResult.length - 1; j >= 0; j--) {
 			const m = longResult[j];
-			if (m && m.cacheBreakpoint && m.role === "assistant" && m.toolCalls?.length) {
+			if (
+				m &&
+				m.cacheBreakpoint &&
+				m.role === "assistant" &&
+				m.toolCalls?.length
+			) {
 				bpIdx = j;
 				break;
 			}
@@ -260,13 +265,19 @@ describe("formatPrompt 变体端到端", () => {
 				content: null,
 				reasoning: null,
 				reasoningSignature: null,
-				toolCalls: [{ id: "tc_old", tool: "observe", args: { script: "npm run foo" } }],
+				toolCalls: [
+					{ id: "tc_old", tool: "observe", args: { script: "npm run foo" } },
+				],
 			},
 			{
 				type: "tool_result",
 				tool: "observe",
 				status: "completed",
-				call: { id: "tc_old", tool: "observe", args: { script: "npm run foo" } },
+				call: {
+					id: "tc_old",
+					tool: "observe",
+					args: { script: "npm run foo" },
+				},
 				exitCode: 1,
 				stdout: "",
 				stderr: "Cannot find module 'foo'",
@@ -278,7 +289,9 @@ describe("formatPrompt 变体端到端", () => {
 				content: null,
 				reasoning: null,
 				reasoningSignature: null,
-				toolCalls: [{ id: "tc_new", tool: "observe", args: { script: "echo hi" } }],
+				toolCalls: [
+					{ id: "tc_new", tool: "observe", args: { script: "echo hi" } },
+				],
 			},
 			{
 				type: "tool_result",
@@ -312,7 +325,9 @@ describe("formatPrompt 变体端到端", () => {
 				content: null,
 				reasoning: null,
 				reasoningSignature: null,
-				toolCalls: [{ id: "tc_1", tool: "observe", args: { script: "npm run foo" } }],
+				toolCalls: [
+					{ id: "tc_1", tool: "observe", args: { script: "npm run foo" } },
+				],
 			},
 			{
 				type: "tool_result",
@@ -360,11 +375,15 @@ describe("formatPrompt 变体端到端", () => {
 		const msgs = buildConversation(5);
 		const result = formatPrompt(msgs, tags);
 
-		const bpMessages = result.filter((m) => m.cacheBreakpoint && m.role === "assistant" && m.toolCalls?.length);
+		const bpMessages = result.filter(
+			(m) => m.cacheBreakpoint && m.role === "assistant" && m.toolCalls?.length,
+		);
 		expect(bpMessages.length).toBeGreaterThanOrEqual(1);
 
 		// 最后一个有 bp 的 assistant 应该是最后一个 assistant with toolCalls
-		const lastAssistantWithTools = result.filter((m) => m.role === "assistant" && m.toolCalls?.length).pop();
+		const lastAssistantWithTools = result
+			.filter((m) => m.role === "assistant" && m.toolCalls?.length)
+			.pop();
 		expect(lastAssistantWithTools?.cacheBreakpoint).toBe(true);
 	});
 });

@@ -2,27 +2,36 @@
  * 工具类型聚合模块
  */
 
+// Edit
+export type { EditToolResult, PatchOp } from "./edit.ts";
+
+// Exec (shared by observe / reason / act)
+export type {
+	ExecBackgrounded,
+	ExecCompleted,
+	ExecToolName,
+	ExecToolResult,
+	ExecTruncated,
+} from "./exec.ts";
+// Progress
+export type { ProgressToolResult } from "./progress.ts";
 // 注册表核心
 export type {
-	ToolMap,
-	ToolName,
+	ActToolCall,
+	EditToolCall,
 	MakeCall,
 	MakeResult,
 	MakeResultBase,
+	ObserveToolCall,
+	PartialToolCallRecord,
+	ProgressToolCall,
+	ReasonToolCall,
 	ToolCallRecord,
 	ToolCallRecordMap,
-	ObserveToolCall,
-	ReasonToolCall,
-	ActToolCall,
+	ToolMap,
+	ToolName,
 	WriteToolCall,
-	EditToolCall,
-	ProgressToolCall,
-	PartialToolCallRecord,
 } from "./registry.ts";
-
-// Exec (shared by observe / reason / act)
-export type { ExecCompleted, ExecTruncated, ExecBackgrounded, ExecToolResult, ExecToolName } from "./exec.ts";
-
 // Write
 export type {
 	WriteCompleted,
@@ -32,18 +41,12 @@ export type {
 	WriteToolResult,
 } from "./write.ts";
 
-// Edit
-export type { PatchOp, EditToolResult } from "./edit.ts";
-
-// Progress
-export type { ProgressToolResult } from "./progress.ts";
-
 // ── 聚合 ToolResult 联合 ──
 
-import type { ExecToolResult } from "./exec.ts";
-import type { WriteToolResult } from "./write.ts";
 import type { EditToolResult } from "./edit.ts";
+import type { ExecToolResult } from "./exec.ts";
 import type { ProgressToolResult } from "./progress.ts";
+import type { WriteToolResult } from "./write.ts";
 
 export type ToolResult =
 	| ExecToolResult

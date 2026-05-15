@@ -49,7 +49,10 @@ function allVars(spec: EnvSpec): EnvVarDef[] {
 }
 
 /** 查找缺失的必填变量 */
-function findMissing(spec: EnvSpec, resolved: Record<string, string>): EnvVarDef[] {
+function findMissing(
+	spec: EnvSpec,
+	resolved: Record<string, string>,
+): EnvVarDef[] {
 	return allVars(spec).filter(
 		(v) =>
 			v.default === undefined &&
@@ -109,9 +112,7 @@ function resolvePrefix(
 	globalEnv: Record<string, string>,
 	projectEnv: Record<string, string>,
 ): string | undefined {
-	return (
-		processEnv.N0N_PREFIX ?? globalEnv.N0N_PREFIX ?? projectEnv.N0N_PREFIX
-	);
+	return processEnv.N0N_PREFIX ?? globalEnv.N0N_PREFIX ?? projectEnv.N0N_PREFIX;
 }
 
 /**
@@ -171,7 +172,10 @@ function computePrefixOverrides(
 /**
  * 将覆盖值合并到 resolved 中。
  */
-function applyOverrides(resolved: Record<string, string>, overrides: Record<string, string>): void {
+function applyOverrides(
+	resolved: Record<string, string>,
+	overrides: Record<string, string>,
+): void {
 	for (const [key, value] of Object.entries(overrides)) {
 		resolved[key] = value;
 	}
@@ -348,7 +352,12 @@ export async function bootstrap(
 	}
 
 	const prefix = resolvePrefix(processEnv, globalEnv, projectEnv);
-	const provider = resolveEffectiveProvider(prefix, processEnv, globalEnv, projectEnv);
+	const provider = resolveEffectiveProvider(
+		prefix,
+		processEnv,
+		globalEnv,
+		projectEnv,
+	);
 
 	// ── Phase 2: 构建 EnvSpec，前缀切换剩余变量，验证 ──
 

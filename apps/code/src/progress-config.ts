@@ -12,7 +12,8 @@ import type { ProgressStatusConfig } from "@n0n/tools";
 export const codeProgressConfig: ProgressStatusConfig[] = [
 	{
 		value: "completed",
-		statusDesc: "任务完成，提交最终汇报。假定用户已失去上下文，务必完整自包含。",
+		statusDesc:
+			"任务完成，提交最终汇报。假定用户已失去上下文，务必完整自包含。",
 		contentDesc:
 			"完成汇报——详细说明已完成的工作、验证结果和关键决策。可选在末尾用 `---` 分隔后附后续步骤建议。",
 	},

@@ -13,9 +13,9 @@ import type { Toolkit } from "@n0n/tools";
 import type {
 	DomainMessage,
 	LLMClient,
-	TokenUsage,
 	PartialToolCallRecord,
 	Renderer,
+	TokenUsage,
 	ToolCallRecord,
 	ToolDefinition,
 } from "@n0n/types";
@@ -78,12 +78,16 @@ export async function agentLoop<T = unknown>(
 			};
 		}
 
-		renderer.roundStart(iter + 1, maxIter, messages.length, findLastUsage(messages));
+		renderer.roundStart(
+			iter + 1,
+			maxIter,
+			messages.length,
+			findLastUsage(messages),
+		);
 
 		// ── 1. 流式解析 + 并行执行（交织进行） ──
 		const scheduler = new ExecutionScheduler(
-			(tc) =>
-				executeToolStream(tc, options.confirmFn, toolkit.getEntry),
+			(tc) => executeToolStream(tc, options.confirmFn, toolkit.getEntry),
 			{
 				onRegister: (tc) => renderer.toolExecStart(tc.id, tc),
 				onChunk: (tcId, tool, chunk) =>
@@ -152,7 +156,8 @@ export async function agentLoop<T = unknown>(
 		const outcome = classifyRound(streamResult!, idleCount, maxIdleRounds);
 
 		const roundUsage = streamResult!.accumulator.usage;
-		const roundFinishReason = streamResult!.accumulator.finishReason ?? "unknown";
+		const roundFinishReason =
+			streamResult!.accumulator.finishReason ?? "unknown";
 
 		if (outcome.action === "exit") {
 			scheduler.seal();
@@ -276,9 +281,21 @@ export async function agentLoop<T = unknown>(
 // ── 本轮结果分类（纯函数） ──
 
 type RoundOutcome =
-	| { action: "exit"; reason: string; report: string | null; assistantMessage?: import("@n0n/types").AssistantTextMessage }
-	| { action: "idle"; assistantMessage: import("@n0n/types").AssistantTextMessage }
-	| { action: "retry_truncated"; assistantMessage: import("@n0n/types").AssistantTextMessage; retryMessage: import("@n0n/types").GenericUserTextMessage }
+	| {
+			action: "exit";
+			reason: string;
+			report: string | null;
+			assistantMessage?: import("@n0n/types").AssistantTextMessage;
+	  }
+	| {
+			action: "idle";
+			assistantMessage: import("@n0n/types").AssistantTextMessage;
+	  }
+	| {
+			action: "retry_truncated";
+			assistantMessage: import("@n0n/types").AssistantTextMessage;
+			retryMessage: import("@n0n/types").GenericUserTextMessage;
+	  }
 	| { action: "execute_tools" };
 
 function classifyRound(

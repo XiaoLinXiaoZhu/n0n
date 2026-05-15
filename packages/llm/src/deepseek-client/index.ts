@@ -9,7 +9,6 @@
  * 走正常的 formatPrompt → TagAdapter 路线，不绕过 tag 适配体系。
  */
 
-import type { FormatFn } from "../factory.ts";
 import type {
 	CompleteRequest,
 	CompleteResponse,
@@ -24,6 +23,7 @@ import type {
 } from "@n0n/types";
 import type { DeepSeekProviderConfig } from "../config.ts";
 import { isAbortError, LLMError } from "../errors.ts";
+import type { FormatFn } from "../factory.ts";
 import { systemPromptAdapter } from "./system-prompt-adapter.ts";
 
 // ── DeepSeek API Types (OpenAI-compatible) ──
@@ -185,7 +185,13 @@ export class DeepSeekClient implements LLMClient {
 	private readonly format: FormatFn;
 	private readonly systemFormat: FormatFn;
 
-	constructor(pc: DeepSeekProviderConfig, tagStyle: TagStyle, tags: TagAdapter, format: FormatFn, systemFormat: FormatFn) {
+	constructor(
+		pc: DeepSeekProviderConfig,
+		tagStyle: TagStyle,
+		tags: TagAdapter,
+		format: FormatFn,
+		systemFormat: FormatFn,
+	) {
 		this.pc = pc;
 		this.modelId = this.pc.model;
 		this.tagStyle = tagStyle;
@@ -200,7 +206,6 @@ export class DeepSeekClient implements LLMClient {
 			const cleanBase = base.replace(/\/v1\/?$/, "").replace(/\/$/, "");
 			this.apiUrl = `${cleanBase}/v1/chat/completions`;
 		}
-
 	}
 
 	async *stream(

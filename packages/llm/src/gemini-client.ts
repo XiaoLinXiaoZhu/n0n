@@ -16,7 +16,6 @@
  * 缓存：Gemini 的 Context Caching 是独立 API，OpenAI 兼容端点不暴露，因此不实现 heartbeat。
  */
 
-import type { FormatFn } from "./factory.ts";
 import type {
 	CompleteRequest,
 	CompleteResponse,
@@ -31,6 +30,7 @@ import type {
 } from "@n0n/types";
 import type { GoogleProviderConfig } from "./config.ts";
 import { isAbortError, LLMError } from "./errors.ts";
+import type { FormatFn } from "./factory.ts";
 
 // ── OpenAI-compatible API Types ──
 
@@ -191,7 +191,12 @@ export class GeminiClient implements LLMClient {
 	private readonly apiUrl: string;
 	private readonly format: FormatFn;
 
-	constructor(pc: GoogleProviderConfig, tagStyle: TagStyle, tags: TagAdapter, format: FormatFn) {
+	constructor(
+		pc: GoogleProviderConfig,
+		tagStyle: TagStyle,
+		tags: TagAdapter,
+		format: FormatFn,
+	) {
 		this.pc = pc;
 		this.modelId = this.pc.model;
 		this.tagStyle = tagStyle;

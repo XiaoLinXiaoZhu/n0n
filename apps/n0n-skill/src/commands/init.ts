@@ -56,7 +56,8 @@ export async function initCommand(): Promise<void> {
 	const userDir = getUserSkillsDir();
 	for (const category of CATEGORIES) {
 		const builtinCatDir = resolve(targetDir, category);
-		if (!existsSync(builtinCatDir)) mkdirSync(builtinCatDir, { recursive: true });
+		if (!existsSync(builtinCatDir))
+			mkdirSync(builtinCatDir, { recursive: true });
 		const userCatDir = resolve(userDir, category);
 		if (!existsSync(userCatDir)) mkdirSync(userCatDir, { recursive: true });
 	}

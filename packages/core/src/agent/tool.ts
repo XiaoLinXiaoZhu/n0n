@@ -2,10 +2,7 @@
  * 工具调用解析与执行 — agentLoop 的工具层
  */
 
-import {
-	REGISTERED_TOOLS,
-	type ToolEntry,
-} from "@n0n/tools";
+import { REGISTERED_TOOLS, type ToolEntry } from "@n0n/tools";
 import type {
 	AssistantToolCallPart,
 	ToolArgErrorMessage,

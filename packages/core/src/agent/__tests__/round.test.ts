@@ -11,10 +11,7 @@
  */
 
 import { describe, expect, it } from "bun:test";
-import type {
-	DomainMessage,
-	ToolCallRecord,
-} from "@n0n/types";
+import type { DomainMessage, ToolCallRecord } from "@n0n/types";
 import { StreamAccumulator } from "@n0n/types";
 import {
 	buildToolCallMessage,
@@ -45,7 +42,6 @@ function makeAccWithToolCalls(
 	}
 	return acc;
 }
-
 
 // ── recoverTruncatedCalls ──
 
@@ -203,4 +199,3 @@ describe("collectJobMessages", () => {
 		expect(msgs).toHaveLength(2);
 	});
 });
-

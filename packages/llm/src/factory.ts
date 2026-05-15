@@ -7,12 +7,17 @@
  * 3. 将闭包注入 Client — Client 不感知 formatPrompt 的存在
  */
 
+import {
+	createTagAdapter,
+	detectTagStyle,
+	type FormatOptions,
+	formatPrompt,
+} from "@n0n/shared";
 import type { DomainMessage, LLMClient, PromptMessage } from "@n0n/types";
-import { createTagAdapter, detectTagStyle, formatPrompt, type FormatOptions } from "@n0n/shared";
 import { AnthropicClient } from "./anthropic-client.ts";
 import type { LLMConfig } from "./config.ts";
-import { GeminiClient } from "./gemini-client.ts";
 import { DeepSeekClient } from "./deepseek-client/index.ts";
+import { GeminiClient } from "./gemini-client.ts";
 import { OpenAIClient } from "./openai-client.ts";
 
 /** 格式化函数类型 — DomainMessage[] → PromptMessage[] */
@@ -25,7 +30,10 @@ export type FormatFn = (messages: DomainMessage[]) => PromptMessage[];
  * @param formatOptions 格式化选项（控制 hint 剥离等行为）
  * @returns LLMClient 实例，闭包所有配置
  */
-export function createLLMClient(config: LLMConfig, formatOptions?: FormatOptions): LLMClient {
+export function createLLMClient(
+	config: LLMConfig,
+	formatOptions?: FormatOptions,
+): LLMClient {
 	const pc = config.providerConfig;
 	const tagStyle = pc.tagStyle ?? detectTagStyle(pc.model);
 	const tags = createTagAdapter(tagStyle);
@@ -41,7 +49,8 @@ export function createLLMClient(config: LLMConfig, formatOptions?: FormatOptions
 			return new GeminiClient(pc, tagStyle, tags, format);
 		case "deepseek": {
 			const deepseekTags = createTagAdapter("deepseek");
-			const systemFormat: FormatFn = (msgs) => formatPrompt(msgs, deepseekTags, formatOptions);
+			const systemFormat: FormatFn = (msgs) =>
+				formatPrompt(msgs, deepseekTags, formatOptions);
 			return new DeepSeekClient(pc, tagStyle, tags, format, systemFormat);
 		}
 	}

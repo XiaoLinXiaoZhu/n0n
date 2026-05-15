@@ -10,12 +10,12 @@
  */
 
 import { relative, resolve, sep } from "node:path";
-import { z } from "zod";
 import {
-  extractNestedBlock,
-  extractRawYaml,
-  parseFrontmatter as parseFM,
+	extractNestedBlock,
+	extractRawYaml,
+	parseFrontmatter as parseFM,
 } from "@n0n/shared";
+import { z } from "zod";
 import type { SkillCategory, SkillMeta } from "./types.ts";
 
 // ── UID 生成 ──
@@ -24,32 +24,32 @@ let uidCounter = 0;
 
 /** 生成全局唯一的 skill 标识符 */
 export function generateUid(): string {
-  const ts = Date.now().toString(36);
-  const counter = (uidCounter++).toString(36).padStart(4, "0");
-  const rand = Math.random().toString(36).slice(2, 6);
-  return `${ts}-${counter}-${rand}`;
+	const ts = Date.now().toString(36);
+	const counter = (uidCounter++).toString(36).padStart(4, "0");
+	const rand = Math.random().toString(36).slice(2, 6);
+	return `${ts}-${counter}-${rand}`;
 }
 
 // ── Zod Schemas ──
 
 /** alias 字段支持 string | string[] */
 const AliasSchema = z
-  .union([z.string(), z.array(z.string())])
-  .optional()
-  .default([])
-  .transform((v) => {
-    if (typeof v === "string") return [v];
-    return v;
-  });
+	.union([z.string(), z.array(z.string())])
+	.optional()
+	.default([])
+	.transform((v) => {
+		if (typeof v === "string") return [v];
+		return v;
+	});
 
 /** SKILL.md 的 frontmatter schema */
 export const SkillFrontmatterSchema = z.object({
-  alias: AliasSchema,
-  description: z.string(),
-  license: z.string().optional(),
-  compatibility: z.string().optional(),
-  activation: z.enum(["auto", "manual", "init"]).default("auto"),
-  order: z.coerce.number().int().default(50),
+	alias: AliasSchema,
+	description: z.string(),
+	license: z.string().optional(),
+	compatibility: z.string().optional(),
+	activation: z.enum(["auto", "manual", "init"]).default("auto"),
+	order: z.coerce.number().int().default(50),
 });
 
 /** 解析后的 frontmatter 数据类型 */
@@ -67,12 +67,12 @@ export type SkillFrontmatterData = z.infer<typeof SkillFrontmatterSchema>;
  * → 相对路径 = coding → name = coding
  */
 export function deriveNameFromPath(
-  skillPath: string,
-  categoryDir: string,
+	skillPath: string,
+	categoryDir: string,
 ): string {
-  const skillDir = resolve(skillPath, "..");
-  const rel = relative(categoryDir, skillDir);
-  return rel.split(sep).join("-").replace(/\\/g, "-");
+	const skillDir = resolve(skillPath, "..");
+	const rel = relative(categoryDir, skillDir);
+	return rel.split(sep).join("-").replace(/\\/g, "-");
 }
 
 // ── 元数据解析 ──
@@ -81,46 +81,46 @@ export function deriveNameFromPath(
  * 解析 YAML frontmatter，提取 skill 元数据
  */
 export function parseSkillMeta(
-  content: string,
-  filePath: string,
-  categoryDir: string,
-  category: SkillCategory,
+	content: string,
+	filePath: string,
+	categoryDir: string,
+	category: SkillCategory,
 ): SkillMeta | null {
-  const result = parseFM(content, SkillFrontmatterSchema);
-  if (!result) return null;
+	const result = parseFM(content, SkillFrontmatterSchema);
+	if (!result) return null;
 
-  const { data } = result;
-  const rawYaml = extractRawYaml(content);
+	const { data } = result;
+	const rawYaml = extractRawYaml(content);
 
-  const dir = resolve(filePath, "..");
-  const name = deriveNameFromPath(filePath, categoryDir);
+	const dir = resolve(filePath, "..");
+	const name = deriveNameFromPath(filePath, categoryDir);
 
-  if (!name) {
-    console.error(`  [skills] 无法从路径推导 name: ${filePath}, skipping`);
-    return null;
-  }
+	if (!name) {
+		console.error(`  [skills] 无法从路径推导 name: ${filePath}, skipping`);
+		return null;
+	}
 
-  const meta: SkillMeta = {
-    uid: generateUid(),
-    name,
-    alias: data.alias,
-    category,
-    description: data.description,
-    path: resolve(filePath),
-    dir,
-    activation: data.activation,
-    order: data.order,
-  };
+	const meta: SkillMeta = {
+		uid: generateUid(),
+		name,
+		alias: data.alias,
+		category,
+		description: data.description,
+		path: resolve(filePath),
+		dir,
+		activation: data.activation,
+		order: data.order,
+	};
 
-  if (data.license) meta.license = data.license;
-  if (data.compatibility) meta.compatibility = data.compatibility;
+	if (data.license) meta.license = data.license;
+	if (data.compatibility) meta.compatibility = data.compatibility;
 
-  if (rawYaml) {
-    const metadataRaw = extractNestedBlock(rawYaml, "metadata");
-    if (metadataRaw && Object.keys(metadataRaw).length > 0) {
-      meta.metadata = metadataRaw;
-    }
-  }
+	if (rawYaml) {
+		const metadataRaw = extractNestedBlock(rawYaml, "metadata");
+		if (metadataRaw && Object.keys(metadataRaw).length > 0) {
+			meta.metadata = metadataRaw;
+		}
+	}
 
-  return meta;
+	return meta;
 }

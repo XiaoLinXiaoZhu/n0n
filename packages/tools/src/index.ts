@@ -14,13 +14,13 @@
  */
 
 import type {
+	ActToolCall,
 	CanStartFn,
 	DomainMessage,
 	EditToolCall,
 	ObserveToolCall,
-	ReasonToolCall,
-	ActToolCall,
 	ProgressToolCall,
+	ReasonToolCall,
 	ToolCallRecord,
 	ToolDefinition,
 	ToolResult,
@@ -37,15 +37,15 @@ import {
 	StrReplaceBackend,
 } from "./edit/index.ts";
 import {
-	makeObserveToolDefinition,
-	makeReasonToolDefinition,
-	makeActToolDefinition,
 	ExecArgsSchema,
 	execToolStream,
+	makeActToolDefinition,
+	makeObserveToolDefinition,
+	makeReasonToolDefinition,
 } from "./exec/index.ts";
 import {
-	type ProgressStatusConfig,
 	makeProgressTool,
+	type ProgressStatusConfig,
 	progressTool,
 } from "./progress.ts";
 import {
@@ -225,13 +225,20 @@ export function makeToolkit(
 
 	// 工具顺序是隐性优先级信号——模型对前置工具有注意力偏向。
 	// 显式声明顺序，避免依赖 JS 对象属性的插入顺序。
-	const TOOL_ORDER = ["progress", "observe", "reason", "act", "write", "edit"] as const;
+	const TOOL_ORDER = [
+		"progress",
+		"observe",
+		"reason",
+		"act",
+		"write",
+		"edit",
+	] as const;
 	const tools = TOOL_ORDER.map((name) => registry[name]!.definition);
 
 	const activeTools = new Set<string>(TOOL_ORDER);
 	return {
 		tools,
-		getEntry: (name) => activeTools.has(name) ? registry[name] : undefined,
+		getEntry: (name) => (activeTools.has(name) ? registry[name] : undefined),
 	};
 }
 
@@ -241,4 +248,3 @@ export type { CanStartFn } from "@n0n/types";
 export type { ResponsesClient, ToolsConfig } from "./config.ts";
 
 export type { ProgressStatusConfig } from "./progress.ts";
-

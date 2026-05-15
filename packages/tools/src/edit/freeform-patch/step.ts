@@ -6,7 +6,7 @@
  * 不管理循环状态，不修改外部状态。
  */
 
-import type { StreamEvent, PatchOp } from "@n0n/types";
+import type { PatchOp, StreamEvent } from "@n0n/types";
 import { ALL_TOOLS, FIRST_ROUND_TOOLS } from "./grammar.ts";
 import type { ResponsesClient, ResponsesResult } from "./index.ts";
 import { applyPatchToSource, parsePatch } from "./parser.ts";
@@ -198,12 +198,12 @@ export async function step(input: StepInput): Promise<StepResult> {
 				for (const section of hunk.sections) {
 					patchOps.push({
 						oldText: section.lines
-							.filter(l => l.op === "context" || l.op === "remove")
-							.map(l => l.text)
+							.filter((l) => l.op === "context" || l.op === "remove")
+							.map((l) => l.text)
 							.join("\n"),
 						newText: section.lines
-							.filter(l => l.op === "context" || l.op === "add")
-							.map(l => l.text)
+							.filter((l) => l.op === "context" || l.op === "add")
+							.map((l) => l.text)
 							.join("\n"),
 					});
 				}
