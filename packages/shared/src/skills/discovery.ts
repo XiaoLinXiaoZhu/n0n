@@ -1,22 +1,7 @@
 /**
  * Skill 发现与解析 — Agent Skills 标准格式
  *
- * 扫描 workflows/skills/\*\/SKILL.md，解析 YAML frontmatter 元数据。
- * Skills 目录作为 monorepo 设计，复用根目录 node_modules，
- * 每个 skill 的脚本可通过 `bun run` 直接执行。
- *
- * 目录结构：
- *   workflows/skills/
- *   ├── my-skill/
- *   │   ├── SKILL.md          # 必需：frontmatter + 指令
- *   │   ├── scripts/          # 可选：可执行脚本（bun run）
- *   │   ├── references/       # 可选：参考文档
- *   │   └── assets/           # 可选：模板、资源
- *   └── another-skill/
- *       └── SKILL.md
- *
- * 集成策略：不在一开始推送所有技能，而是在咨询阶段（delegateTask）
- * 由专家根据任务主动挑选合适的 skills 推送给执行 agent。
+ * 递归扫描 SKILL.md（支持嵌套目录），解析 YAML frontmatter 元数据。
  */
 
 import { existsSync } from "node:fs";
@@ -39,7 +24,7 @@ export async function discoverSkills(baseDir: string): Promise<SkillMeta[]> {
 	const absBase = resolve(baseDir);
 	if (!existsSync(absBase)) return [];
 
-	const glob = new Glob("*/SKILL.md");
+	const glob = new Glob("**/SKILL.md");
 	const files = Array.from(glob.scanSync({ cwd: absBase }));
 
 	const skills: SkillMeta[] = [];
@@ -167,7 +152,8 @@ const SkillFrontmatterSchema = z.object({
 	description: z.string(),
 	license: z.string().optional(),
 	compatibility: z.string().optional(),
-	activation: z.enum(["auto", "manual"]).default("auto"),
+	activation: z.enum(["auto", "manual", "init"]).default("auto"),
+	order: z.number().int().default(50),
 });
 
 /**
@@ -198,6 +184,7 @@ function parseSkillMeta(content: string, filePath: string): SkillMeta | null {
 		path: resolve(filePath),
 		dir,
 		activation: data.activation,
+		order: data.order,
 	};
 
 	if (data.license) meta.license = data.license;

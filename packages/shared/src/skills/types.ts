@@ -3,7 +3,7 @@
  */
 
 /** Skill 激活模式 */
-export type SkillActivation = "auto" | "manual";
+export type SkillActivation = "auto" | "manual" | "init";
 
 /** Skill 元数据（从 SKILL.md frontmatter 解析） */
 export interface SkillMeta {
@@ -11,8 +11,10 @@ export interface SkillMeta {
 	name: string;
 	/** 描述：做什么、何时使用 */
 	description: string;
-	/** 激活模式：auto 出现在 help 列表，manual 需显式唤起 */
+	/** 激活模式：auto 出现在 help 列表，manual 需显式唤起，init 启动时自动加载 */
 	activation: SkillActivation;
+	/** 排序权重（仅 init skill 有意义），默认 50 */
+	order: number;
 	/** SKILL.md 绝对路径 */
 	path: string;
 	/** skill 目录绝对路径 */
