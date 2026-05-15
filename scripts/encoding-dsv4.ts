@@ -608,7 +608,7 @@ async function main() {
 	const reasoningEffort: ReasoningEffort = effort === "max" ? "max" : effort === "high" ? "high" : null;
 
 	if (!existsSync(jsonPath)) {
-		console.error(`Error: ${jsonPath} not found. Run build-code-request.ts first.`);
+		console.error(`Error: ${jsonPath} not found. Run apps/code/scripts/build-request.ts first.`);
 		process.exit(1);
 	}
 

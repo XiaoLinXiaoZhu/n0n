@@ -12,7 +12,7 @@ setlocal
 cd /d "%~dp0\.."
 
 echo ==^> Step 1: Building request JSON (with fewshot)...
-bun run scripts/build-code-request.ts %*
+bun run apps/code/scripts/build-request.ts %*
 if errorlevel 1 goto :fail
 echo.
 
