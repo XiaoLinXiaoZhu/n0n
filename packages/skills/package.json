@@ -1,0 +1,12 @@
+{
+  "name": "@n0n/skills",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@n0n/shared": "workspace:*",
+    "zod": "^4.3.6"
+  }
+}

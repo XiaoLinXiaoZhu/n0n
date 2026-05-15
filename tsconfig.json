@@ -44,6 +44,9 @@
 			"@n0n/skill": [
 				"./apps/n0n-skill/src/index.ts"
 			],
+			"@n0n/skills": [
+				"./packages/skills/src/index.ts"
+			],
 		},
 		"jsx": "react-jsx",
 		"jsxImportSource": "react"

@@ -8,7 +8,7 @@ import {
 	discoverSkillsMultiDir,
 	findSkillsByNameOrAlias,
 	loadSkillContentWithMeta,
-} from "@n0n/shared";
+} from "@n0n/skills";
 import { getSkillDirs } from "../paths.ts";
 
 export async function readCommand(name: string | undefined): Promise<void> {

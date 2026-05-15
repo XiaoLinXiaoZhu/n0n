@@ -36,6 +36,48 @@ frontmatter 新增 `order` 字段（整数，可选，默认 50）。仅对 init
 60 — git
 ```
 
+## 元数据模型：SSOT（单一事实来源）
+
+### name 从路径自动推导
+
+`name` 不再写在 frontmatter 中，改为从 SKILL.md 相对于分类根目录的路径自动推导。
+
+```
+例：categoryDir = /skills/task, skillPath = /skills/task/review/init/SKILL.md
+→ 相对路径 = review/init → name = review-init
+```
+
+好处：目录即身份，不存在 frontmatter 与目录名不一致的问题。重命名 skill 只需移目录，无需改文件内容。
+
+### uid 自动生成
+
+每个 skill 在扫描时自动生成唯一标识符（`uid`），与路径和文件名无关。即使 skill 被移动或重命名，uid 保持稳定，便于追踪和引用。
+
+### alias 便捷别名
+
+frontmatter 新增可选 `alias` 字段，支持 `string | string[]`，用于提供替代名称。用户在 `@name` 触发时可按别名查找，降低记忆负担。
+
+```yaml
+---
+alias: [快速修复, hotfix]
+---
+```
+
+### category 从目录推断
+
+skill 的分类（`category`）从扫描根目录的子目录名推断，frontmatter 中无需声明。
+
+- `data/skills/standard/` → category = "standard"（init 类型，自动加载）
+- `data/skills/task/` → category = "task"（manual 类型，@name 触发）
+- `data/skills/directive/` → category = "directive"（manual 类型）
+- `data/skills/capability/` → category = "capability"（manual 类型）
+
+### 影响
+
+- **无 name 字段**：所有 SKILL.md 不再写 `name`，消除目录名不匹配的校验代码
+- **无重复声明**：`category` 由位置决定，`activation` 在 standard 中可省略（默认为 init）
+- **唯一入口**：目录结构 = 元数据声明，一次修改、处处生效
+
 ## 拆解方案
 
 ### 空壳 system prompt（保留在 code.md 中）
@@ -77,7 +119,7 @@ Some of your behavior rules are loaded from init skills. You can also load addit
 
 ### Skill 存放位置与目录约定
 
-所有 builtin skill 统一存放在 `data/skills/`，作为 n0n-skill 和 code 的共同资产。按类型分目录，**目录即类型**——读取时根据目录位置判断类型，frontmatter 中的 activation 字段可省略。
+所有 builtin skill 统一存放在 `data/skills/`，作为 n0n-skill 和 code 的共同资产。按类型分目录，**目录即类型**——`name` 从路径自动推导（参见上方 SSOT 模型），`category` 根据目录名称推断，`activation` 在 standard 目录下默认为 init（可省略）。frontmatter 中无需写 `name`、`category` 和 `activation`，只需写 `description`（和可选的 `alias`、`order`、`license`）。用户覆盖时只需同名目录即可匹配。
 
 ```
 data/skills/
@@ -108,6 +150,10 @@ data/skills/
 |--------|------|------|
 | SkillActivation 加 "init" | `packages/shared/src/skills/types.ts` | 已完成 |
 | SkillMeta 加 order 字段 | `packages/shared/src/skills/types.ts` | 已完成 |
+| name 改为从路径自动推导（deriveNameFromPath） | `packages/shared/src/skills/discovery.ts` | 已完成 |
+| SkillMeta 加 alias 字段（frontmatter string\|string[]） | `packages/shared/src/skills/types.ts` + `discovery.ts` | 已完成 |
+| SkillMeta 加 category 字段（从目录推断） | `packages/shared/src/skills/types.ts` + `discovery.ts` | 已完成 |
+| SkillMeta 加 uid 字段（自动生成，不依赖路径） | `packages/shared/src/skills/types.ts` + `discovery.ts` | 已完成 |
 | zod schema 加 "init" + order | `packages/shared/src/skills/discovery.ts` | 已完成 |
 | help 命令过滤 init | `apps/n0n-skill/src/commands/help.ts` | 已完成 |
 | repl 加载 init skills 拼接 system prompt | `apps/code/src/repl.ts` | 已完成 |
@@ -116,6 +162,8 @@ data/skills/
 | init skills 文件 | `data/skills/` | **已完成** |
 | 删除旧 builtin 目录 | `apps/n0n-skill/builtin/` | 已完成 |
 | z.coerce.number for order | `packages/shared/src/skills/discovery.ts` | 已完成（额外修复：YAML 返回字符串需要 coerce） |
+| 新增 loadSkillContentWithMeta（避免重复扫描） | `packages/shared/src/skills/discovery.ts` | 已完成 |
+| 新增 findSkillsByNameOrAlias（支持别名查找） | `packages/shared/src/skills/discovery.ts` | 已完成 |
 
 ## 拼接示意
 

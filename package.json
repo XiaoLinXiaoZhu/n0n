@@ -1,22 +1,22 @@
 {
-	"name": "n0n",
-	"private": true,
-	"packageManager": "bun@1.3.6",
-	"workspaces": ["packages/*", "apps/*"],
-	"scripts": {
-		"start:code": "bun run apps/code/src/cli.ts",
-		"start:fairy": "bun run apps/fairy/src/index.ts",
-		"start:skill": "bun run apps/n0n-skill/src/cli.ts",
-		"check": "turbo check",
-		"typecheck": "turbo typecheck",
-		"lint": "bunx biome check --write ."
-	},
-	"devDependencies": {
-		"@biomejs/biome": "^2.4.4",
-		"@types/bun": "^1.3.9",
-		"@types/node": "^25.5.0",
-		"javascript-obfuscator": "^5.4.1",
-		"turbo": "^2.5.0",
-		"typescript": "^5.9.3"
-	}
+  "name": "n0n",
+  "private": true,
+  "packageManager": "bun@1.3.6",
+  "workspaces": ["packages/*", "apps/*"],
+  "scripts": {
+    "start:code": "bun run apps/code/src/cli.ts",
+    "start:fairy": "bun run apps/fairy/src/index.ts",
+    "start:skill": "bun run apps/n0n-skill/src/cli.ts",
+    "check": "turbo check",
+    "typecheck": "turbo typecheck",
+    "lint": "bunx biome check --write ."
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.4.4",
+    "@types/bun": "^1.3.9",
+    "@types/node": "^25.5.0",
+    "javascript-obfuscator": "^5.4.1",
+    "turbo": "^2.5.0",
+    "typescript": "^5.9.3"
+  }
 }

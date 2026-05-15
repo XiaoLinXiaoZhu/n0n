@@ -6,7 +6,7 @@
  * - 末尾附引导文本，引导模型按需加载 skill
  */
 
-import { discoverSkillsMultiDir } from "@n0n/shared";
+import { discoverSkillsMultiDir } from "@n0n/skills";
 import { getSkillDirs } from "../paths.ts";
 
 export async function helpCommand(): Promise<void> {

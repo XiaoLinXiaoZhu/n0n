@@ -7,6 +7,6 @@
 		"n0n-skill": "src/cli.ts"
 	},
 	"dependencies": {
-		"@n0n/shared": "workspace:*"
+		"@n0n/skills": "workspace:*"
 	}
 }
