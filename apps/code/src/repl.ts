@@ -154,7 +154,9 @@ export async function startCodeRepl(
 	const { client, toolsConfig, agentConfig } = options;
 	// 加载 init skills 拼接进 system prompt
 	const initSkills = await loadInitSkills();
-	const initSkillBodies = initSkills.map((s) => s.body).join("\n\n");
+	const initSkillBodies = initSkills
+		.map((s) => `<skill name="${s.name}">\n${s.body}\n</skill>`)
+		.join("\n\n");
 	const systemPrompt = initSkillBodies
 		? `${baseSystemPrompt}\n\n${initSkillBodies}`
 		: baseSystemPrompt;
