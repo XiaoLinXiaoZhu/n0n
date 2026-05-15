@@ -31,6 +31,7 @@ import { makeToolkit } from "@n0n/tools";
 import type { DomainMessage, ProgressToolResult } from "@n0n/types";
 import { CodeRenderer } from "./code-renderer.ts";
 import { parseAndInjectSkills } from "./skill-inject.ts";
+import { loadInitSkills } from "@n0n/skill";
 import { buildContextFewshot } from "./context-fewshot.ts";
 import { playNotifySound, type NotifyConfig } from "./notify-sound.ts";
 import { codeProgressConfig } from "./progress-config.ts";
@@ -151,7 +152,12 @@ export async function startCodeRepl(
 
 	// 构建 Toolkit — 含 progress config，供 fewshot 和 agentLoop 共用
 	const { client, toolsConfig, agentConfig } = options;
-	const systemPrompt = baseSystemPrompt;
+	// 加载 init skills 拼接进 system prompt
+	const initSkills = await loadInitSkills();
+	const initSkillBodies = initSkills.map((s) => s.body).join("\n\n");
+	const systemPrompt = initSkillBodies
+		? `${baseSystemPrompt}\n\n${initSkillBodies}`
+		: baseSystemPrompt;
 	const notifyConfig = options.notifyConfig ?? { enabled: false };
 	const toolkit = makeToolkit(
 		codeProgressConfig,
