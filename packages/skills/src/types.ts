@@ -8,7 +8,14 @@
 /** Skill 激活模式 */
 export type SkillActivation = "auto" | "manual" | "init";
 
-/** Skill 分类 */
+/**
+ * Skill 分类 — 由父目录名推断
+ *
+ * - standard: 无论执行什么任务都适用的底层规则和规范。作为 init skill 启动时自动加载。
+ * - task: 指向具体任务的完整 SOP，有步骤序列和退出条件。需 @name 触发。
+ * - directive: 改变交互行为模式，不定义任务。可与其他类型堆叠。
+ * - capability: 赋予使用特定工具/API/外部系统的操作能力，通常包含脚本。
+ */
 export type SkillCategory = "capability" | "directive" | "standard" | "task";
 
 /** Skill 元数据（从 SKILL.md frontmatter + 目录结构解析） */
@@ -23,7 +30,12 @@ export interface SkillMeta {
   category: SkillCategory;
   /** 描述：做什么、何时使用 */
   description: string;
-  /** 激活模式：auto 出现在 help 列表，manual 需显式唤起，init 启动时自动加载 */
+  /**
+   * 激活模式
+   * - auto: 出现在 help 列表，模型可自主发现和激活
+   * - manual: 对 help 隐藏，需 @name 或 read 触发
+   * - init: 启动时自动加载拼接进 system prompt，不出现在 help
+   */
   activation: SkillActivation;
   /** 排序权重（仅 init skill 有意义），默认 50 */
   order: number;
