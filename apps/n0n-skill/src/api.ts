@@ -46,3 +46,17 @@ export async function readSkills(
 
 	return { found, notFound };
 }
+
+/** 加载所有 init skill 的完整内容，按 order 升序排列 */
+export async function loadInitSkills(): Promise<SkillContent[]> {
+	const skills = await discoverSkillsMultiDir(getSkillDirs());
+	const initSkills = skills
+		.filter((s) => s.activation === "init")
+		.sort((a, b) => a.order - b.order || a.name.localeCompare(b.name));
+	const contents: SkillContent[] = [];
+	for (const skill of initSkills) {
+		const content = await loadSkillContent(skill.path);
+		if (content) contents.push(content);
+	}
+	return contents;
+}

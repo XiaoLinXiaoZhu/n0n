@@ -1,5 +1,5 @@
 /**
- * help 命令：列出所有 activation=auto 的 skill
+ * help 命令：列出所有非 init 的 skill
  *
  * 输出设计：
  * - 列出 name + description
@@ -11,7 +11,7 @@ import { getSkillDirs } from "../paths.ts";
 
 export async function helpCommand(): Promise<void> {
 	const skills = await discoverSkillsMultiDir(getSkillDirs());
-	const autoSkills = skills.filter((s) => s.activation === "auto");
+	const autoSkills = skills.filter((s) => s.activation !== "init");
 
 	if (autoSkills.length === 0) {
 		console.log("没有可用的 skill。运行 `n0n-skill init` 安装内置 skill。");
