@@ -20,7 +20,7 @@
 | [refactor/](./task/refactor/) | [refactor](./task/refactor/refactor.md), [improve-codebase-architecture](./task/refactor/improve-codebase-architecture.md) |
 | [review/](./task/review/) | [review](./task/review/review.md) |
 | [planning/](./task/planning/) | [grill-with-docs](./task/planning/grill-with-docs.md), [to-prd](./task/planning/to-prd.md), [to-issues](./task/planning/to-issues.md), [triage](./task/planning/triage.md), [prototype](./task/planning/prototype.md) |
-| [writing/](./task/writing/) | [writing-beats](./task/writing/writing-beats.md), [writing-fragments](./task/writing/writing-fragments.md), [writing-shape](./task/writing/writing-shape.md) |
+| [writing/](./task/writing/) | [writing-beats](./task/writing/beats.md), [writing-fragments](./task/writing/fragments.md), [writing-shape](./task/writing/shape.md) |
 | [maintenance/](./task/maintenance/) | [disk-cleanup](./task/maintenance/disk-cleanup.md) |
 | [setup/](./task/setup/) | [setup-matt-pocock-skills](./task/setup/setup-matt-pocock-skills.md) |
 | [meta/](./task/meta/) | [write-a-skill](./task/meta/write-a-skill.md), [handoff](./task/meta/handoff.md) |
