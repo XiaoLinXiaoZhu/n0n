@@ -115,3 +115,6 @@ export function visibleWidth(s: string): number {
 export function terminalColumns(): number {
 	return out.columns || 80;
 }
+
+/** style 对象的类型（picocolors 子集） */
+export type Styler = typeof style;

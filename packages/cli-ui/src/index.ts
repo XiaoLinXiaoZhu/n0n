@@ -12,6 +12,7 @@ export {
 	label,
 	stripAnsi,
 	style,
+	type Styler,
 	terminalColumns,
 	visibleWidth,
 	write,

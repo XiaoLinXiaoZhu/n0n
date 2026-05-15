@@ -10,6 +10,7 @@
  */
 
 import type { SkillMeta } from "@n0n/skills";
+import type { Styler } from "@n0n/cli-ui";
 import { discoverSkillsMultiDir } from "@n0n/skills";
 import { getSkillDirs } from "../paths.ts";
 
@@ -117,21 +118,11 @@ function colorByActivation(
 	}
 }
 
-// ── 轻量 Styler 类型 ──
 
-interface Styler {
-	dim: (s: string) => string;
-	gray: (s: string) => string;
-	green: (s: string) => string;
-	yellow: (s: string) => string;
-	cyan: (s: string) => string;
-	bold: (s: string) => string;
-}
 
 async function loadStyler(): Promise<Styler> {
-	// 使用 @n0n/cli-ui 的 style 导出，确保与 monorepo 其他 CLI 工具配色一致
 	const { style } = await import("@n0n/cli-ui");
-	return style as unknown as Styler;
+	return style;
 }
 
 function groupBy<T>(
