@@ -1,17 +1,14 @@
 /**
- * init 命令：将内置 skill 写入 ~/.n0n/builtin-skills/
- *
- * 内置 skill 作为源文件打包在 apps/n0n-skill/builtin/ 目录中，
- * init 命令将其复制到全局配置目录。
+ * init 命令：将 data/skills/ 中的 skill 写入 ~/.n0n/builtin-skills/
  */
 
-import { existsSync, mkdirSync } from "node:fs";
+import { existsSync, mkdirSync, rmSync } from "node:fs";
 import { resolve, basename } from "node:path";
 import { Glob } from "bun";
 import { getBuiltinSkillsDir } from "../paths.ts";
 
-/** 内置 skill 源目录（相对于此文件的位置） */
-const BUILTIN_SOURCE = resolve(import.meta.dir, "../../builtin");
+/** skill 源目录：项目根 data/skills/ */
+const BUILTIN_SOURCE = resolve(import.meta.dir, "../../../../data/skills");
 
 export async function initCommand(): Promise<void> {
 	const targetDir = getBuiltinSkillsDir();
@@ -21,13 +18,18 @@ export async function initCommand(): Promise<void> {
 		process.exit(1);
 	}
 
-	// 扫描 builtin/ 下的所有 skill 目录
-	const glob = new Glob("*/SKILL.md");
+	// 扫描所有 SKILL.md（支持嵌套目录）
+	const glob = new Glob("**/SKILL.md");
 	const skillFiles = Array.from(glob.scanSync({ cwd: BUILTIN_SOURCE }));
 
 	if (skillFiles.length === 0) {
 		console.log("没有找到内置 skill。");
 		return;
+	}
+
+	// 清除旧内容，避免残留已删除的 skill
+	if (existsSync(targetDir)) {
+		rmSync(targetDir, { recursive: true });
 	}
 
 	let count = 0;
@@ -36,7 +38,6 @@ export async function initCommand(): Promise<void> {
 		const skillName = basename(skillDir);
 		const destDir = resolve(targetDir, skillName);
 
-		// 递归复制整个 skill 目录
 		await copyDir(skillDir, destDir);
 		count++;
 	}
@@ -55,7 +56,6 @@ async function copyDir(src: string, dest: string): Promise<void> {
 		const stat = await file.exists();
 		if (!stat) continue;
 
-		// 确保目标子目录存在
 		const destParent = resolve(destPath, "..");
 		if (!existsSync(destParent)) mkdirSync(destParent, { recursive: true });
 
