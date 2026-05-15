@@ -1,5 +1,5 @@
 ---
-name: writing-beats
+alias: writing-beats
 description: 逐 beat 构建文章的交互式旅程。每步用户从候选 beat 中选方向，只写被选中的那个 beat。当用户有原始素材并想以叙事而非论证的方式组织时使用。
 activation: manual
 ---

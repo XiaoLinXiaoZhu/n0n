@@ -1,5 +1,5 @@
 ---
-name: handoff
+alias: handoff
 description: 将当前对话上下文压缩为交接文档，让下一个 agent session 可以接续工作。当会话即将结束、需要交接给另一个 agent 时使用。
 activation: manual
 ---

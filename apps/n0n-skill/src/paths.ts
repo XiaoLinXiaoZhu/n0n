@@ -2,8 +2,10 @@
  * n0n-skill 路径管理
  *
  * 全局配置目录 ~/.n0n/ 下管理 skill 文件：
- * - builtin-skills/ — 内置 skill，由 init 写入
- * - skills/ — 用户自定义和安装的 skill
+ * - builtin-skills/{capability,directive,standard,task}/ — 内置 skill，由 init 写入
+ * - skills/{capability,directive,standard,task}/ — 用户自定义和安装的 skill
+ *
+ * 每个根目录下按四个分类子目录组织，discoverSkills 会自动扫描这四个子目录。
  */
 
 import { resolve } from "node:path";
@@ -25,7 +27,7 @@ export function getUserSkillsDir(): string {
 	return resolve(getN0nDir(), USER_DIR);
 }
 
-/** 返回 skill 扫描目录列表（builtin 在前，user 在后，user 覆盖 builtin） */
+/** 返回 skill 扫描根目录列表（builtin 在前，user 在后，不再覆盖） */
 export function getSkillDirs(): string[] {
 	return [getBuiltinSkillsDir(), getUserSkillsDir()];
 }

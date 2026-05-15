@@ -1,5 +1,4 @@
 ---
-name: review-standards
 description: 对照项目编码标准检查 diff，发现规范违反。需先完成 review-init。跳过工具已强制的规则。
 activation: manual
 ---

@@ -1,5 +1,4 @@
 ---
-name: review-spec
 description: 对照 spec/PRD/issue 检查 diff，发现缺失需求、范围蔓延和实现偏差。需先完成 review-init。
 activation: manual
 ---

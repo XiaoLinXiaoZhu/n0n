@@ -3,6 +3,8 @@
  *
  * 识别用户输入中独占一行的 @name 语法，读取对应 skill 内容，
  * 将其作为 hint 注入消息，并从可见文本中移除 @name 行。
+ *
+ * 按名称或别名查找，支持返回多个匹配结果。
  */
 
 import { readSkills, listSkills } from "@n0n/skill";
@@ -22,6 +24,8 @@ const SKILL_LINE_RE = /^@([a-z0-9](?:[a-z0-9-]*[a-z0-9])?)$/;
 
 /**
  * 解析用户输入中的 @name 引用并读取 skill 内容。
+ *
+ * 每个 @name 按名称或别名查找，可能匹配到多个 skill。
  *
  * @returns 清理后的文本 + hint（skill 正文拼接）+ 未找到列表
  */
@@ -68,9 +72,14 @@ function formatSkillHint(skills: SkillContent[]): string {
 }
 
 /**
- * 列出可用 skill 名称（用于提示用户）
+ * 列出可用 skill 名称和别名（用于提示用户）
  */
 export async function getAvailableSkillNames(): Promise<string[]> {
 	const skills = await listSkills();
-	return skills.map((s) => s.name);
+	const names: string[] = [];
+	for (const s of skills) {
+		names.push(s.name);
+		names.push(...s.alias);
+	}
+	return [...new Set(names)];
 }

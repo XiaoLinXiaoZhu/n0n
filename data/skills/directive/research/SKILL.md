@@ -1,5 +1,4 @@
 ---
-name: research
 description: 面向研究型任务的交互协议。约束沟通节奏、推理呈现和审阅流程，不指导研究方法论本身。
 activation: manual
 ---

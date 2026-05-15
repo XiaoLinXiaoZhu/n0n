@@ -1,5 +1,4 @@
 ---
-name: observe-reason-act
 description: observe/reason/act 三个执行工具的详细使用说明、思维实验方法、批量调用原则。
 activation: init
 order: 20

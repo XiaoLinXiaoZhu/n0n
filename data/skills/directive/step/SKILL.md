@@ -1,5 +1,4 @@
 ---
-name: step
 description: 强制高频、透明的逐步执行模式。适用于任何场景。
 activation: manual
 ---

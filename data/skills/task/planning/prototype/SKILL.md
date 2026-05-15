@@ -1,5 +1,5 @@
 ---
-name: prototype
+alias: prototype
 description: 构建一次性原型来回答设计问题。自动判断走逻辑原型（终端应用）还是 UI 原型（多变体切换）。当用户说"原型"、"试试看"、"验证一下这个设计"时使用。
 activation: manual
 ---

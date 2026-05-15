@@ -1,5 +1,5 @@
 ---
-name: grill-with-docs
+alias: grill-with-docs
 description: 对计划进行穷举式提问，挑战模糊术语，内联维护领域词汇表和架构决策记录。当用户要压力测试一个方案时使用。
 activation: manual
 ---

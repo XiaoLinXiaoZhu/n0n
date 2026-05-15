@@ -5,10 +5,19 @@
 /** Skill 激活模式 */
 export type SkillActivation = "auto" | "manual" | "init";
 
-/** Skill 元数据（从 SKILL.md frontmatter 解析） */
+/** Skill 分类 */
+export type SkillCategory = "capability" | "directive" | "standard" | "task";
+
+/** Skill 元数据（从 SKILL.md frontmatter + 目录结构解析） */
 export interface SkillMeta {
-	/** 短标识符（必须匹配目录名） */
+	/** 唯一标识符（自动生成，与路径和文件名无关） */
+	uid: string;
+	/** 名称（从相对于扫描根目录的路径自动生成，如 review-init） */
 	name: string;
+	/** 便捷别名（从 frontmatter 读取，用于快速键入） */
+	alias: string[];
+	/** 分类（从扫描根目录名推断） */
+	category: SkillCategory;
 	/** 描述：做什么、何时使用 */
 	description: string;
 	/** 激活模式：auto 出现在 help 列表，manual 需显式唤起，init 启动时自动加载 */

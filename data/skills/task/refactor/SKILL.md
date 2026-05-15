@@ -1,5 +1,4 @@
 ---
-name: refactor
 description: 当任务涉及代码重构、结构调整、模块拆分时使用。确保重构不引入行为变更。
 activation: auto
 ---

@@ -1,5 +1,4 @@
 ---
-name: coding
 description: 编码实践。改动标记、错误处理、抽象原则、注释哲学、测试约束。
 activation: init
 order: 40

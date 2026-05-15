@@ -1,5 +1,4 @@
 ---
-name: bugfix
 description: 当任务涉及修复 bug、排查错误、定位问题时使用。强制诊断流程，防止盲目修复。
 activation: manual
 ---

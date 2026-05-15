@@ -1,5 +1,5 @@
 ---
-name: to-issues
+alias: to-issues
 description: 将计划/PRD/spec 拆分为独立可执行的纵向切片 issue。当用户说"拆 issue"、"创建任务"、"分解工作"时使用。
 activation: manual
 ---

@@ -1,5 +1,5 @@
 ---
-name: write-a-skill
+alias: write-a-skill
 description: 编写新的 agent skill。引导收集需求、起草 SKILL.md、审查质量。当用户说"写一个 skill"、"创建 skill"时使用。
 activation: manual
 ---

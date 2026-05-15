@@ -1,14 +1,20 @@
 /**
- * init 命令：将 data/skills/ 中的 skill 写入 ~/.n0n/builtin-skills/
+ * init 命令：将 data/skills/ 中的 skill 按四个分类子目录写入 ~/.n0n/builtin-skills/
+ *
+ * 源目录结构：data/skills/{capability,directive,standard,task}/
+ * 目标结构：~/.n0n/builtin-skills/{capability,directive,standard,task}/
  */
 
 import { existsSync, mkdirSync, rmSync } from "node:fs";
-import { resolve, basename } from "node:path";
+import { resolve } from "node:path";
 import { Glob } from "bun";
 import { getBuiltinSkillsDir } from "../paths.ts";
 
 /** skill 源目录：项目根 data/skills/ */
 const BUILTIN_SOURCE = resolve(import.meta.dir, "../../../../data/skills");
+
+/** 四个分类子目录 */
+const CATEGORIES = ["capability", "directive", "standard", "task"] as const;
 
 export async function initCommand(): Promise<void> {
 	const targetDir = getBuiltinSkillsDir();
@@ -18,28 +24,32 @@ export async function initCommand(): Promise<void> {
 		process.exit(1);
 	}
 
-	// 扫描所有 SKILL.md（支持嵌套目录）
-	const glob = new Glob("**/SKILL.md");
-	const skillFiles = Array.from(glob.scanSync({ cwd: BUILTIN_SOURCE }));
-
-	if (skillFiles.length === 0) {
-		console.log("没有找到内置 skill。");
-		return;
-	}
-
 	// 清除旧内容，避免残留已删除的 skill
 	if (existsSync(targetDir)) {
 		rmSync(targetDir, { recursive: true });
 	}
 
 	let count = 0;
-	for (const rel of skillFiles) {
-		const skillDir = resolve(BUILTIN_SOURCE, rel, "..");
-		const skillName = basename(skillDir);
-		const destDir = resolve(targetDir, skillName);
 
-		await copyDir(skillDir, destDir);
-		count++;
+	for (const category of CATEGORIES) {
+		const srcCatDir = resolve(BUILTIN_SOURCE, category);
+		if (!existsSync(srcCatDir)) continue;
+
+		const destCatDir = resolve(targetDir, category);
+
+		// 扫描该分类下所有 SKILL.md，按其所在目录树完整复制
+		const glob = new Glob("**/SKILL.md");
+		const skillFiles = Array.from(glob.scanSync({ cwd: srcCatDir }));
+
+		for (const rel of skillFiles) {
+			const skillDir = resolve(srcCatDir, rel, "..");
+			// 计算 skill 目录相对于分类目录的路径，保持嵌套结构
+			const relSkillDir = skillDir.slice(srcCatDir.length + 1);
+			const destDir = resolve(destCatDir, relSkillDir);
+
+			await copyDir(skillDir, destDir);
+			count++;
+		}
 	}
 
 	console.log(`✓ 已初始化 ${count} 个内置 skill 到 ${targetDir}`);

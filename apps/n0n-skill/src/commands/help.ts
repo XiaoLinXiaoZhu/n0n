@@ -2,7 +2,7 @@
  * help 命令：列出所有 activation=auto 的 skill
  *
  * 输出设计：
- * - 列出 name + description
+ * - 列出 name + alias + description
  * - 末尾附引导文本，引导模型按需加载 skill
  */
 
@@ -20,7 +20,8 @@ export async function helpCommand(): Promise<void> {
 
 	console.log("可用 Skills：\n");
 	for (const skill of autoSkills) {
-		console.log(`  ${skill.name} — ${skill.description}`);
+		const aliasStr = skill.alias.length > 0 ? ` [${skill.alias.join(", ")}]` : "";
+		console.log(`  ${skill.name}${aliasStr} — ${skill.description}`);
 	}
 
 	console.log(

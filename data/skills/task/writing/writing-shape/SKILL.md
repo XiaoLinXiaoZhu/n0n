@@ -1,5 +1,5 @@
 ---
-name: writing-shape
+alias: writing-shape
 description: 从原始素材文件塑形为成品文章。逐段生长，每段争论格式选择（散文/列表/表格/引用/代码块）。当用户有一堆笔记或碎片想整理成文章时使用。
 activation: manual
 ---

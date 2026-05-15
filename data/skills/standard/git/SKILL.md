@@ -1,5 +1,4 @@
 ---
-name: git
 description: Git 工作流规范。分支策略、提交规范、安全操作。
 activation: init
 order: 70

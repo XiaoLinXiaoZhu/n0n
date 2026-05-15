@@ -1,10 +1,14 @@
 /**
  * read 命令：读取指定 skill 的完整内容
  *
- * auto 和 manual 的 skill 都可以读取。
+ * 按名称或别名查找。如果匹配到多个 skill，全部输出。
  */
 
-import { discoverSkillsMultiDir, loadSkillContent } from "@n0n/shared";
+import {
+	discoverSkillsMultiDir,
+	findSkillsByNameOrAlias,
+	loadSkillContentWithMeta,
+} from "@n0n/shared";
 import { getSkillDirs } from "../paths.ts";
 
 export async function readCommand(name: string | undefined): Promise<void> {
@@ -14,28 +18,35 @@ export async function readCommand(name: string | undefined): Promise<void> {
 	}
 
 	const skills = await discoverSkillsMultiDir(getSkillDirs());
-	const skill = skills.find((s) => s.name === name);
+	const matched = findSkillsByNameOrAlias(skills, name);
 
-	if (!skill) {
+	if (matched.length === 0) {
 		const available = skills.map((s) => s.name).join(", ");
 		console.error(`skill "${name}" 不存在。可用: ${available || "(无)"}`);
 		process.exit(1);
 	}
 
-	const content = await loadSkillContent(skill.path);
-	if (!content) {
-		console.error(`无法加载 skill "${name}" 的内容。`);
-		process.exit(1);
-	}
+	for (const skill of matched) {
+		const content = await loadSkillContentWithMeta(skill);
+		if (!content) {
+			console.error(`无法加载 skill "${skill.name}" 的内容。`);
+			continue;
+		}
 
-	// 输出完整 SKILL.md 正文
-	console.log(content.body);
+		// 多个匹配时加分隔标识
+		if (matched.length > 1) {
+			console.log(`\n=== ${content.name} (${content.category}) ===\n`);
+		}
 
-	// 如果有可用脚本，附加说明
-	if (content.scripts.length > 0) {
-		console.log(`\n可用脚本（使用 bun run ${content.dir}/<script> 执行）：`);
-		for (const script of content.scripts) {
-			console.log(`  - ${script}`);
+		// 输出完整 SKILL.md 正文
+		console.log(content.body);
+
+		// 如果有可用脚本，附加说明
+		if (content.scripts.length > 0) {
+			console.log(`\n可用脚本（使用 bun run ${content.dir}/<script> 执行）：`);
+			for (const script of content.scripts) {
+				console.log(`  - ${script}`);
+			}
 		}
 	}
 }

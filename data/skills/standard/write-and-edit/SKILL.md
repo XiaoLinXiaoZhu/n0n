@@ -1,5 +1,4 @@
 ---
-name: write-and-edit
 description: write/edit 两个文件操作工具的使用说明和文件操作选择策略。
 activation: init
 order: 25

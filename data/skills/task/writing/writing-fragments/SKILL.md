@@ -1,5 +1,5 @@
 ---
-name: writing-fragments
+alias: writing-fragments
 description: 通过穷举式提问从用户脑中挖掘碎片原料（claims、故事、锐利句子、半成型想法），追加到单一文件中。当用户说"碎片"、"发散"、"原料"或想在结构化之前先自由探索时使用。
 activation: manual
 ---

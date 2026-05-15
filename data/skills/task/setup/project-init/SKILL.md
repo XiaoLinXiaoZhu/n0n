@@ -1,5 +1,5 @@
 ---
-name: project-init
+alias: project-init
 description: 引导式项目初始化配置。搭建 monorepo 结构、issue tracker、lint 配置等。当用户要开新项目或为现有项目配置基础设施时使用。
 activation: manual
 ---

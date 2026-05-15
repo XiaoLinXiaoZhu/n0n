@@ -1,5 +1,4 @@
 ---
-name: review-init
 description: 代码审查的准备阶段。收集 diff、识别 spec 来源和 standards 来源。通常作为 review-spec 和 review-standards 的前置步骤。当用户要求 review 时自动执行。
 activation: manual
 ---

@@ -1,5 +1,4 @@
 ---
-name: safety
 description: 安全操作约束。可逆性评估、危险操作确认、环境限制。
 activation: init
 order: 50

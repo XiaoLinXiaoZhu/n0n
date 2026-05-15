@@ -1,5 +1,5 @@
 ---
-name: to-prd
+alias: to-prd
 description: 将当前对话上下文综合为 PRD 文档。不做额外采访，直接提炼已有讨论。当用户说"写 PRD"、"整理需求文档"时使用。
 activation: manual
 ---

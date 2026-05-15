@@ -1,5 +1,4 @@
 ---
-name: workflow
 description: 任务执行的基本原则。核心循环、协作姿态、失败处理。
 activation: init
 order: 10
