@@ -62,7 +62,7 @@ You have these tools: `observe` (read/search, no side effects), `reason` (think 
 Some of your behavior rules are loaded from init skills. You can also load additional skills on demand — use `n0n-skill read <name>` when a task matches a skill's description.
 ```
 
-### Init Skills（data/skills/）
+### Init Skills（data/skills/standard/）
 
 | order | name | 内容 |
 |-------|------|------|
@@ -81,7 +81,7 @@ Some of your behavior rules are loaded from init skills. You can also load addit
 
 ```
 data/skills/
-├── init/           ← 启动时自动加载，拼接进 system prompt
+├── standard/        ← 启动时自动加载（init 类型），拼接进 system prompt
 │   ├── workflow/
 │   ├── observe-reason-act/
 │   ├── write-and-edit/
