@@ -153,7 +153,7 @@ const SkillFrontmatterSchema = z.object({
 	license: z.string().optional(),
 	compatibility: z.string().optional(),
 	activation: z.enum(["auto", "manual", "init"]).default("auto"),
-	order: z.number().int().default(50),
+	order: z.coerce.number().int().default(50),
 });
 
 /**
