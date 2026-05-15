@@ -41,11 +41,13 @@ activation: auto
 |------|------|------|
 | name | 是 | skill 标识符 |
 | description | 是 | 何时使用此 skill |
-| activation | 否 | `auto`（默认）或 `manual`。manual 的 skill 不出现在 help 列表中，但可以通过 `@name` 和 `read` 使用 |
+| activation | 否 | `auto`（默认）、`manual` 或 `init`。manual 的 skill 不出现在 help 列表中，但可以通过 `@name` 和 `read` 使用。init 的 skill 启动时自动加载，拼接进 system prompt |
+| order | 否 | 整数，可选，默认 50。仅对 init skill 有意义，拼接时按 order 升序排列 |
 
 **activation 字段的作用**：
 - `auto`：出现在 `n0n-skill help` 的列表中，模型可以自主发现和激活
 - `manual`：对 help 列表隐藏。只能通过用户 `@name` 显式唤起或模型 `n0n-skill read` 显式读取。适用于不想让模型自动触发的 skill（如实验性方法论、特定项目专用的 skill）
+- `init`：启动时自动加载，拼接进 system prompt。不出现在 help 列表。可通过 `@name` 手动再次触发
 
 ### Progressive Disclosure
 
@@ -53,6 +55,12 @@ activation: auto
 1. **Discovery**：`n0n-skill help` 只展示 auto skill 的 name + description
 2. **Activation**：加载完整 SKILL.md 正文
 3. **Execution**：按需执行 scripts/ 中的脚本、读取 references/
+
+### Init Skill
+
+部分 skill 使用 `activation: init`，在启动时自动加载并拼接进 system prompt。它们拥有 `order` 字段用于排序。
+
+详细定义见 `docs/design-init-skills.md`。
 
 ## 设计
 
@@ -83,8 +91,10 @@ activation: auto
 
 **存储**：
 
+内置 skill 存放在 monorepo 根目录的 `data/skills/` 下（共享资源）。`n0n-skill init` 将其复制到全局配置目录 `~/.n0n/builtin-skills/`。
+
 全局配置目录 `~/.n0n/` 下：
-- `builtin-skills/` — 内置 skill，由 `n0n-skill init` 写入
+- `builtin-skills/` — 内置 skill 的本地副本，由 `n0n-skill init` 写入
 - `skills/` — 用户自定义和安装的 skill
 
 加载时扫描两个目录。skill 文件写入本地磁盘——因为 skill 可能包含可执行脚本，模型需要通过绝对路径执行。
@@ -142,9 +152,9 @@ skill 定义"怎么做事"（方法论），progress 定义"怎么汇报进展"�
 1. `apps/n0n-skill/`：新建独立 CLI 应用（init/help/read/install/create）
 2. `apps/code/src/repl.ts`：解析独占一行的 `@name`，通过 n0n-skill 接口读取并注入 skill 内容
 3. context fewshot 初始化流程中注入 `n0n-skill help` 的执行结果
-4. `~/.n0n/builtin-skills/`：编写内置 skill（bugfix、refactor、discuss 等）
-5. 将 code-v0.1.md（已删除）内容迁移为 bugfix skill 格式
-6. 提示词中增加 skill 使用说明
+4. `data/skills/`：编写内置 skill（standard/task/directive 分类体系）
+5. init skill 机制：SkillActivation 新增 init 类型，code.md 精简为空壳
+6. 将 apps/n0n-skill/builtin/ 迁移为 data/skills/
 
 ## 实现状态
 
@@ -154,6 +164,7 @@ skill 定义"怎么做事"（方法论），progress 定义"怎么汇报进展"�
 | `packages/shared/src/skills/` 增加 activation | ✓ 已实现 | 新增 SkillActivation 类型 + discoverSkillsMultiDir |
 | `apps/code/src/repl.ts` @name 解析 | ✓ 已实现 | 通过 skill-inject.ts 模块 |
 | context fewshot 注入 skill help | ✓ 已实现 | Turn 1 并行 exec 中加入 |
-| 内置 skill (bugfix/refactor/discuss) | ✓ 已实现 | apps/n0n-skill/builtin/ |
-| 迁移 code-v0.1.md（已删除）为 skill | ✓ 已实现 | bugfix skill 提炼了认知五步核心 |
+| 内置 skill (standard/task/directive) | ✓ 已实现 | data/skills/ 完整目录结构（standard × 8, task × 2, directive × 2） |
+| init skill 机制 | ✓ 已实现 | SkillActivation 加 init + order，code.md 精简为空壳 |
+| 删除旧 builtin 目录 | ✓ 已实现 | apps/n0n-skill/builtin/ 已删除 |
 | 提示词说明 | ✓ 已实现 | 通过 fewshot exec 输出自然引导，无需硬编码 |

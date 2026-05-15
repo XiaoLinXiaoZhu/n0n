@@ -8,7 +8,7 @@
 
 **System Prompt**：始终存在于上下文中的基础指令。定义系统架构约束、工具定义、安全边界、沟通规范。是模型行为的"地基"。
 
-**激活 (Activation)**：Skill 被加载到上下文中的动作。分为 auto（模型可自主发现）和 manual（需用户 `@name` 显式唤起）。
+**激活 (Activation)**：Skill 被加载到上下文中的动作。分为 auto（模型可自主发现）、manual（需用户 `@name` 显式唤起）和 init（启动时自动加载，拼接进 system prompt）。
 
 **堆叠 (Stacking)**：多个 skill 同时激活，各自生效。典型场景：一个 directive + 一个 task 同时生效。
 
@@ -27,7 +27,7 @@
 - 是一组并行生效的约束/准则
 - 通常应该始终激活（auto），甚至可以考虑并入 system prompt
 
-**与系统的关系**：约束模型在使用 write/edit/act 时的行为——写什么样的代码、如何操作 git、如何处理错误。不编排工具使用顺序，不定义 progress 格式。
+**与系统的关系**：作为 init skill 启动时自动加载（activation: init），约束模型在使用 write/edit/act 时的行为——写什么样的代码、如何操作 git、如何处理错误。不编排工具使用顺序，不定义 progress 格式。
 
 **典型代表**：coding（编码实践）、git（工作流规范）
 
@@ -94,7 +94,7 @@ Standard 类型的 skill 和 system prompt 在功能上有重叠——都是"不
 
 | | System Prompt | Standard Skill |
 |---|---|---|
-| 加载方式 | 始终存在 | 按需激活（虽然通常建议 auto） |
+| 加载方式 | 始终存在 | 启动时自动加载（init 类型） |
 | 内容性质 | 系统架构约束、工具定义、安全边界 | 编码实践、工作流规范 |
 | 变更频率 | 低（动系统基础设施） | 高（迭代做事方法） |
 | 迭代方式 | 需改 system prompt 代码 | 改 SKILL.md 文件 |

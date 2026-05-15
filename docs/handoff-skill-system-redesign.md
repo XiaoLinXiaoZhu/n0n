@@ -68,14 +68,16 @@ data/skills/
 
 ### 代码改动（`docs/design-init-skills.md` 中的改动清单）
 
-全部 9 项待实现：
-1. `packages/shared/src/skills/types.ts` — SkillActivation 加 "init"，SkillMeta 加 order 字段
-2. `packages/shared/src/skills/discovery.ts` — zod schema 加 "init" + order，`init/` 目录约定
-3. `apps/n0n-skill/src/commands/help.ts` — help 命令过滤 init
-4. `apps/code/src/repl.ts` — 加载 init skills 拼接 system prompt
-5. `apps/code/src/prompts/code.md` — 精简为空壳
-6. `apps/n0n-skill/src/commands/init.ts` — 源目录改为 data/skills/
-7. 删除旧 `apps/n0n-skill/builtin/`
+全部 9 项已完成（commit d774928）：
+1. `packages/shared/src/skills/types.ts` — SkillActivation 加 "init"，SkillMeta 加 order 字段 → ✓ 已完成
+2. `packages/shared/src/skills/discovery.ts` — zod schema 加 "init" + order → ✓ 已完成
+3. `apps/n0n-skill/src/commands/help.ts` — help 命令过滤 init → ✓ 已完成（天然适配，无需额外代码）
+4. `apps/code/src/repl.ts` — 加载 init skills 拼接 system prompt → ✓ 已完成
+5. `apps/code/src/prompts/code.md` — 精简为空壳 → ✓ 已完成
+6. `apps/n0n-skill/src/commands/init.ts` — 源目录改为 data/skills/ → ✓ 已完成
+7. 删除旧 `apps/n0n-skill/builtin/` → ✓ 已完成
+
+当前 handoff 会话中已完成全部代码改动，请参考 docs/design-init-skills.md 的最新状态。
 
 ### Task Skill 重写（`docs/skill-reviews/task/TODO.md`）
 
