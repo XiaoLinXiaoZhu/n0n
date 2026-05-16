@@ -1,6 +1,6 @@
 ---
 description: 将 plan/PRD 拆分为独立可执行的纵向切片 issue，标注 AFK/HITL 和依赖关系。当用户说"拆 issue"、"分解任务"时由 @mwf 自动路由。
-alias: [mwf-split]
+alias: mwf-split
 activation: manual
 ---
 

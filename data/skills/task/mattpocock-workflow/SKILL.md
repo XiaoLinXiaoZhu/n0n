@@ -20,7 +20,7 @@ activation: manual
 
 ### 方式 A：完整管线
 
-从 idea 开始，走完 plan → split → dispatch 全流程。
+从 idea 开始，走完 init → plan → split → dispatch 全流程。
 
 ```
 @mwf 我想做一个用户通知系统，用户可以订阅事件通知
@@ -36,7 +36,8 @@ activation: manual
 直接用别名跳转到某个阶段。
 
 ```
-@mwf-init       # 质询 + PRD（plan 阶段）
+@mwf-init       # 初始化仓库配置
+@mwf-plan       # 质询 + PRD（plan 阶段）
 @mwf-split      # 纵向切片拆分
 @mwf-resolve    # 处理 HITL 阻塞
 @mwf-dispatch   # 派发/执行 issue
@@ -46,6 +47,7 @@ activation: manual
 也支持通过 `@mwf` 派发器间接进入：
 
 ```
+@mwf init ...       # 从派发器进入 init
 @mwf plan ...       # 从派发器进入 plan
 @mwf split ...      # 从派发器进入 split
 @mwf resolve-hitl ...  # 从派发器进入 resolve-hitl
@@ -67,7 +69,7 @@ session 已存在时，`@mwf` 自动恢复上下文。
 `@mwf` 收到用户输入后：
 
 1. **检查 session** — 用 `observe` 检查 session（当前上下文是否有活跃 session？）
-2. **解析意图** — 用 `reason` 解析意图（用户想做什么？plan / split / resolve-hitl / dispatch / status）
+2. **解析意图** — 用 `reason` 解析意图（用户想做什么？init / plan / split / resolve-hitl / dispatch / status）
 3. **路由到子 skill** — 路由到对应的子 skill
 4. **维护 session** — 用 `act` 维护 session（每次子 skill 完成后更新 session 状态）
 
@@ -75,6 +77,7 @@ session 已存在时，`@mwf` 自动恢复上下文。
 
 | 用户说 | 路由到 |
 |--------|--------|
+| "初始化" / "配置" / "设置项目" | `init` |
 | "我想做..." / "有个想法" / "计划一下" | `plan` |
 | "拆分" / "拆 issue" / "分解" | `split` |
 | "卡住了" / "想不通" / "帮我想想" / "这个 HITL" | `resolve-hitl` |
@@ -100,7 +103,8 @@ Session 在以下情况重置：
 
 | 直达别名 | 内容 | 说明 |
 |---------|------|------|
-| `@mwf-init` | plan | 质询 + PRD 管线 |
+| `@mwf-init` | init | 仓库初始化 |
+| `@mwf-plan` | plan | 质询 + PRD 管线 |
 | `@mwf-split` | split | 纵向切片拆分 |
 | `@mwf-resolve` | resolve-hitl | HITL → AFK 转换 |
 | `@mwf-dispatch` | dispatch | 派发/执行 issue |

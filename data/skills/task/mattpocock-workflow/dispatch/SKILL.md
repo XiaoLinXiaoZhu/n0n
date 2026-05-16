@@ -1,7 +1,7 @@
 ---
 description: 派发并执行 AFK-ready 的 issue，遇到 HITL 时路由到 resolve-hitl。当用户说"开始做"、"派发"、"干吧"时由 @mwf 自动路由。
 activation: manual
-alias: [mwf-dispatch]
+alias: mwf-dispatch
 ---
 
 # Dispatch（派发与执行）
