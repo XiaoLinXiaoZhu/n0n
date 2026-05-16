@@ -1,6 +1,6 @@
 ---
 description: 对 idea 进行穷举式质询，挑战模糊术语，然后综合为 PRD。当用户说"计划一下"、"做个方案"时由 @mwf 自动路由，也可手动调用。
-alias: [plan, mwf-init]
+alias: [mwf-plan]
 activation: manual
 ---
 

@@ -1,7 +1,7 @@
 ---
 description: 查看当前 workflow session 的状态概览。当用户问"怎么样了"、"进度如何"、或 @mwf 自动路由时使用。
 activation: manual
-alias: [status, mwf-status]
+alias: [mwf-status]
 ---
 
 # Status（会话状态概览）

@@ -1,6 +1,6 @@
 ---
 description: 盘问人类来解析 HITL issue 的决策阻塞，将 HITL 转换为 AFK。当用户说"卡住了"、"帮我想想这个"、或 dispatch 遇到 HITL issue 时触发。
-alias: [resolve-hitl, mwf-resolve]
+alias: [mwf-resolve]
 activation: manual
 ---
 
