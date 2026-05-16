@@ -57,4 +57,6 @@ export interface SkillContent extends SkillMeta {
 	body: string;
 	/** skill 目录下的脚本文件列表（相对路径） */
 	scripts: string[];
+	/** skill 目录下的额外资源文件列表（绝对路径，不含 SKILL.md） */
+	resources: string[];
 }

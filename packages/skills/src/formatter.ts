@@ -36,10 +36,16 @@ export function formatSkillContents(contents: SkillContent[]): string {
 					? `\nAvailable scripts (run with \`bun run ${s.dir}/<script>\`):\n${s.scripts.map((p) => `  - ${p}`).join("\n")}`
 					: "";
 
+			const resourceInfo =
+				s.resources.length > 0
+					? `\n额外资源（使用 observe 按需读取）：\n${s.resources.map((p) => `  - ${p}`).join("\n")}`
+					: "";
+
 			return [
 				`<skill name="${s.name}" path="${s.dir}">`,
 				s.body,
 				scriptInfo,
+				resourceInfo,
 				"</skill>",
 			]
 				.filter(Boolean)

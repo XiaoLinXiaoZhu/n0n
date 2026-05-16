@@ -38,7 +38,17 @@ export async function loadSkillContent(
 			}
 		}
 
-		const meta: Omit<SkillMeta, "body" | "scripts"> = {
+		const resources: string[] = [];
+		const mdGlob = new Glob("**/*.md");
+		for (const m of mdGlob.scanSync({ cwd: dir })) {
+			// skip SKILL.md files (they are loaded as separate skills)
+			if (m.endsWith("SKILL.md")) continue;
+			// skip scripts/ directory
+			if (m.startsWith("scripts/") || m.startsWith("scripts\\")) continue;
+			resources.push(resolve(dir, m));
+		}
+
+		const meta: Omit<SkillMeta, "body" | "scripts" | "resources"> = {
 			uid: generateUid(),
 			name: "",
 			alias: [],
@@ -50,7 +60,7 @@ export async function loadSkillContent(
 			dir,
 		};
 
-		return { ...meta, body, scripts };
+		return { ...meta, body, scripts, resources };
 	} catch {
 		return null;
 	}
@@ -77,7 +87,17 @@ export async function loadSkillContentWithMeta(
 			}
 		}
 
-		return { ...skill, body, scripts };
+		const resources: string[] = [];
+		const mdGlob = new Glob("**/*.md");
+		for (const m of mdGlob.scanSync({ cwd: skill.dir })) {
+			// skip SKILL.md files (they are loaded as separate skills)
+			if (m.endsWith("SKILL.md")) continue;
+			// skip scripts/ directory
+			if (m.startsWith("scripts/") || m.startsWith("scripts\\")) continue;
+			resources.push(resolve(skill.dir, m));
+		}
+
+		return { ...skill, body, scripts, resources };
 	} catch {
 		return null;
 	}

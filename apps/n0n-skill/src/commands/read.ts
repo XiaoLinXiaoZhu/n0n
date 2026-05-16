@@ -48,5 +48,13 @@ export async function readCommand(name: string | undefined): Promise<void> {
 				console.log(`  - ${script}`);
 			}
 		}
+
+		// 如果有额外资源文件，附加绝对路径
+		if (content.resources.length > 0) {
+			console.log(`\n额外资源（使用 observe 按需读取）：`);
+			for (const resource of content.resources) {
+				console.log(`  - ${resource}`);
+			}
+		}
 	}
 }
