@@ -25,7 +25,7 @@ export function paramsFromDefs(
 			: def.schema;
 		const js = toJSONSchema(schema);
 		properties[def.name] = js;
-		if (def.required) required.push(def.name);
+		if (!def.schema.isOptional()) required.push(def.name);
 	}
 
 	return {

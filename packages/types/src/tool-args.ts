@@ -22,7 +22,6 @@ export interface ParamDef<
 > {
 	readonly name: Name;
 	readonly schema: S;
-	readonly required: boolean;
 }
 
 /** 从 ParamDef 列表派生 Zod object shape 类型 */
@@ -64,15 +63,14 @@ export function withDescriptions<T extends readonly ParamDef[]>(
 // ═══════════════════════════════════════════════════════════════
 
 export const ExecParamDefs = [
-	{ name: "runtime", schema: z.string().optional(), required: false },
-	{ name: "cwd", schema: z.string().optional(), required: false },
+	{ name: "runtime", schema: z.string().optional() },
+	{ name: "cwd", schema: z.string().optional() },
 	// prompt cache 的 TTL 为 5 分钟
 	{
 		name: "waitfor",
 		schema: z.number().max(240).optional(),
-		required: false,
 	},
-	{ name: "script", schema: z.string(), required: true },
+	{ name: "script", schema: z.string() },
 ] as const satisfies readonly ParamDef[];
 
 export const ExecArgsSchema = buildSchema(ExecParamDefs);
@@ -83,8 +81,8 @@ export type ExecArgs = z.infer<typeof ExecArgsSchema>;
 // ═══════════════════════════════════════════════════════════════
 
 export const WriteParamDefs = [
-	{ name: "path", schema: z.string(), required: true },
-	{ name: "content", schema: z.string(), required: true },
+	{ name: "path", schema: z.string() },
+	{ name: "content", schema: z.string() },
 ] as const satisfies readonly ParamDef[];
 
 export const WriteArgsSchema = buildSchema(WriteParamDefs);
@@ -95,8 +93,8 @@ export type WriteArgs = z.infer<typeof WriteArgsSchema>;
 // ═══════════════════════════════════════════════════════════════
 
 export const EditParamDefs = [
-	{ name: "path", schema: z.string(), required: true },
-	{ name: "intent", schema: z.string(), required: true },
+	{ name: "path", schema: z.string() },
+	{ name: "intent", schema: z.string() },
 ] as const satisfies readonly ParamDef[];
 
 export const EditArgsSchema = buildSchema(EditParamDefs);
@@ -107,8 +105,8 @@ export type EditArgs = z.infer<typeof EditArgsSchema>;
 // ═══════════════════════════════════════════════════════════════
 
 export const ProgressParamDefs = [
-	{ name: "status", schema: z.string(), required: true },
-	{ name: "content", schema: z.string(), required: true },
+	{ name: "status", schema: z.string() },
+	{ name: "content", schema: z.string() },
 ] as const satisfies readonly ParamDef[];
 
 export const ProgressArgsSchema = buildSchema(ProgressParamDefs);
