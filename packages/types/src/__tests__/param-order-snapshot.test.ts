@@ -18,12 +18,12 @@ import {
 } from "../tool-args.ts";
 
 describe("schema shape 参数顺序", () => {
-	it("ExecArgsSchema 顺序: script, runtime, cwd, waitfor", () => {
+	it("ExecArgsSchema 顺序: runtime, cwd, waitfor, script", () => {
 		expect(Object.keys(ExecArgsSchema.shape)).toEqual([
-			"script",
 			"runtime",
 			"cwd",
 			"waitfor",
+			"script",
 		]);
 	});
 

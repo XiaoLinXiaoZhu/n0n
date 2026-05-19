@@ -64,7 +64,6 @@ export function withDescriptions<T extends readonly ParamDef[]>(
 // ═══════════════════════════════════════════════════════════════
 
 export const ExecParamDefs = [
-	{ name: "script", schema: z.string(), required: true },
 	{ name: "runtime", schema: z.string().optional(), required: false },
 	{ name: "cwd", schema: z.string().optional(), required: false },
 	// prompt cache 的 TTL 为 5 分钟
@@ -73,6 +72,7 @@ export const ExecParamDefs = [
 		schema: z.number().max(240).optional(),
 		required: false,
 	},
+	{ name: "script", schema: z.string(), required: true },
 ] as const satisfies readonly ParamDef[];
 
 export const ExecArgsSchema = buildSchema(ExecParamDefs);
