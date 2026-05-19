@@ -21,10 +21,25 @@ export type * from "./domain.ts";
 export type * from "./renderer.ts";
 export { findLastUsage } from "./renderer.ts";
 export type * from "./setup-renderer.ts";
-export type * from "./tool-args.ts";
+
+export type {
+	EditArgs,
+	ExecArgs,
+	InferShape,
+	ParamDef,
+	ParamDescriptions,
+	ProgressArgs,
+	WriteArgs,
+} from "./tool-args.ts";
 export {
+	buildSchema,
 	EditArgsSchema,
+	EditParamDefs,
 	ExecArgsSchema,
+	ExecParamDefs,
 	ProgressArgsSchema,
+	ProgressParamDefs,
 	WriteArgsSchema,
+	WriteParamDefs,
+	withDescriptions,
 } from "./tool-args.ts";

@@ -24,27 +24,29 @@ import type {
 	ToolOutputChunk,
 	ToolStreamEvent,
 } from "@n0n/types";
-import { EditArgsSchema } from "@n0n/types";
 import {
-	type FieldDescriptions,
-	zodToParameters,
-} from "../zod-to-parameters.ts";
+	EditArgsSchema,
+	EditParamDefs,
+	withDescriptions,
+	type ParamDescriptions,
+} from "@n0n/types";
+import { paramsFromDefs } from "../zod-to-parameters.ts";
 import type { EditBackend } from "./backend.ts";
 import editDescription from "./edit.md" with { type: "text" };
 
 export { EditArgsSchema };
 
-const editDescriptions: FieldDescriptions<EditArgs> = {
+const editDescriptions = {
 	path: "File path relative to project root",
 	intent:
 		"Edit intent in free-form text: natural language description, code snippets, or a mix of both. Describe what to change and where.",
-};
+} satisfies ParamDescriptions<typeof EditParamDefs>;
 
 // ── 主模型工具定义（intent 驱动） ──
 export const EDIT_TOOL_DEFINITION: ToolDefinition = {
 	name: "edit",
 	description: editDescription,
-	parameters: zodToParameters(EditArgsSchema, editDescriptions),
+	parameters: paramsFromDefs(withDescriptions(EditParamDefs, editDescriptions)),
 };
 
 // ── Tool Entry Points ──

@@ -20,24 +20,26 @@ import type {
 	WriteToolCall,
 	WriteToolResult,
 } from "@n0n/types";
-import { WriteArgsSchema } from "@n0n/types";
 import {
-	type FieldDescriptions,
-	zodToParameters,
-} from "./zod-to-parameters.ts";
+	WriteArgsSchema,
+	WriteParamDefs,
+	withDescriptions,
+	type ParamDescriptions,
+} from "@n0n/types";
+import { paramsFromDefs } from "./zod-to-parameters.ts";
 
 export { WriteArgsSchema };
 
-const writeDescriptions: FieldDescriptions<WriteArgs> = {
+const writeDescriptions = {
 	path: "File path relative to project root",
 	content: "Complete file content to write",
-};
+} satisfies ParamDescriptions<typeof WriteParamDefs>;
 
 export const WRITE_TOOL_DEFINITION: ToolDefinition = {
 	name: "write",
 	description:
 		"Create or overwrite a file with the given content. Directories are created automatically. For modifying existing files, use the edit tool instead.\n\nThis tool is deterministic and always succeeds — do not wait for its result. Continue issuing more tool calls in the same response.",
-	parameters: zodToParameters(WriteArgsSchema, writeDescriptions),
+	parameters: paramsFromDefs(withDescriptions(WriteParamDefs, writeDescriptions)),
 };
 
 /** 正常写入（非截断恢复） */

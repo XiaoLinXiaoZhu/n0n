@@ -1,7 +1,7 @@
 /**
  * observe / reason / act 工具定义 — 完全静态
  *
- * 三个工具共享完全相同的参数结构（ExecArgsSchema）和执行后端（execToolStream），
+ * 三个工具共享 ExecParamDefs（参数结构）和执行后端（execToolStream），
  * 区分仅靠工具名和 description。
  * 工具描述和参数定义均为静态常量，不依赖任何环境探测结果。
  * 环境信息（可用 runtimes、CLI 工具）由 bootstrap fewshot 提供。
@@ -12,11 +12,8 @@
  */
 
 import type { ExecArgs, ToolDefinition } from "@n0n/types";
-import { ExecArgsSchema } from "@n0n/types";
-import {
-	type FieldDescriptions,
-	zodToParameters,
-} from "../zod-to-parameters.ts";
+import { ExecArgsSchema, ExecParamDefs, withDescriptions } from "@n0n/types";
+import { paramsFromDefs } from "../zod-to-parameters.ts";
 
 export { ExecArgsSchema };
 
@@ -41,7 +38,7 @@ function makeExecLikeDefinition(
 ): ToolDefinition {
 	const defaultRuntime = platform === "win32" ? "cmd" : "sh";
 
-	const EXEC_FIELD_DESCRIPTIONS: FieldDescriptions<ExecArgs> = {
+	const descriptions = {
 		script:
 			"Script content. Single command or multi-line code with imports, loops, etc.",
 		runtime: `Runtime (default: "${defaultRuntime}"). Options: ${ALL_RUNTIMES}. Shell runtimes are generally always available; language runtimes depend on installation — check bootstrap context.`,
@@ -49,9 +46,11 @@ function makeExecLikeDefinition(
 		waitfor: `Max seconds to wait for process (default: ${waitforDefault}, max: ${waitforMax}). Process continues in background if exceeded.`,
 	};
 
-	const PARAMETERS = zodToParameters(ExecArgsSchema, EXEC_FIELD_DESCRIPTIONS);
-
-	return { name, description, parameters: PARAMETERS };
+	return {
+		name,
+		description,
+		parameters: paramsFromDefs(withDescriptions(ExecParamDefs, descriptions)),
+	};
 }
 
 export function makeObserveToolDefinition(
