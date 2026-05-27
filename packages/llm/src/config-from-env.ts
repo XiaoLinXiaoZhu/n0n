@@ -198,6 +198,10 @@ export function buildProviderConfigFromEnv(
 				...(thinkingEffort ? { thinkingEffort } : {}),
 			};
 		}
+		default: {
+			const _exhaustive: never = provider;
+			throw new Error(`Unknown provider: ${_exhaustive}`);
+		}
 	}
 }
 

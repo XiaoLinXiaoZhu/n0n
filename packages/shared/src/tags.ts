@@ -37,6 +37,10 @@ export function openTag(style: TagStyle, name: string): string {
 		case "glm":
 		case "default":
 			return `<${name}>`;
+		default: {
+			const _exhaustive: never = style;
+			return `<${name}>`;
+		}
 	}
 }
 
@@ -50,6 +54,10 @@ export function closeTag(style: TagStyle, name: string): string {
 		case "glm":
 		case "default":
 			return `</${name}>`;
+		default: {
+			const _exhaustive: never = style;
+			return `</${name}>`;
+		}
 	}
 }
 

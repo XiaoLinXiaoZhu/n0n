@@ -53,5 +53,9 @@ export function createLLMClient(
 				formatPrompt(msgs, deepseekTags, formatOptions);
 			return new DeepSeekClient(pc, tagStyle, tags, format, systemFormat);
 		}
+		default: {
+			const _exhaustive: never = pc;
+			throw new Error(`Unknown provider: ${(_exhaustive as { provider: string }).provider}`);
+		}
 	}
 }

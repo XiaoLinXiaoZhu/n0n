@@ -14,12 +14,14 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import type {
 	AnthropicProviderConfig,
+	DeepSeekProviderConfig,
+	GoogleProviderConfig,
 	OpenAICompatibleProviderConfig,
 	OpenAIProviderConfig,
 	ProviderConfig,
 } from "@n0n/llm";
 import { createLLMClient, createResponsesClient } from "@n0n/llm";
-import type { StreamEvent, TokenUsage } from "@n0n/types";
+import type { LLMProvider, StreamEvent, TokenUsage } from "@n0n/types";
 import type { EditBackend, EditBackendResult } from "../backend.ts";
 import { FreeformPatchBackend } from "../freeform-patch/index.ts";
 import { StrReplaceBackend } from "../str-replace/index.ts";
@@ -103,7 +105,7 @@ function buildProviderConfig(
 	secrets: SecretConfig,
 ): ProviderConfig {
 	const cfg = preset.config;
-	const provider = cfg.EDITOR_LLM_PROVIDER || "openai-compatible";
+	const provider = (cfg.EDITOR_LLM_PROVIDER || "openai-compatible") as LLMProvider;
 
 	switch (provider) {
 		case "openai":
@@ -142,8 +144,27 @@ function buildProviderConfig(
 				...(cfg.EDITOR_LLM_ENABLE_THINKING ? { enableThinking: true } : {}),
 			} satisfies OpenAICompatibleProviderConfig;
 
-		default:
-			throw new Error(`Unsupported provider: ${provider}`);
+		case "google":
+			return {
+				provider: "google",
+				apiKey: secrets.api_key,
+				model: cfg.EDITOR_LLM_MODEL,
+				...(secrets.base_url ? { baseUrl: secrets.base_url } : {}),
+			} satisfies GoogleProviderConfig;
+
+		case "deepseek":
+			return {
+				provider: "deepseek",
+				apiKey: secrets.api_key,
+				model: cfg.EDITOR_LLM_MODEL,
+				...(secrets.base_url ? { baseUrl: secrets.base_url } : {}),
+				...(cfg.EDITOR_LLM_ENABLE_THINKING ? { enableThinking: true } : {}),
+			} satisfies DeepSeekProviderConfig;
+
+		default: {
+			const _exhaustive: never = provider;
+			throw new Error(`Unsupported provider: ${_exhaustive}`);
+		}
 	}
 }
 
