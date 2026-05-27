@@ -35,8 +35,8 @@ mount → (render × N) → commit → mount → ...
    - path 锁定逻辑不变（content key 出现后才锁定 path，避免截断垃圾文件）。
 
 3. **工具执行输出 → Grid 动态区域**
-   - 工具执行期间，输出显示在终端底部的 Grid 动态区域（替代旧 LiveRegion 的 in-place 更新）。
-   - 工具完成后，输出固化到 scrollback（`vp.commit`）。
+   - 不再使用 FIFO，而是每个工具各自管理自己的动态区域。
+   - 全部工具完成后，输出固化到 scrollback（`vp.commit`）。
    - 需处理多个工具并发执行的场景。
 
 4. **输入 → TextInput + parseKey**
@@ -49,6 +49,7 @@ mount → (render × N) → commit → mount → ...
    - Agent loop、REPL 命令（exit/pause/log）、Ctrl+Q 中断、Ctrl+P 暂停心跳。
    - PlainRenderer 非 TTY fallback。
    - 类型检查通过，现有测试通过。
+   - 动态渲染到 commit 的样式应该基本不变
 
 6. **移除旧依赖**
    - `apps/code` 不再依赖 `@n0n/multiline-input`（包本身保留）。
@@ -63,57 +64,9 @@ mount → (render × N) → commit → mount → ...
 
 ## 四个变体
 
-核心问题：**多个工具并发执行时，如何分配 Grid 动态区域？**
+类似 topK 采样，请你提供给我你认为最正确的 4 个不同的实现。
 
-以下 4 种变体代表了不同的权衡点，均基于 history demo 的 mount→render→commit 模型。
-
-### 变体 A：FIFO Commit Cycle
-
-一次只渲染一个工具。工具按到达顺序排队，当前工具占满整个 Grid。
-完成后 `vp.commit(toolResult)` 固化到 scrollback，下一个工具接管 Grid。
-
-| 优点 | 缺点 |
-|------|------|
-| 最接近 history demo 模式，简单可靠 | 看不到并发工具的进度 |
-| 每次 commit 产生干净的 scrollback 条目 | 工具串行化可能感觉慢 |
-| 无 zone 管理复杂度 | |
-
-### 变体 B：Fixed Zones + Batch Commit
-
-Grid 均分为固定行数 zone。所有工具同时可见。全部完成后一次性
-`vp.commit()` 固化所有结果到 scrollback。
-
-| 优点 | 缺点 |
-|------|------|
-| 看到所有并发工具的实时输出 | 必须等全部完成才能看到 scrollback 结果 |
-| 布局可预测 | 工具多时 zone 太小 |
-| 单次 commit，ANSI 输出最干净 | |
-
-### 变体 C：Fixed Zones + Progressive Commit
-
-Grid 均分为固定 zone。某个工具完成后，其 zone 内容立即通过
-`vp.commit()` 固化到 scrollback，Grid 缩行 remount，剩余工具 rebalance。
-
-| 优点 | 缺点 |
-|------|------|
-| 并发可见 + 结果即时固化 | 多次 commit/remount 可能造成闪烁 |
-| 与 history demo 的 submit 节奏一致 | 实现复杂度最高 |
-
-### 变体 D：Scrollback-native
-
-完全不使用 Grid 渲染工具输出。工具输出直接写入 stderr scrollback
-（sgrFromEncoded 样式）。Grid 仅用于输入 prompt。
-
-| 优点 | 缺点 |
-|------|------|
-| 最接近旧 RichRenderer 的 scrollback-native 风格 | 无 in-place 更新（输出流走后无法修改） |
-| 零 zone 管理 | 大量输出会快速撑满 scrollback |
-
-## 未决问题
-
-1. 变体 A/C 的 commit 时机：工具完成时立即 commit 还是等一轮全部结束？
-2. 变体 B/C 的 zone 最小行数：终端高度 24 行时，多少行为宜？
-3. Grid 应占终端多少行？全高减去 margin，还是固定比例？
+这样，我可以在这里面对比、指出那4个变体中，哪个更好，从而你可以更轻松的找到如何优化实现，以及如何决定最终的实现方案。
 
 ## 参考
 
