@@ -21,6 +21,7 @@ import {
 	writeFileSync,
 } from "node:fs";
 import { resolve } from "node:path";
+import { isLLMProvider, type LLMProvider } from "@n0n/types";
 import type {
 	BootstrapResult,
 	ConfigEntry,
@@ -125,21 +126,22 @@ function resolveEffectiveProvider(
 	processEnv: Record<string, string>,
 	globalEnv: Record<string, string>,
 	projectEnv: Record<string, string>,
-): string {
+): LLMProvider {
+	let raw: string | undefined;
 	if (prefix) {
 		const providerKey = `${prefix}_LLM_PROVIDER`;
-		const override =
+		raw =
 			processEnv[providerKey] ??
 			globalEnv[providerKey] ??
 			projectEnv[providerKey];
-		if (override) return override;
 	}
-	return (
-		processEnv.LLM_PROVIDER ??
-		globalEnv.LLM_PROVIDER ??
-		projectEnv.LLM_PROVIDER ??
-		"openai"
-	);
+	if (!raw) {
+		raw =
+			processEnv.LLM_PROVIDER ??
+			globalEnv.LLM_PROVIDER ??
+			projectEnv.LLM_PROVIDER;
+	}
+	return raw && isLLMProvider(raw) ? raw : "openai";
 }
 
 /**
@@ -323,7 +325,7 @@ function formatConfigSummary(configs: ConfigEntry[], spec: EnvSpec): string {
  * @param testLLM LLM 连通性测试回调（可选，由上层注入）
  */
 export async function bootstrap(
-	envSpecBuilder: (provider: string) => EnvSpec,
+	envSpecBuilder: (provider: LLMProvider) => EnvSpec,
 	ui: SetupRenderer,
 	envDir?: string,
 	testLLM?: LLMConnectionTester,

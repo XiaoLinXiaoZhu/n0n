@@ -9,7 +9,7 @@
  * 无需知道各 provider 的参数细节。
  */
 
-import type { EnvGroup, EnvVarDef } from "@n0n/types";
+import type { EnvGroup, EnvVarDef, LLMProvider } from "@n0n/types";
 
 // ── 基础变量（所有 provider） ──
 
@@ -103,7 +103,7 @@ const DEEPSEEK_VARS: EnvVarDef[] = [
  * 只包含当前 provider 有意义的变量，
  * 用户不会看到与自己 provider 无关的配置项。
  */
-export function buildLLMEnvGroup(provider: string): EnvGroup {
+export function buildLLMEnvGroup(provider: LLMProvider): EnvGroup {
 	const vars = [...LLM_BASE_VARS];
 	switch (provider) {
 		case "anthropic":
@@ -118,7 +118,13 @@ export function buildLLMEnvGroup(provider: string): EnvGroup {
 		case "openai-compatible":
 			vars.push(...OPENAI_COMPATIBLE_VARS);
 			break;
-		// openai: 无额外变量
+		case "openai":
+			// openai: 无额外变量
+			break;
+		default: {
+			const _exhaustive: never = provider;
+			throw new Error(`Unknown provider: ${_exhaustive}`);
+		}
 	}
 	return { title: "LLM 配置", vars };
 }
@@ -128,7 +134,7 @@ export function buildLLMEnvGroup(provider: string): EnvGroup {
  *
  * 各字段可独立 fallback 到主 LLM 配置。
  */
-export function buildEditorLLMEnvGroup(provider: string): EnvGroup {
+export function buildEditorLLMEnvGroup(provider: LLMProvider): EnvGroup {
 	const mainGroup = buildLLMEnvGroup(provider);
 	const vars: EnvVarDef[] = mainGroup.vars.map((v) => {
 		// 继承变量不保留 default——让 inheritFrom 机制生效

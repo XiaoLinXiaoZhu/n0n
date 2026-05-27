@@ -6,7 +6,7 @@
  */
 
 import { buildEditorLLMEnvGroup, buildLLMEnvGroup } from "@n0n/shared";
-import type { EnvSpec } from "@n0n/types";
+import type { EnvSpec, LLMProvider } from "@n0n/types";
 
 /**
  * 构建 Code Agent 的环境配置规格。
@@ -14,7 +14,7 @@ import type { EnvSpec } from "@n0n/types";
  * provider 参数决定显示哪些 LLM 行为变量——
  * 用户只会看到与自己 provider 相关的配置项。
  */
-export function buildCodeEnvSpec(provider: string): EnvSpec {
+export function buildCodeEnvSpec(provider: LLMProvider): EnvSpec {
 	return {
 		appName: "n0n Code Agent",
 		groups: [

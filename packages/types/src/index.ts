@@ -1,4 +1,6 @@
 export type * from "./bootstrap.ts";
+export type { LLMProvider } from "./llm-provider.ts";
+export { isLLMProvider, LLM_PROVIDERS } from "./llm-provider.ts";
 // LLM Client 抽象接口 + 流式事件类型
 export type {
 	AssistantMessage,

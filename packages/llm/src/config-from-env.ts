@@ -11,6 +11,7 @@
  * — TS exhaustive check 会在遗漏时编译报错。
  */
 
+import { isLLMProvider, LLM_PROVIDERS, type LLMProvider } from "@n0n/types";
 import type { LLMConfig, ProviderConfig } from "./config.ts";
 
 /** 扁平 key-value 配置源 — 从 .env / 环境变量加载后的纯数据 */
@@ -74,21 +75,11 @@ function envEnum<T extends string>(
 
 // ── Provider 类型解析 ──
 
-/** 所有合法的 provider 类型 — 从 ProviderConfig union 推导 */
-export const PROVIDER_TYPES: readonly ProviderConfig["provider"][] = [
-	"openai",
-	"anthropic",
-	"google",
-	"openai-compatible",
-	"deepseek",
-] as const;
+/** @deprecated 使用 LLM_PROVIDERS（from @n0n/types） */
+export const PROVIDER_TYPES = LLM_PROVIDERS;
 
-/** 类型守卫：判断字符串是否为合法的 provider 类型 */
-export function isValidProvider(
-	value: string,
-): value is ProviderConfig["provider"] {
-	return (PROVIDER_TYPES as readonly string[]).includes(value);
-}
+/** @deprecated 使用 isLLMProvider（from @n0n/types） */
+export const isValidProvider = isLLMProvider;
 
 /**
  * 从环境变量解析 provider 类型
@@ -100,7 +91,7 @@ export function isValidProvider(
  * - 有显式 provider 值且合法时直接使用
  * - 无显式 provider 时，默认 "openai"
  */
-export function resolveProvider(explicit?: string): ProviderConfig["provider"] {
+export function resolveProvider(explicit?: string): LLMProvider {
 	if (explicit && isValidProvider(explicit)) {
 		return explicit;
 	}

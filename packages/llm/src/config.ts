@@ -9,7 +9,7 @@
  * 各 Client 只读取自己分支上的字段，不存在"这个字段对我有没有用"的歧义。
  */
 
-import type { TagStyle } from "@n0n/types";
+import type { LLMProvider, TagStyle } from "@n0n/types";
 
 // ── Provider 配置 ──
 
@@ -108,3 +108,8 @@ export interface LLMConfig {
 	/** Provider 配置（决定使用哪个 Client，含行为参数） */
 	providerConfig: ProviderConfig;
 }
+
+// ── 穷尽性编译时校验 ──
+// 确保 ProviderConfig union 覆盖了所有 LLMProvider 类型
+type _AssertExhaustive = Exclude<LLMProvider, ProviderConfig["provider"]> extends never ? true : never;
+const _: _AssertExhaustive = true;
