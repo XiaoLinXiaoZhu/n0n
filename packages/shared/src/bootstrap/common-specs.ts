@@ -16,7 +16,7 @@ import type { EnvGroup, EnvVarDef } from "@n0n/types";
 const LLM_BASE_VARS: EnvVarDef[] = [
 	{
 		key: "LLM_PROVIDER",
-		desc: "LLM provider 类型（openai / anthropic / google / openai-compatible）",
+		desc: "LLM provider 类型（openai / anthropic / google / deepseek / openai-compatible）",
 		example: "openai",
 		default: "openai",
 	},
@@ -80,6 +80,21 @@ const OPENAI_COMPATIBLE_VARS: EnvVarDef[] = [
 	},
 ];
 
+const DEEPSEEK_VARS: EnvVarDef[] = [
+	{
+		key: "LLM_ENABLE_THINKING",
+		desc: "启用思考模式（DeepSeek-R1 等推理模型）",
+		example: "true",
+		default: "false",
+	},
+	{
+		key: "LLM_THINKING_EFFORT",
+		desc: "思考强度（high / max，max 触发深度思考）",
+		example: "high",
+		default: "",
+	},
+];
+
 // ── 动态构建 ──
 
 /**
@@ -96,6 +111,9 @@ export function buildLLMEnvGroup(provider: string): EnvGroup {
 			break;
 		case "google":
 			vars.push(...GOOGLE_VARS);
+			break;
+		case "deepseek":
+			vars.push(...DEEPSEEK_VARS);
 			break;
 		case "openai-compatible":
 			vars.push(...OPENAI_COMPATIBLE_VARS);
