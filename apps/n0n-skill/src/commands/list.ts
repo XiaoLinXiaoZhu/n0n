@@ -9,8 +9,8 @@
  * 末尾附标签统计。
  */
 
-import type { SkillMeta } from "@n0n/skills";
 import type { Styler } from "@n0n/cli-ui";
+import type { SkillMeta } from "@n0n/skills";
 import { discoverSkillsMultiDir } from "@n0n/skills";
 import { getSkillDirs } from "../paths.ts";
 
@@ -117,8 +117,6 @@ function colorByActivation(
 			return text;
 	}
 }
-
-
 
 async function loadStyler(): Promise<Styler> {
 	const { style } = await import("@n0n/cli-ui");

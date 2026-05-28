@@ -71,10 +71,7 @@ export function parseToolCalls(raw: AssistantToolCallPart[]): ToolCallRecord[] {
 		try {
 			const parsed =
 				typeof tc.input === "string" ? JSON.parse(tc.input) : tc.input;
-			args = normalizeArgOrder(
-				parsed as Record<string, unknown>,
-				tc.toolName,
-			);
+			args = normalizeArgOrder(parsed as Record<string, unknown>, tc.toolName);
 		} catch {
 			args = { _parseError: true, _raw: tc.input };
 		}

@@ -20,7 +20,11 @@ import type {
 	OpenAIProviderConfig,
 	ProviderConfig,
 } from "@n0n/llm";
-import { createLLMClient, createResponsesClient, ProviderConfigSchema } from "@n0n/llm";
+import {
+	createLLMClient,
+	createResponsesClient,
+	ProviderConfigSchema,
+} from "@n0n/llm";
 import type { LLMProvider, StreamEvent, TokenUsage } from "@n0n/types";
 import type { EditBackend, EditBackendResult } from "../backend.ts";
 import { FreeformPatchBackend } from "../freeform-patch/index.ts";
@@ -105,7 +109,8 @@ function buildProviderConfig(
 	secrets: SecretConfig,
 ): ProviderConfig {
 	const cfg = preset.config;
-	const provider = (cfg.EDITOR_LLM_PROVIDER || "openai-compatible") as LLMProvider;
+	const provider = (cfg.EDITOR_LLM_PROVIDER ||
+		"openai-compatible") as LLMProvider;
 
 	let raw: Record<string, unknown>;
 
@@ -174,7 +179,7 @@ function buildProviderConfig(
 		}
 	}
 
-	return ProviderConfigSchema.parse(raw) as ProviderConfig;
+	return ProviderConfigSchema.parse(raw);
 }
 
 // ── 创建后端 ──
@@ -191,11 +196,7 @@ function createBackend(
 	}
 
 	if (backendType === "freeform-patch") {
-		const client = createResponsesClient({
-			base_url: (providerConfig as OpenAICompatibleProviderConfig).base_url,
-			api_key: providerConfig.api_key,
-			model: providerConfig.model,
-		});
+		const client = createResponsesClient(providerConfig);
 		return new FreeformPatchBackend(client);
 	}
 

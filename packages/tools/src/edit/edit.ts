@@ -27,8 +27,8 @@ import type {
 import {
 	EditArgsSchema,
 	EditParamDefs,
-	withDescriptions,
 	type ParamDescriptions,
+	withDescriptions,
 } from "@n0n/types";
 import { paramsFromDefs } from "../zod-to-parameters.ts";
 import type { EditBackend } from "./backend.ts";

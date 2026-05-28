@@ -4,19 +4,22 @@
 
 import type { PartialToolCallRecord, ToolCallRecord } from "./tools/index.ts";
 
+/** 模型推理结果 — 可辨联合，区分"模型输出推理"与"未启用思考" */
+export type ReasoningResult = { ok: true; value: string } | { ok: false };
+
 // ── 助手消息 ──
 
 export interface AssistantTextMessage {
 	type: "assistant_text";
 	content: string;
-	reasoning?: string | null;
+	reasoning: ReasoningResult;
 	reasoningSignature?: string | null;
 }
 
 export interface AssistantToolCallMessage {
 	type: "assistant_tool_call";
 	content: string | null;
-	reasoning?: string | null;
+	reasoning: ReasoningResult;
 	reasoningSignature?: string | null;
 	toolCalls: (ToolCallRecord | PartialToolCallRecord)[];
 }

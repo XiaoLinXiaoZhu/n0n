@@ -6,7 +6,7 @@
  *
  * 验收条件：
  * 1. 进程不因 TypeError: process.stdin.setRawMode is not a function 退出
- * 2. stderr 中出现正常的初始化日志（如 "配置检查通过" 或 "LLM 连接"）
+ * 2. stderr 中出现正常的初始化日志（如 "配置加载完成" 或 "LLM 连接"）
  *    或者因 LLM 连接失败而退出（这也是合法的 — 说明已经过了 setRawMode 阶段）
  * 3. 如果 LLM 可用，进程最终应正常退出（exit 0）
  */
@@ -77,7 +77,7 @@ describe("非 TTY 环境启动", () => {
 			"process.stdin.setRawMode is not a function",
 		);
 
-		// 辅助断言：应该能看到初始化过程的输出（说明 bootstrap 阶段正常）
+		// 辅助断言：应该能看到初始化过程的输出（说明启动阶段正常）
 		// 如果配置加载失败，至少也说明已经过了 setRawMode 阶段
 		const passedBootstrap =
 			result.stderr.includes("配置加载失败") ||

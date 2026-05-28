@@ -25,8 +25,6 @@ import {
 	type PromptMessage,
 	type StreamEvent,
 	type StreamRequest,
-	type TagAdapter,
-	type TagStyle,
 	type TokenUsage,
 	type ToolDefinition,
 } from "@n0n/types";
@@ -354,22 +352,13 @@ function toAnthropicTools(tools: ToolDefinition[]): AnthropicTool[] {
 
 export class AnthropicClient implements LLMClient {
 	readonly modelId: string;
-	readonly tagStyle: TagStyle;
-	readonly tags: TagAdapter;
 	private readonly pc: AnthropicProviderConfig;
 	private readonly apiUrl: string;
 	private readonly format: FormatFn;
 
-	constructor(
-		pc: AnthropicProviderConfig,
-		tagStyle: TagStyle,
-		tags: TagAdapter,
-		format: FormatFn,
-	) {
+	constructor(pc: AnthropicProviderConfig, format: FormatFn) {
 		this.pc = pc;
 		this.modelId = this.pc.model;
-		this.tagStyle = tagStyle;
-		this.tags = tags;
 		this.format = format;
 
 		const base = this.pc.base_url;

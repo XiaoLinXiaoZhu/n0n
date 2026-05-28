@@ -33,14 +33,11 @@ export {
 export { parseDsl } from "./parse-dsl.ts";
 // Tags
 export {
-	adaptTagsFor,
 	closeTag,
 	createTagAdapter,
-	detectTagStyle,
 	openTag,
 	type TagAdapter,
 	type TagStyle,
-	wrapTagFor,
 } from "./tags.ts";
 export type { LineChunkInfo } from "./tokens.ts";
 export {

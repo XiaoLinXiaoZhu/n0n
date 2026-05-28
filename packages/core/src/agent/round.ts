@@ -55,7 +55,9 @@ export function buildToolCallMessage(
 	return {
 		type: "assistant_tool_call",
 		content: acc.content || null,
-		reasoning: acc.reasoning || undefined,
+		reasoning: acc.reasoning
+			? { ok: true as const, value: acc.reasoning }
+			: { ok: false as const },
 		reasoningSignature: acc.reasoningSignature || undefined,
 		toolCalls,
 	};

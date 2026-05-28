@@ -180,12 +180,6 @@ export interface LLMClient {
 	 */
 	readonly modelId: string;
 
-	/** XML tag 风格（由 provider 配置指定或从模型名推断） */
-	readonly tagStyle: TagStyle;
-
-	/** Tag 适配器实例（由 provider 构造，注入到 formatPrompt） */
-	readonly tags: TagAdapter;
-
 	/**
 	 * 缓存保活心跳（可选）
 	 *
@@ -201,7 +195,7 @@ export interface LLMClient {
 	heartbeat?(request: StreamRequest): Promise<TokenUsage | null>;
 
 	/**
-	 * 连通性测试 — bootstrap 流程使用
+	 * 连通性测试 — agent 初始化流程使用
 	 *
 	 * 发送最轻量请求验证 API 连通性与认证。
 	 * 各 provider 自行实现，错误消息由 provider 层生成。

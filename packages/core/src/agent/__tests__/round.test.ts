@@ -149,7 +149,7 @@ describe("buildToolCallMessage", () => {
 
 		expect(msg.type).toBe("assistant_tool_call");
 		expect(msg.content).toBe("Let me do this");
-		expect(msg.reasoning).toBe("reasoning");
+		expect(msg.reasoning).toEqual({ ok: true, value: "reasoning" });
 		expect(msg.toolCalls).toHaveLength(1);
 		expect(msg.toolCalls[0]!.id).toBe("tc_1");
 	});

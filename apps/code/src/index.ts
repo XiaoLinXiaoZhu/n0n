@@ -15,19 +15,17 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, resolve } from "node:path";
 import { style, writeln } from "@n0n/cli-ui";
+import { type ConfigSource, getConfig } from "@n0n/config";
 import {
-	buildToolsConfig,
 	type AgentConfig,
+	buildToolsConfig,
 	type EditBackendConfig,
 	type SecurityConfig,
 } from "@n0n/core";
-import { getConfig, type ConfigSource } from "@n0n/config";
 import {
-	ProviderConfigSchema,
-	type ProviderConfig,
 	createLLMClient,
 	createResponsesClient,
-	LLMConfigSchema,
+	ProviderConfigSchema,
 } from "@n0n/llm";
 import {
 	ensureDirs,
@@ -41,21 +39,21 @@ import type { NotifyConfig } from "./notify-sound.ts";
 // ── 配置 schema ──
 
 const codeConfigSchema = z.object({
-  settings: z.object({
-    strip_hint: z.boolean().default(true),
-    notify_sound: z.boolean().default(false),
-    notify_sound_path: z.string().default(""),
-    agent: z.object({
-      max_iterations: z.number().default(50),
-      max_idle_rounds: z.number().default(5),
-      default_exec_waitfor: z.number().default(120),
-    }),
-    security: z.object({
-      blocked_commands: z.array(z.string()).default([]),
-    }),
-    llm: ProviderConfigSchema,
-    editor: ProviderConfigSchema,
-  }),
+	settings: z.object({
+		strip_hint: z.boolean().default(true),
+		notify_sound: z.boolean().default(false),
+		notify_sound_path: z.string().default(""),
+		agent: z.object({
+			max_iterations: z.number().default(50),
+			max_idle_rounds: z.number().default(5),
+			default_exec_waitfor: z.number().default(120),
+		}),
+		security: z.object({
+			blocked_commands: z.array(z.string()).default([]),
+		}),
+		llm: ProviderConfigSchema,
+		editor: ProviderConfigSchema,
+	}),
 });
 
 // ── 默认 TOML ──
@@ -65,7 +63,6 @@ const DEFAULT_TOML = `
 strip_hint = true
 notify_sound = false
 notify_sound_path = ""
-blocked_commands = []
 
 [settings.agent]
 max_iterations = 50
@@ -86,32 +83,36 @@ if (!existsSync(globalConfigDir)) {
 const globalTomlPath = resolve(globalConfigDir, "config.toml");
 const projectTomlPath = resolve(process.cwd(), ".n0n", "config.toml");
 
-const sources: ConfigSource[] = [
-  { name: "默认", content: DEFAULT_TOML },
-];
+const sources: ConfigSource[] = [{ name: "默认", content: DEFAULT_TOML }];
 
 if (existsSync(globalTomlPath)) {
-  sources.push({ name: "全局", content: readFileSync(globalTomlPath, "utf-8") });
+	sources.push({
+		name: "全局",
+		content: readFileSync(globalTomlPath, "utf-8"),
+	});
 }
 
 if (existsSync(projectTomlPath)) {
-  sources.push({ name: "项目", content: readFileSync(projectTomlPath, "utf-8") });
+	sources.push({
+		name: "项目",
+		content: readFileSync(projectTomlPath, "utf-8"),
+	});
 }
 
 // ── 构建 envPool（全局 .env → 项目 .env → process.env，后者覆盖前者） ──
 
 function parseEnvFile(content: string): Record<string, string> {
-  const result: Record<string, string> = {};
-  for (const line of content.split("\n")) {
-    const trimmed = line.trim();
-    if (!trimmed || trimmed.startsWith("#")) continue;
-    const eqIdx = trimmed.indexOf("=");
-    if (eqIdx < 0) continue;
-    const key = trimmed.slice(0, eqIdx).trim();
-    const value = trimmed.slice(eqIdx + 1).trim();
-    if (key) result[key] = value;
-  }
-  return result;
+	const result: Record<string, string> = {};
+	for (const line of content.split("\n")) {
+		const trimmed = line.trim();
+		if (!trimmed || trimmed.startsWith("#")) continue;
+		const eqIdx = trimmed.indexOf("=");
+		if (eqIdx < 0) continue;
+		const key = trimmed.slice(0, eqIdx).trim();
+		const value = trimmed.slice(eqIdx + 1).trim();
+		if (key) result[key] = value;
+	}
+	return result;
 }
 
 const globalEnvPath = resolve(globalConfigDir, ".env");
@@ -121,37 +122,39 @@ const envPool: Record<string, string> = {};
 
 // 全局 .env
 if (existsSync(globalEnvPath)) {
-  Object.assign(envPool, parseEnvFile(readFileSync(globalEnvPath, "utf-8")));
+	Object.assign(envPool, parseEnvFile(readFileSync(globalEnvPath, "utf-8")));
 }
 
 // 项目 .env（覆盖全局）
 if (existsSync(projectEnvPath)) {
-  Object.assign(envPool, parseEnvFile(readFileSync(projectEnvPath, "utf-8")));
+	Object.assign(envPool, parseEnvFile(readFileSync(projectEnvPath, "utf-8")));
 }
 
 // process.env（最高优先级）
 for (const [k, v] of Object.entries(process.env)) {
-  if (v !== undefined) envPool[k] = v;
+	if (v !== undefined) envPool[k] = v;
 }
 
 const configResult = getConfig(codeConfigSchema, sources, envPool);
 
 if (!configResult.success) {
-  writeln(style.red("配置加载失败："));
-  for (const err of configResult.errors) {
-    writeln(style.red(`  ${err.kind}: ${err.message}`));
-  }
+	writeln(style.red("配置加载失败："));
+	for (const err of configResult.errors) {
+		writeln(style.red(`  ${err.kind}: ${err.message}`));
+	}
 
-  // 如果全局 config.toml 不存在，提示创建
-  if (!existsSync(globalTomlPath)) {
-    writeln();
-    writeln(style.yellow("未找到全局配置文件，正在创建默认配置…"));
-    writeFileSync(globalTomlPath, DEFAULT_TOML.trimStart() + "\n", { mode: 0o600 });
-    writeln(style.green(`已创建: ${globalTomlPath}`));
-    writeln(style.gray("请编辑此文件填入你的 API 密钥，然后重新启动。"));
-  }
+	// 如果全局 config.toml 不存在，提示创建
+	if (!existsSync(globalTomlPath)) {
+		writeln();
+		writeln(style.yellow("未找到全局配置文件，正在创建默认配置…"));
+		writeFileSync(globalTomlPath, `${DEFAULT_TOML.trimStart()}\n`, {
+			mode: 0o600,
+		});
+		writeln(style.green(`已创建: ${globalTomlPath}`));
+		writeln(style.gray("请编辑此文件填入你的 API 密钥，然后重新启动。"));
+	}
 
-  process.exit(1);
+	process.exit(1);
 }
 
 const { settings } = configResult.data;
@@ -162,48 +165,77 @@ const { llm, editor } = settings;
 const trace = configResult.trace;
 
 function maskSecret(value: string): string {
-  if (value.length <= 8) return "****";
-  return `${value.slice(0, 4)}…${value.slice(-4)}`;
+	if (value.length <= 8) return "****";
+	return `${value.slice(0, 4)}…${value.slice(-4)}`;
 }
 
 function sourceTag(source: string): string {
-  switch (source) {
-    case "默认": return style.dim("[默认]");
-    case "全局": return style.cyan("[全局]");
-    case "项目": return style.green("[项目]");
-    case "zod default": return style.dim("[zod default]");
-    default: return style.dim(`[${source}]`);
-  }
+	switch (source) {
+		case "默认":
+			return style.dim("[默认]");
+		case "全局":
+			return style.cyan("[全局]");
+		case "项目":
+			return style.green("[项目]");
+		case "zod default":
+			return style.dim("[zod default]");
+		default:
+			return style.dim(`[${source}]`);
+	}
 }
 
-writeln(style.cyan("ℹ") + " " + style.bold("当前配置:"));
+writeln(`${style.cyan("ℹ")} ${style.bold("当前配置:")}`);
 writeln();
 
 // LLM
 writeln(`  ${style.dim("──")} ${style.cyan("LLM")}`);
-writeln(`    ${style.white("provider")} = ${llm.provider} ${sourceTag(trace["settings.llm.provider"]?.source ?? "")}`);
-writeln(`    ${style.white("model")} = ${llm.model} ${sourceTag(trace["settings.llm.model"]?.source ?? "")}`);
-writeln(`    ${style.white("base_url")} = ${llm.base_url} ${sourceTag(trace["settings.llm.base_url"]?.source ?? "")}`);
-writeln(`    ${style.white("api_key")} = ${maskSecret(llm.api_key)} ${sourceTag(trace["settings.llm.api_key"]?.source ?? "")}`);
-writeln(`    ${style.white("edit_backend")} = ${llm.edit_backend} ${sourceTag(trace["settings.llm.edit_backend"]?.source ?? "")}`);
+writeln(
+	`    ${style.white("provider")} = ${llm.provider} ${sourceTag(trace["settings.llm.provider"]?.source ?? "")}`,
+);
+writeln(
+	`    ${style.white("model")} = ${llm.model} ${sourceTag(trace["settings.llm.model"]?.source ?? "")}`,
+);
+writeln(
+	`    ${style.white("base_url")} = ${llm.base_url} ${sourceTag(trace["settings.llm.base_url"]?.source ?? "")}`,
+);
+writeln(
+	`    ${style.white("api_key")} = ${maskSecret(llm.api_key)} ${sourceTag(trace["settings.llm.api_key"]?.source ?? "")}`,
+);
+writeln(
+	`    ${style.white("edit_backend")} = ${llm.edit_backend} ${sourceTag(trace["settings.llm.edit_backend"]?.source ?? "")}`,
+);
 
 // Editor
 writeln();
 writeln(`  ${style.dim("──")} ${style.cyan("Editor")}`);
-writeln(`    ${style.white("provider")} = ${editor.provider} ${sourceTag(trace["settings.editor.provider"]?.source ?? "")}`);
-writeln(`    ${style.white("model")} = ${editor.model} ${sourceTag(trace["settings.editor.model"]?.source ?? "")}`);
-writeln(`    ${style.white("base_url")} = ${editor.base_url} ${sourceTag(trace["settings.editor.base_url"]?.source ?? "")}`);
-writeln(`    ${style.white("api_key")} = ${maskSecret(editor.api_key)} ${sourceTag(trace["settings.editor.api_key"]?.source ?? "")}`);
-writeln(`    ${style.white("edit_backend")} = ${editor.edit_backend} ${sourceTag(trace["settings.editor.edit_backend"]?.source ?? "")}`);
+writeln(
+	`    ${style.white("provider")} = ${editor.provider} ${sourceTag(trace["settings.editor.provider"]?.source ?? "")}`,
+);
+writeln(
+	`    ${style.white("model")} = ${editor.model} ${sourceTag(trace["settings.editor.model"]?.source ?? "")}`,
+);
+writeln(
+	`    ${style.white("base_url")} = ${editor.base_url} ${sourceTag(trace["settings.editor.base_url"]?.source ?? "")}`,
+);
+writeln(
+	`    ${style.white("api_key")} = ${maskSecret(editor.api_key)} ${sourceTag(trace["settings.editor.api_key"]?.source ?? "")}`,
+);
+writeln(
+	`    ${style.white("edit_backend")} = ${editor.edit_backend} ${sourceTag(trace["settings.editor.edit_backend"]?.source ?? "")}`,
+);
 
 // Settings
 writeln();
 writeln(`  ${style.dim("──")} ${style.cyan("设置")}`);
-writeln(`    ${style.white("strip_hint")} = ${settings.strip_hint} ${sourceTag(trace["settings.strip_hint"]?.source ?? "")}`);
-writeln(`    ${style.white("notify_sound")} = ${settings.notify_sound} ${sourceTag(trace["settings.notify_sound"]?.source ?? "")}`);
+writeln(
+	`    ${style.white("strip_hint")} = ${settings.strip_hint} ${sourceTag(trace["settings.strip_hint"]?.source ?? "")}`,
+);
+writeln(
+	`    ${style.white("notify_sound")} = ${settings.notify_sound} ${sourceTag(trace["settings.notify_sound"]?.source ?? "")}`,
+);
 
 writeln();
-writeln(style.green("✓") + " 配置加载完成");
+writeln(`${style.green("✓")} 配置加载完成`);
 writeln();
 
 // ── CLI 选项 ──
@@ -247,11 +279,7 @@ const editBackend: EditBackendConfig =
 	editBackendType === "freeform-patch"
 		? {
 				type: "freeform-patch",
-				responsesClient: createResponsesClient({
-					base_url: editor.base_url,
-					api_key: editor.api_key,
-					model: editor.model,
-				}),
+				responsesClient: createResponsesClient(editor),
 			}
 		: {
 				type: "str-replace",
@@ -263,12 +291,12 @@ const editBackend: EditBackendConfig =
 
 // 从配置直接构造 AgentConfig 和 SecurityConfig
 const agentConfig: AgentConfig = {
-  maxIterations: settings.agent.max_iterations,
-  maxIdleRounds: settings.agent.max_idle_rounds,
-  defaultExecWaitfor: settings.agent.default_exec_waitfor,
+	maxIterations: settings.agent.max_iterations,
+	maxIdleRounds: settings.agent.max_idle_rounds,
+	defaultExecWaitfor: settings.agent.default_exec_waitfor,
 };
 const securityConfig: SecurityConfig = {
-  blockedCommands: settings.security.blocked_commands,
+	blockedCommands: settings.security.blocked_commands,
 };
 
 const client = createLLMClient(llmConfig, formatOptions);
@@ -278,8 +306,8 @@ const toolsConfig = buildToolsConfig(editBackend, agentConfig, securityConfig, {
 });
 
 const notifyConfig: NotifyConfig = {
-  enabled: settings.notify_sound,
-  soundPath: settings.notify_sound_path || undefined,
+	enabled: settings.notify_sound,
+	soundPath: settings.notify_sound_path || undefined,
 };
 
 const { startCodeRepl } = await import("./repl.ts");

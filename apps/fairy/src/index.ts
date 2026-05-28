@@ -5,22 +5,15 @@
  * 每轮对话都是 state + stimulus → response + new-state。
  */
 
-import { createInterface } from "node:readline";
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { resolve } from "node:path";
+import { createInterface } from "node:readline";
 import { isTTY, label, RichRenderer, style, writeln } from "@n0n/cli-ui";
-import {
-	agentLoop,
-	buildToolsConfig,
-	PlainRenderer,
-} from "@n0n/core";
+import { type ConfigSource, getConfig } from "@n0n/config";
 import type { AgentConfig, SecurityConfig } from "@n0n/core";
-import { getConfig, type ConfigSource } from "@n0n/config";
-import {
-	ProviderConfigSchema,
-	createLLMClient,
-} from "@n0n/llm";
+import { agentLoop, buildToolsConfig, PlainRenderer } from "@n0n/core";
+import { createLLMClient, ProviderConfigSchema } from "@n0n/llm";
 import { type FormatOptions, parseWorkspaceArg } from "@n0n/shared";
 import { makeToolkit } from "@n0n/tools";
 import type { DomainMessage } from "@n0n/types";
@@ -39,24 +32,23 @@ import { buildView } from "./view.ts";
 // ── 配置加载 ──
 
 const fairyConfigSchema = z.object({
-  settings: z.object({
-    strip_hint: z.boolean().default(true),
-    llm: ProviderConfigSchema,
-    editor: ProviderConfigSchema,
-    agent: z.object({
-      max_iterations: z.number().default(50),
-      max_idle_rounds: z.number().default(5),
-      default_exec_waitfor: z.number().default(120),
-    }),
-    security: z.object({
-      blocked_commands: z.array(z.string()).default([]),
-    }),
-  }),
+	settings: z.object({
+		strip_hint: z.boolean().default(true),
+		llm: ProviderConfigSchema,
+		editor: ProviderConfigSchema,
+		agent: z.object({
+			max_iterations: z.number().default(50),
+			max_idle_rounds: z.number().default(5),
+			default_exec_waitfor: z.number().default(120),
+		}),
+		security: z.object({
+			blocked_commands: z.array(z.string()).default([]),
+		}),
+	}),
 });
 
 const DEFAULT_TOML = `
 [settings]
-strip_hint = true
 
 [settings.agent]
 max_iterations = 50
@@ -75,16 +67,20 @@ if (!existsSync(globalConfigDir)) {
 const globalTomlPath = resolve(globalConfigDir, "config.toml");
 const projectTomlPath = resolve(process.cwd(), ".n0n", "config.toml");
 
-const sources: ConfigSource[] = [
-  { name: "默认", content: DEFAULT_TOML },
-];
+const sources: ConfigSource[] = [{ name: "默认", content: DEFAULT_TOML }];
 
 if (existsSync(globalTomlPath)) {
-  sources.push({ name: "全局", content: readFileSync(globalTomlPath, "utf-8") });
+	sources.push({
+		name: "全局",
+		content: readFileSync(globalTomlPath, "utf-8"),
+	});
 }
 
 if (existsSync(projectTomlPath)) {
-  sources.push({ name: "项目", content: readFileSync(projectTomlPath, "utf-8") });
+	sources.push({
+		name: "项目",
+		content: readFileSync(projectTomlPath, "utf-8"),
+	});
 }
 
 // ── 构建 envPool（全局 .env → 项目 .env → process.env，后者覆盖前者） ──
@@ -155,12 +151,12 @@ const formatOptions: FormatOptions = {
 const client = createLLMClient(llmConfig, formatOptions);
 const editorClient = createLLMClient(editorLlmConfig, formatOptions);
 const agentConfig: AgentConfig = {
-  maxIterations: settings.agent.max_iterations,
-  maxIdleRounds: settings.agent.max_idle_rounds,
-  defaultExecWaitfor: settings.agent.default_exec_waitfor,
+	maxIterations: settings.agent.max_iterations,
+	maxIdleRounds: settings.agent.max_idle_rounds,
+	defaultExecWaitfor: settings.agent.default_exec_waitfor,
 };
 const securityConfig: SecurityConfig = {
-  blockedCommands: settings.security.blocked_commands,
+	blockedCommands: settings.security.blocked_commands,
 };
 const toolsConfig = buildToolsConfig(
 	{ type: "str-replace", editorClient },

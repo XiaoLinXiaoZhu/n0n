@@ -23,14 +23,16 @@ import type {
 	PromptMessage,
 	StreamEvent,
 	StreamRequest,
-	TagAdapter,
-	TagStyle,
-	TokenUsage,
 	ToolDefinition,
 } from "@n0n/types";
 import type { GoogleProviderConfig } from "./config.ts";
 import { isAbortError, LLMError } from "./errors.ts";
 import type { FormatFn } from "./factory.ts";
+import {
+	chunkToStreamEvents,
+	runSSEStream,
+	type SSEChunk,
+} from "./sse-utils.ts";
 
 // ── OpenAI-compatible API Types ──
 
@@ -70,50 +72,6 @@ interface GeminiRequest {
 	stream?: boolean;
 	stream_options?: { include_usage: boolean };
 	reasoning_effort?: "low" | "medium" | "high";
-}
-
-// ── SSE Chunk Types ──
-
-interface SSEChunk {
-	choices?: Array<{
-		index: number;
-		delta: {
-			role?: string;
-			content?: string;
-			reasoning_content?: string;
-			provider_specific_fields?: {
-				thought_signatures?: string[];
-			};
-			tool_calls?: Array<{
-				index: number;
-				id?: string;
-				type?: string;
-				function?: {
-					name?: string;
-					arguments?: string;
-				};
-			}>;
-		};
-		finish_reason: string | null;
-	}>;
-	usage?: {
-		prompt_tokens?: number;
-		completion_tokens?: number;
-		total_tokens?: number;
-		completion_tokens_details?: {
-			reasoning_tokens?: number;
-			text_tokens?: number;
-		};
-		prompt_tokens_details?: {
-			cached_tokens?: number;
-		};
-	};
-}
-
-function isSSEChunk(data: unknown): data is SSEChunk {
-	if (typeof data !== "object" || data === null) return false;
-	const obj = data as Record<string, unknown>;
-	return Array.isArray(obj.choices) || obj.usage !== undefined;
 }
 
 // ── PromptMessage → Gemini Message 转换 ──
@@ -181,26 +139,29 @@ function toGeminiTools(tools: ToolDefinition[]): GeminiToolDef[] {
 	}));
 }
 
+// ── Gemini 专用 SSE chunk 处理器 ──
+
+function* geminiChunkToStreamEvents(chunk: SSEChunk): Generator<StreamEvent> {
+	yield* chunkToStreamEvents(chunk);
+	const delta = chunk.choices?.[0]?.delta;
+	if (delta?.provider_specific_fields?.thought_signatures?.length) {
+		for (const sig of delta.provider_specific_fields.thought_signatures) {
+			yield { type: "thinking_signature", signature: sig };
+		}
+	}
+}
+
 // ── Gemini Client ──
 
 export class GeminiClient implements LLMClient {
 	readonly modelId: string;
-	readonly tagStyle: TagStyle;
-	readonly tags: TagAdapter;
 	private readonly pc: GoogleProviderConfig;
 	private readonly apiUrl: string;
 	private readonly format: FormatFn;
 
-	constructor(
-		pc: GoogleProviderConfig,
-		tagStyle: TagStyle,
-		tags: TagAdapter,
-		format: FormatFn,
-	) {
+	constructor(pc: GoogleProviderConfig, format: FormatFn) {
 		this.pc = pc;
 		this.modelId = this.pc.model;
-		this.tagStyle = tagStyle;
-		this.tags = tags;
 		this.format = format;
 
 		const base = this.pc.base_url;
@@ -280,133 +241,7 @@ export class GeminiClient implements LLMClient {
 			return;
 		}
 
-		let lastUsage: TokenUsage | null = null;
-		let lastFinishReason: string | null = null;
-
-		const processDataLine = function* (
-			payload: string,
-		): Generator<StreamEvent> {
-			if (!payload || payload === "[DONE]") return;
-
-			let chunk: unknown;
-			try {
-				chunk = JSON.parse(payload);
-			} catch {
-				return;
-			}
-
-			if (!isSSEChunk(chunk)) return;
-
-			if (chunk.usage) {
-				const u = chunk.usage;
-				const cacheReadTokens = u.prompt_tokens_details?.cached_tokens ?? 0;
-				const rawInput = u.prompt_tokens ?? 0;
-				lastUsage = {
-					inputTokens: rawInput - cacheReadTokens,
-					outputTokens: u.completion_tokens ?? 0,
-					totalTokens: u.total_tokens ?? 0,
-					cacheReadTokens,
-					cacheWriteTokens: 0,
-				};
-			}
-
-			const delta = chunk.choices?.[0]?.delta;
-			if (delta) {
-				if (delta.reasoning_content) {
-					yield { type: "thinking", text: delta.reasoning_content };
-				}
-				if (delta.content) {
-					yield { type: "content", text: delta.content };
-				}
-				// Gemini 通过 provider_specific_fields.thought_signatures 传递签名
-				if (delta.provider_specific_fields?.thought_signatures?.length) {
-					for (const sig of delta.provider_specific_fields.thought_signatures) {
-						yield { type: "thinking_signature", signature: sig };
-					}
-				}
-				if (delta.tool_calls) {
-					for (const tc of delta.tool_calls) {
-						yield {
-							type: "tool_call_delta",
-							index: tc.index,
-							id: tc.id,
-							name: tc.function?.name,
-							arguments: tc.function?.arguments ?? "",
-						};
-					}
-				}
-			}
-
-			const finish = chunk.choices?.[0]?.finish_reason;
-			if (finish) {
-				lastFinishReason = finish;
-			}
-		};
-
-		const reader = res.body.getReader();
-		const decoder = new TextDecoder();
-		let buffer = "";
-
-		try {
-			while (true) {
-				const { done, value } = await reader.read();
-				if (done) break;
-
-				buffer += decoder.decode(value, { stream: true });
-
-				let boundary = buffer.indexOf("\n\n");
-				while (boundary !== -1) {
-					const raw = buffer.slice(0, boundary);
-					buffer = buffer.slice(boundary + 2);
-
-					for (const line of raw.split("\n")) {
-						if (!line.startsWith("data: ")) continue;
-						const payload = line.slice(6);
-
-						if (payload === "[DONE]") {
-							if (lastFinishReason) {
-								yield {
-									type: "done",
-									finishReason: lastFinishReason,
-									usage: lastUsage,
-								};
-							}
-							return;
-						}
-
-						yield* processDataLine(payload);
-					}
-					boundary = buffer.indexOf("\n\n");
-				}
-			}
-
-			// Flush remaining buffer
-			if (buffer.trim()) {
-				for (const line of buffer.split("\n")) {
-					if (!line.startsWith("data: ")) continue;
-					const payload = line.slice(6);
-					if (payload === "[DONE]") break;
-					yield* processDataLine(payload);
-				}
-			}
-
-			if (lastFinishReason) {
-				yield {
-					type: "done",
-					finishReason: lastFinishReason,
-					usage: lastUsage,
-				};
-			}
-		} catch (err) {
-			if (!isAbortError(err)) {
-				yield {
-					type: "error",
-					error: err instanceof Error ? err.message : String(err),
-				};
-			}
-		} finally {
-			reader.releaseLock();
-		}
+		yield* runSSEStream(res.body.getReader(), geminiChunkToStreamEvents);
 	}
 
 	async complete(request: CompleteRequest): Promise<CompleteResponse> {
@@ -487,7 +322,7 @@ export class GeminiClient implements LLMClient {
 				for await (const event of this.stream(
 					{
 						messages: [{ type: "generic_user_text", content: "hi" }],
-					} as StreamRequest,
+					},
 					controller.signal,
 				)) {
 					if (event.type === "error") {

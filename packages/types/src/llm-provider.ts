@@ -9,10 +9,8 @@
  * 添加新 provider 步骤：
  * 1. 在 LLMProvider 类型和 LLM_PROVIDERS 数组中添加新值
  * 2. TS 会在以下位置报错（exhaustive check）：
- *    - packages/llm/config.ts — ProviderConfig union
- *    - packages/llm/config-from-env.ts — buildProviderConfigFromEnv switch
+ *    - packages/llm/config.ts — ProviderConfig discriminated union
  *    - packages/llm/factory.ts — createLLMClient switch
- *    - packages/shared/bootstrap/common-specs.ts — buildLLMEnvGroup switch
  * 3. 逐个修复即完成全链路适配
  */
 

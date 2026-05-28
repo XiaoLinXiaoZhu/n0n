@@ -16,6 +16,7 @@ export type {
 	AssistantToolCallMessage,
 	GenericAssistantToolCallMessage,
 	GenericToolResultMessage,
+	ReasoningResult,
 } from "./assistant.ts";
 // ── 元数据/控制 ──
 export type {

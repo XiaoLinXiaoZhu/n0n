@@ -179,7 +179,7 @@ function toOpenAIMessages(
 					result.push({
 						role: "assistant",
 						content: msg.content || null,
-						reasoning_content: msg.reasoning ?? undefined,
+						reasoning_content: msg.reasoning.ok ? msg.reasoning.value : undefined,
 						tool_calls: msg.toolCalls.map((tc) => ({
 							id: tc.id,
 							type: "function" as const,
@@ -193,7 +193,7 @@ function toOpenAIMessages(
 					result.push({
 						role: "assistant",
 						content: msg.content || null,
-						reasoning_content: msg.reasoning ?? undefined,
+						reasoning_content: msg.reasoning.ok ? msg.reasoning.value : undefined,
 					});
 				}
 				break;

@@ -18,6 +18,7 @@ import type { LLMConfig } from "./config.ts";
 import { DeepSeekClient } from "./deepseek-client/index.ts";
 import { GeminiClient } from "./gemini-client.ts";
 import { OpenAIClient } from "./openai-client.ts";
+import { OpenAICompatibleClient } from "./openai-compatible-client.ts";
 
 /** 格式化函数类型 — DomainMessage[] → PromptMessage[] */
 export type FormatFn = (messages: DomainMessage[]) => PromptMessage[];
@@ -40,21 +41,24 @@ export function createLLMClient(
 
 	switch (pc.provider) {
 		case "openai":
+			return new OpenAIClient(pc, format);
 		case "openai-compatible":
-			return new OpenAIClient(pc, tagStyle, tags, format);
+			return new OpenAICompatibleClient(pc, format);
 		case "anthropic":
-			return new AnthropicClient(pc, tagStyle, tags, format);
+			return new AnthropicClient(pc, format);
 		case "google":
-			return new GeminiClient(pc, tagStyle, tags, format);
+			return new GeminiClient(pc, format);
 		case "deepseek": {
-			const deepseekTags = createTagAdapter("deepseek");
+			const deepseekTags = createTagAdapter(pc.system_tag_style);
 			const systemFormat: FormatFn = (msgs) =>
 				formatPrompt(msgs, deepseekTags, formatOptions);
-			return new DeepSeekClient(pc, tagStyle, tags, format, systemFormat);
+			return new DeepSeekClient(pc, format, systemFormat);
 		}
 		default: {
 			const _exhaustive: never = pc;
-			throw new Error(`Unknown provider: ${(_exhaustive as { provider: string }).provider}`);
+			throw new Error(
+				`Unknown provider: ${(_exhaustive as { provider: string }).provider}`,
+			);
 		}
 	}
 }

@@ -329,7 +329,9 @@ function classifyRound(
 			assistantMessage: {
 				type: "assistant_text",
 				content: acc.content || "",
-				reasoning: acc.reasoning || undefined,
+				reasoning: acc.reasoning
+					? { ok: true as const, value: acc.reasoning }
+					: { ok: false as const },
 				reasoningSignature: acc.reasoningSignature || undefined,
 			},
 		};
@@ -341,7 +343,9 @@ function classifyRound(
 			assistantMessage: {
 				type: "assistant_text",
 				content: acc.content || "",
-				reasoning: acc.reasoning || undefined,
+				reasoning: acc.reasoning
+					? { ok: true as const, value: acc.reasoning }
+					: { ok: false as const },
 				reasoningSignature: acc.reasoningSignature || undefined,
 			},
 			retryMessage: {
@@ -358,7 +362,9 @@ function classifyRound(
 			assistantMessage: {
 				type: "assistant_text",
 				content: acc.content ?? "",
-				reasoning: acc.reasoning || undefined,
+				reasoning: acc.reasoning
+					? { ok: true as const, value: acc.reasoning }
+					: { ok: false as const },
 				reasoningSignature: acc.reasoningSignature || undefined,
 			},
 		};

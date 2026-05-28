@@ -18,15 +18,6 @@
 import type { TagAdapter, TagStyle } from "@n0n/types";
 export type { TagAdapter, TagStyle };
 
-/** 从模型名称推断 tag 风格（fallback，优先使用 ProviderConfig.tagStyle） */
-export function detectTagStyle(model: string): TagStyle {
-	const m = model.toLowerCase();
-	if (m.includes("glm")) return "glm";
-	if (m.includes("minimax")) return "minimax";
-	if (m.includes("deepseek")) return "deepseek";
-	return "default";
-}
-
 /** 生成开标签 */
 export function openTag(style: TagStyle, name: string): string {
 	switch (style) {
@@ -105,20 +96,4 @@ export function createTagAdapter(style: TagStyle): TagAdapter {
 		wrapTag: (name, content) => wrapTagByStyle(name, content, style),
 		adaptTags: (text) => adaptTagsByStyle(text, style),
 	};
-}
-
-// ── 兼容导出（过渡期，供未迁移的调用方使用） ──
-
-/** @deprecated 使用 createTagAdapter(style).adaptTags(text) */
-export function adaptTagsFor(text: string, model: string): string {
-	return adaptTagsByStyle(text, detectTagStyle(model));
-}
-
-/** @deprecated 使用 createTagAdapter(style).wrapTag(name, content) */
-export function wrapTagFor(
-	name: string,
-	content: string,
-	model: string,
-): string {
-	return wrapTagByStyle(name, content, detectTagStyle(model));
 }

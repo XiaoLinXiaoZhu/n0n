@@ -1,14 +1,13 @@
 /**
- * OpenAI Client — OpenAI Chat Completions 协议实现
+ * OpenAI Compatible Client — 通过 OpenAI Chat Completions 兼容协议通信
  *
- * 仅处理 provider="openai"（原生 OpenAI API）。
- * openai-compatible 见 openai-compatible-client.ts。
+ * 处理 provider="openai-compatible"（如 litellm 代理、ppio 等）。
+ * 原生 OpenAI 见 openai-client.ts。
  *
- * 自实现 SSE 解析核心，特性：
- * - finishReason 传递到 StreamEvent.done
- * - delta.reasoning_content 处理
- * - error 事件：SSE 解析错误 → yield { type: "error" }
- * - token usage 统计
+ * 与 OpenAI 原生客户端的差异：
+ * - 支持 enable_thinking（reasoning_content 回传）
+ * - 支持 backend_provider（an anthropic backend 时注入 cache_control）
+ * - base_url 必填（代理地址）
  */
 
 import type {
@@ -20,12 +19,12 @@ import type {
 	StreamRequest,
 	ToolDefinition,
 } from "@n0n/types";
-import type { OpenAIProviderConfig } from "./config.ts";
+import type { OpenAICompatibleProviderConfig } from "./config.ts";
 import { isAbortError, LLMError } from "./errors.ts";
 import type { FormatFn } from "./factory.ts";
 import { chunkToStreamEvents, runSSEStream } from "./sse-utils.ts";
 
-// ── OpenAI API Types ──
+// ── API Types ──
 
 interface OpenAIMessage {
 	role: "system" | "user" | "assistant" | "tool";
@@ -62,11 +61,16 @@ interface OpenAIRequest {
 	max_tokens?: number;
 	stream?: boolean;
 	stream_options?: { include_usage: boolean };
+	enable_thinking?: boolean;
 }
 
 // ── PromptMessage → OpenAI Message 转换 ──
 
-function toOpenAIMessages(promptMessages: PromptMessage[]): OpenAIMessage[] {
+function toOpenAIMessages(
+	promptMessages: PromptMessage[],
+	enableThinking: boolean,
+	backendProvider: string | undefined,
+): OpenAIMessage[] {
 	const result: OpenAIMessage[] = [];
 
 	for (const msg of promptMessages) {
@@ -92,12 +96,18 @@ function toOpenAIMessages(promptMessages: PromptMessage[]): OpenAIMessage[] {
 					result.push({
 						role: "assistant",
 						content: msg.content || null,
+						...(enableThinking
+							? { reasoning_content: msg.reasoning ?? "" }
+							: {}),
 						tool_calls: toolCalls,
 					});
 				} else {
 					result.push({
 						role: "assistant",
 						content: msg.content || null,
+						...(enableThinking
+							? { reasoning_content: msg.reasoning ?? "" }
+							: {}),
 					});
 				}
 				break;
@@ -110,6 +120,30 @@ function toOpenAIMessages(promptMessages: PromptMessage[]): OpenAIMessage[] {
 					tool_call_id: msg.toolCallId,
 				});
 				break;
+		}
+
+		// Anthropic via litellm: 注入 cache_control 断点
+		// TODO: 当 litellm/openai 类型支持 cache_control 时移除 double cast
+		if (
+			backendProvider === "anthropic" &&
+			msg.cacheBreakpoint &&
+			result[result.length - 1]
+		) {
+			(
+				result[result.length - 1] as unknown as Record<string, unknown>
+			).cache_control = {
+				type: "ephemeral",
+			};
+		}
+	}
+
+	// litellm + anthropic backend：末尾自动添加缓存标记，配合显式断点实现双重缓存
+	if (backendProvider === "anthropic") {
+		const last = result[result.length - 1];
+		if (last) {
+			(last as unknown as Record<string, unknown>).cache_control = {
+				type: "ephemeral",
+			};
 		}
 	}
 
@@ -127,18 +161,22 @@ function toOpenAITools(tools: ToolDefinition[]): OpenAIToolDef[] {
 	}));
 }
 
-// ── OpenAI Client ──
+// ── OpenAI Compatible Client ──
 
-export class OpenAIClient implements LLMClient {
+export class OpenAICompatibleClient implements LLMClient {
 	readonly modelId: string;
 	private readonly apiKey: string;
 	private readonly apiUrl: string;
 	private readonly format: FormatFn;
+	private readonly enableThinking: boolean;
+	private readonly backendProvider: string | undefined;
 
-	constructor(pc: OpenAIProviderConfig, format: FormatFn) {
+	constructor(pc: OpenAICompatibleProviderConfig, format: FormatFn) {
 		this.modelId = pc.model;
 		this.apiKey = pc.api_key;
 		this.format = format;
+		this.enableThinking = pc.enable_thinking;
+		this.backendProvider = pc.backend_provider;
 
 		const base = pc.base_url;
 		if (base.includes("/chat/completions")) {
@@ -154,7 +192,11 @@ export class OpenAIClient implements LLMClient {
 		signal?: AbortSignal,
 	): AsyncGenerator<StreamEvent> {
 		const promptMessages = this.format(request.messages);
-		const apiMessages = toOpenAIMessages(promptMessages);
+		const apiMessages = toOpenAIMessages(
+			promptMessages,
+			this.enableThinking,
+			this.backendProvider,
+		);
 
 		const filteredMessages = apiMessages.filter((msg) => {
 			if (msg.role === "user" && !(msg.content ?? "").trim()) return false;
@@ -177,6 +219,10 @@ export class OpenAIClient implements LLMClient {
 		if (request.tools?.length) {
 			body.tools = toOpenAITools(request.tools);
 			body.tool_choice = request.toolChoice ?? "auto";
+		}
+
+		if (this.enableThinking) {
+			body.enable_thinking = true;
 		}
 
 		let res: Response;

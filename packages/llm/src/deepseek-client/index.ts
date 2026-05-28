@@ -16,14 +16,12 @@ import type {
 	PromptMessage,
 	StreamEvent,
 	StreamRequest,
-	TagAdapter,
-	TagStyle,
-	TokenUsage,
 	ToolDefinition,
 } from "@n0n/types";
 import type { DeepSeekProviderConfig } from "../config.ts";
 import { isAbortError, LLMError } from "../errors.ts";
 import type { FormatFn } from "../factory.ts";
+import { chunkToStreamEvents, runSSEStream } from "../sse-utils.ts";
 import { systemPromptAdapter } from "./system-prompt-adapter.ts";
 
 // ── DeepSeek API Types (OpenAI-compatible) ──
@@ -65,42 +63,6 @@ interface DeepSeekRequest {
 	stream_options?: { include_usage: boolean };
 	enable_thinking?: boolean;
 	reasoning_effort?: "high" | "max";
-}
-
-// ── SSE Chunk Types ──
-
-interface SSEChunk {
-	choices?: Array<{
-		index: number;
-		delta: {
-			role?: string;
-			content?: string;
-			reasoning_content?: string;
-			tool_calls?: Array<{
-				index: number;
-				id?: string;
-				type?: string;
-				function?: {
-					name?: string;
-					arguments?: string;
-				};
-			}>;
-		};
-		finish_reason: string | null;
-	}>;
-	usage?: {
-		prompt_tokens?: number;
-		completion_tokens?: number;
-		total_tokens?: number;
-		prompt_cache_hit_tokens?: number;
-		prompt_cache_miss_tokens?: number;
-	};
-}
-
-function isSSEChunk(data: unknown): data is SSEChunk {
-	if (typeof data !== "object" || data === null) return false;
-	const obj = data as Record<string, unknown>;
-	return Array.isArray(obj.choices) || obj.usage !== undefined;
 }
 
 // ── PromptMessage → DeepSeek Message 转换（跳过 system，由 adapter 单独处理） ──
@@ -178,8 +140,6 @@ function toDeepSeekTools(tools: ToolDefinition[]): DeepSeekToolDef[] {
 
 export class DeepSeekClient implements LLMClient {
 	readonly modelId: string;
-	readonly tagStyle: TagStyle;
-	readonly tags: TagAdapter;
 	private readonly pc: DeepSeekProviderConfig;
 	private readonly apiUrl: string;
 	private readonly format: FormatFn;
@@ -187,15 +147,11 @@ export class DeepSeekClient implements LLMClient {
 
 	constructor(
 		pc: DeepSeekProviderConfig,
-		tagStyle: TagStyle,
-		tags: TagAdapter,
 		format: FormatFn,
 		systemFormat: FormatFn,
 	) {
 		this.pc = pc;
 		this.modelId = this.pc.model;
-		this.tagStyle = tagStyle;
-		this.tags = tags;
 		this.format = format;
 		this.systemFormat = systemFormat;
 
@@ -212,17 +168,14 @@ export class DeepSeekClient implements LLMClient {
 		request: StreamRequest,
 		signal?: AbortSignal,
 	): AsyncGenerator<StreamEvent> {
-		// 系统提示词走专用 adapter：提取、合并、适配为 DeepSeek 风格
 		const adaptedSystemPrompt = systemPromptAdapter(request, this.systemFormat);
 
-		// 非 system 消息走标准 formatPrompt → API 消息转换
 		const promptMessages = this.format(request.messages);
 		const apiMessages = toDeepSeekMessages(
 			promptMessages,
 			this.pc.enable_thinking,
 		);
 
-		// 过滤空消息
 		const filteredMessages = apiMessages.filter((msg) => {
 			if (msg.role === "user" && !(msg.content ?? "").trim()) return false;
 			if (
@@ -234,7 +187,6 @@ export class DeepSeekClient implements LLMClient {
 			return true;
 		});
 
-		// 注入适配后的系统提示词为单一 system 消息
 		const messages: DeepSeekMessage[] = adaptedSystemPrompt
 			? [{ role: "system", content: adaptedSystemPrompt }, ...filteredMessages]
 			: filteredMessages;
@@ -293,128 +245,7 @@ export class DeepSeekClient implements LLMClient {
 			return;
 		}
 
-		let lastUsage: TokenUsage | null = null;
-		let lastFinishReason: string | null = null;
-
-		const processDataLine = function* (
-			payload: string,
-		): Generator<StreamEvent> {
-			if (!payload || payload === "[DONE]") return;
-
-			let chunk: unknown;
-			try {
-				chunk = JSON.parse(payload);
-			} catch {
-				return;
-			}
-
-			if (!isSSEChunk(chunk)) return;
-
-			if (chunk.usage) {
-				const u = chunk.usage;
-				const cacheReadTokens = u.prompt_cache_hit_tokens ?? 0;
-				const cacheWriteTokens = u.prompt_cache_miss_tokens ?? 0;
-				const rawInput = u.prompt_tokens ?? 0;
-				lastUsage = {
-					inputTokens: rawInput - cacheReadTokens,
-					outputTokens: u.completion_tokens ?? 0,
-					totalTokens: u.total_tokens ?? 0,
-					cacheReadTokens,
-					cacheWriteTokens,
-				};
-			}
-
-			const delta = chunk.choices?.[0]?.delta;
-			if (delta) {
-				if (delta.reasoning_content) {
-					yield { type: "thinking", text: delta.reasoning_content };
-				}
-				if (delta.content) {
-					yield { type: "content", text: delta.content };
-				}
-				if (delta.tool_calls) {
-					for (const tc of delta.tool_calls) {
-						yield {
-							type: "tool_call_delta",
-							index: tc.index,
-							id: tc.id,
-							name: tc.function?.name,
-							arguments: tc.function?.arguments ?? "",
-						};
-					}
-				}
-			}
-
-			const finish = chunk.choices?.[0]?.finish_reason;
-			if (finish) {
-				lastFinishReason = finish;
-			}
-		};
-
-		const reader = res.body.getReader();
-		const decoder = new TextDecoder();
-		let buffer = "";
-
-		try {
-			while (true) {
-				const { done, value } = await reader.read();
-				if (done) break;
-
-				buffer += decoder.decode(value, { stream: true });
-
-				let boundary = buffer.indexOf("\n\n");
-				while (boundary !== -1) {
-					const raw = buffer.slice(0, boundary);
-					buffer = buffer.slice(boundary + 2);
-
-					for (const line of raw.split("\n")) {
-						if (!line.startsWith("data: ")) continue;
-						const payload = line.slice(6);
-
-						if (payload === "[DONE]") {
-							if (lastFinishReason) {
-								yield {
-									type: "done",
-									finishReason: lastFinishReason,
-									usage: lastUsage,
-								};
-							}
-							return;
-						}
-
-						yield* processDataLine(payload);
-					}
-					boundary = buffer.indexOf("\n\n");
-				}
-			}
-
-			// Flush remaining buffer
-			if (buffer.trim()) {
-				for (const line of buffer.split("\n")) {
-					if (!line.startsWith("data: ")) continue;
-					const payload = line.slice(6);
-					if (payload === "[DONE]") break;
-					yield* processDataLine(payload);
-				}
-			}
-
-			if (lastFinishReason) {
-				yield {
-					type: "done",
-					finishReason: lastFinishReason,
-					usage: lastUsage,
-				};
-			}
-		} catch (err) {
-			if (!isAbortError(err)) {
-				yield {
-					type: "error",
-					error: err instanceof Error ? err.message : String(err),
-				};
-			}
-		} finally {
-			reader.releaseLock();
-		}
+		yield* runSSEStream(res.body.getReader(), chunkToStreamEvents);
 	}
 
 	async complete(request: CompleteRequest): Promise<CompleteResponse> {

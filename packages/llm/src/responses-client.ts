@@ -6,15 +6,10 @@
  */
 
 import type { ResponsesClient } from "@n0n/tools";
-
-export interface ResponsesClientConfig {
-	base_url: string;
-	api_key: string;
-	model: string;
-}
+import type { ProviderConfig } from "./config.ts";
 
 export function createResponsesClient(
-	config: ResponsesClientConfig,
+	config: Pick<ProviderConfig, "base_url" | "api_key" | "model">,
 ): ResponsesClient {
 	const base = config.base_url.replace(/\/v1\/?$/, "").replace(/\/$/, "");
 	const apiUrl = `${base}/v1/responses`;

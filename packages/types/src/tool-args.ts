@@ -30,9 +30,7 @@ export type InferShape<T extends readonly ParamDef[]> = {
 };
 
 /** 从 ParamDef 列表构建 Zod object schema（类型安全） */
-export function buildSchema<T extends readonly ParamDef[]>(
-	defs: T,
-) {
+export function buildSchema<T extends readonly ParamDef[]>(defs: T) {
 	const shape = Object.fromEntries(
 		defs.map((d) => [d.name, d.schema]),
 	) as InferShape<T>;
