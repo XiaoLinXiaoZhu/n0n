@@ -98,8 +98,38 @@ if (existsSync(projectTomlPath)) {
   sources.push({ name: "项目", content: readFileSync(projectTomlPath, "utf-8") });
 }
 
-// 构建 envPool
+// ── 构建 envPool（全局 .env → 项目 .env → process.env，后者覆盖前者） ──
+
+function parseEnvFile(content: string): Record<string, string> {
+  const result: Record<string, string> = {};
+  for (const line of content.split("\n")) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith("#")) continue;
+    const eqIdx = trimmed.indexOf("=");
+    if (eqIdx < 0) continue;
+    const key = trimmed.slice(0, eqIdx).trim();
+    const value = trimmed.slice(eqIdx + 1).trim();
+    if (key) result[key] = value;
+  }
+  return result;
+}
+
+const globalEnvPath = resolve(globalConfigDir, ".env");
+const projectEnvPath = resolve(process.cwd(), ".n0n", ".env");
+
 const envPool: Record<string, string> = {};
+
+// 全局 .env
+if (existsSync(globalEnvPath)) {
+  Object.assign(envPool, parseEnvFile(readFileSync(globalEnvPath, "utf-8")));
+}
+
+// 项目 .env（覆盖全局）
+if (existsSync(projectEnvPath)) {
+  Object.assign(envPool, parseEnvFile(readFileSync(projectEnvPath, "utf-8")));
+}
+
+// process.env（最高优先级）
 for (const [k, v] of Object.entries(process.env)) {
   if (v !== undefined) envPool[k] = v;
 }
