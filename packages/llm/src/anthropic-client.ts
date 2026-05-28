@@ -372,7 +372,7 @@ export class AnthropicClient implements LLMClient {
 		this.tags = tags;
 		this.format = format;
 
-		const base = this.pc.baseUrl ?? "https://api.anthropic.com";
+		const base = this.pc.base_url;
 		// 处理 baseUrl 可能已包含 /v1 的情况（如代理 URL）
 		const cleanBase = base.replace(/\/v1\/?$/, "").replace(/\/$/, "");
 		this.apiUrl = `${cleanBase}/v1/messages`;
@@ -417,7 +417,7 @@ export class AnthropicClient implements LLMClient {
 		}
 
 		if (this.pc.thinking) {
-			const budget = this.pc.thinking.budgetTokens;
+			const budget = this.pc.thinking.budget_tokens;
 			body.thinking = { type: "enabled", budget_tokens: budget };
 			body.max_tokens = Math.max(
 				DEFAULT_STREAM_MAX_TOKENS,
@@ -433,7 +433,7 @@ export class AnthropicClient implements LLMClient {
 				method: "POST",
 				headers: {
 					"Content-Type": "application/json",
-					"x-api-key": this.pc.apiKey,
+					"x-api-key": this.pc.api_key,
 					"anthropic-version": "2023-06-01",
 				},
 				body: JSON.stringify(body),
@@ -690,7 +690,7 @@ export class AnthropicClient implements LLMClient {
 					method: "POST",
 					headers: {
 						"Content-Type": "application/json",
-						"x-api-key": this.pc.apiKey,
+						"x-api-key": this.pc.api_key,
 						"anthropic-version": "2023-06-01",
 					},
 					body: JSON.stringify(body),
@@ -748,7 +748,7 @@ export class AnthropicClient implements LLMClient {
 		}
 
 		if (this.pc.thinking) {
-			const budget = this.pc.thinking.budgetTokens;
+			const budget = this.pc.thinking.budget_tokens;
 			body.thinking = { type: "enabled", budget_tokens: budget };
 			// thinking 模式下 max_tokens 必须 > budget_tokens
 			body.max_tokens = budget + 1;
@@ -760,7 +760,7 @@ export class AnthropicClient implements LLMClient {
 				method: "POST",
 				headers: {
 					"Content-Type": "application/json",
-					"x-api-key": this.pc.apiKey,
+					"x-api-key": this.pc.api_key,
 					"anthropic-version": "2023-06-01",
 				},
 				body: JSON.stringify(body),

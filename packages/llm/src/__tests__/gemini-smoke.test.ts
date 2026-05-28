@@ -12,6 +12,7 @@ import { homedir } from "node:os";
 import { resolve } from "node:path";
 import type { DomainMessage } from "@n0n/types";
 import type { LLMConfig } from "../config.ts";
+import { ProviderConfigSchema } from "../config.ts";
 import { createLLMClient } from "../factory.ts";
 
 function loadGlobalEnv(): boolean {
@@ -38,15 +39,14 @@ const integrationEnabled = process.env.N0N_INTEGRATION === "1";
 function makeGeminiConfig(
 	thinkingEffort?: "low" | "medium" | "high",
 ): LLMConfig {
-	return {
-		providerConfig: {
-			provider: "google",
-			apiKey: process.env.LLM_API_KEY ?? "",
-			baseUrl: process.env.LLM_BASE_URL ?? "",
-			model: "gemini-3.1-pro-preview",
-			...(thinkingEffort ? { thinkingEffort } : {}),
-		},
-	};
+	const providerConfig = ProviderConfigSchema.parse({
+		provider: "google",
+		api_key: process.env.LLM_API_KEY ?? "",
+		base_url: process.env.LLM_BASE_URL ?? "",
+		model: "gemini-3.1-pro-preview",
+		...(thinkingEffort ? { reasoning_effort: thinkingEffort } : {}),
+	});
+	return { providerConfig };
 }
 
 describe("Gemini Client smoke test", () => {

@@ -14,7 +14,7 @@
  *
  * 对外仅导出：
  * - createLLMClient 工厂函数
- * - Config 类型和工厂
+ * - Config 类型和 schema
  * - LLMError
  */
 
@@ -28,15 +28,7 @@ export type {
 	OpenAIProviderConfig,
 	ProviderConfig,
 } from "./config.ts";
-// 环境变量 → 配置工厂（SSOT：runtime.ts 和 bootstrap 共用）
-export type { ConfigSource } from "./config-from-env.ts";
-export {
-	buildLLMConfigFromEnv,
-	buildProviderConfigFromEnv,
-	isValidProvider,
-	PROVIDER_TYPES,
-	resolveProvider,
-} from "./config-from-env.ts";
+export { LLMConfigSchema, ProviderConfigSchema } from "./config.ts";
 // Error
 export { LLMError } from "./errors.ts";
 // Client 工厂

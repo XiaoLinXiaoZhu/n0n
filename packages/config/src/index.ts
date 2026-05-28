@@ -11,34 +11,26 @@
 import { parse as parseTOML } from "smol-toml";
 import type { z } from "zod";
 import {
-  type CircularExtendError,
   type ConfigError,
   type ConfigResult,
   type ConfigSource,
-  type EnvVarNotFoundError,
-  type ExtendTargetNotFoundError,
-  type SchemaValidationError,
-  type TOMLParseError,
   type Trace,
 } from "./types.ts";
 
 export type { ConfigError, ConfigResult, ConfigSource, Trace } from "./types.ts";
 
-// ── 内部：annotated value（携带来源信息） ──
-
-interface Annotated {
-  value: unknown;
-  source: string;
-}
-
 // ── $VAR 解析 ──
 
 const VAR_RE = /^\$([A-Z_][A-Z0-9_]*)$/;
 
+/**
+ * 递归替换对象中所有匹配 $VAR 模式的字符串值。
+ * 使用 trace 中的来源信息确定每个 $VAR 引用的来源。
+ */
 function resolveVars(
   obj: unknown,
   envPool: Record<string, string>,
-  sourceName: string,
+  trace: Trace,
 ): { value: unknown; errors: ConfigError[] } {
   const errors: ConfigError[] = [];
 
@@ -48,11 +40,13 @@ function resolveVars(
       const varName = m[1]!;
       const resolved = envPool[varName];
       if (resolved === undefined) {
+        // 从 trace 中查找此值的来源
+        // 需要调用方提供 dotPath，这里无法获取——改用内联方式
         errors.push({
           kind: "env_var_not_found" as const,
           varName,
-          sourceName,
-          message: `环境变量 ${varName} 未找到（在配置源 "${sourceName}" 中引用）`,
+          sourceName: "", // 由调用方填充
+          message: `环境变量 ${varName} 未找到`,
         });
         return { value: obj, errors };
       }
@@ -64,7 +58,7 @@ function resolveVars(
   if (Array.isArray(obj)) {
     const result: unknown[] = [];
     for (const item of obj) {
-      const r = resolveVars(item, envPool, sourceName);
+      const r = resolveVars(item, envPool, trace);
       result.push(r.value);
       errors.push(...r.errors);
     }
@@ -74,7 +68,62 @@ function resolveVars(
   if (obj !== null && typeof obj === "object") {
     const result: Record<string, unknown> = {};
     for (const [k, v] of Object.entries(obj as Record<string, unknown>)) {
-      const r = resolveVars(v, envPool, sourceName);
+      const r = resolveVars(v, envPool, trace);
+      result[k] = r.value;
+      errors.push(...r.errors);
+    }
+    return { value: result, errors };
+  }
+
+  return { value: obj, errors };
+}
+
+/**
+ * 带 dot-path 的 $VAR 解析——用于为错误消息提供准确的来源和路径信息。
+ */
+function resolveVarsWithPaths(
+  obj: unknown,
+  envPool: Record<string, string>,
+  trace: Trace,
+  prefix: string,
+): { value: unknown; errors: ConfigError[] } {
+  const errors: ConfigError[] = [];
+
+  if (typeof obj === "string") {
+    const m = obj.match(VAR_RE);
+    if (m) {
+      const varName = m[1]!;
+      const resolved = envPool[varName];
+      if (resolved === undefined) {
+        const sourceName = trace[prefix]?.source ?? "未知";
+        errors.push({
+          kind: "env_var_not_found" as const,
+          varName,
+          sourceName,
+          message: `环境变量 ${varName} 未找到（在配置源 "${sourceName}" 的 ${prefix} 中引用）`,
+        });
+        return { value: obj, errors };
+      }
+      return { value: resolved, errors };
+    }
+    return { value: obj, errors };
+  }
+
+  if (Array.isArray(obj)) {
+    const result: unknown[] = [];
+    for (let i = 0; i < obj.length; i++) {
+      const r = resolveVarsWithPaths(obj[i], envPool, trace, `${prefix}[${i}]`);
+      result.push(r.value);
+      errors.push(...r.errors);
+    }
+    return { value: result, errors };
+  }
+
+  if (obj !== null && typeof obj === "object") {
+    const result: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(obj as Record<string, unknown>)) {
+      const dotPath = prefix ? `${prefix}.${k}` : k;
+      const r = resolveVarsWithPaths(v, envPool, trace, dotPath);
       result[k] = r.value;
       errors.push(...r.errors);
     }
@@ -93,7 +142,6 @@ function isObject(v: unknown): v is Record<string, unknown> {
 function deepMerge(
   base: Record<string, unknown>,
   overlay: Record<string, unknown>,
-  baseSource: string,
   overlaySource: string,
   trace: Trace,
   prefix: string,
@@ -115,7 +163,6 @@ function deepMerge(
       result[key] = deepMerge(
         baseVal,
         overlayVal,
-        baseSource,
         overlaySource,
         trace,
         dotPath,
@@ -123,7 +170,10 @@ function deepMerge(
     } else {
       result[key] = overlayVal;
       // 更新 trace
-      if (overlayVal !== undefined && !isObject(overlayVal)) {
+      if (isObject(overlayVal)) {
+        // 对象值：重建整个子树的 trace
+        buildTrace(overlayVal, overlaySource, dotPath, trace);
+      } else if (overlayVal !== undefined) {
         trace[dotPath] = { value: overlayVal, source: overlaySource };
       }
     }
@@ -156,7 +206,7 @@ function buildTrace(
   }
 }
 
-// ── dot-path 读写 ──
+// ── dot-path 读取 ──
 
 function getByPath(obj: Record<string, unknown>, path: string): unknown | undefined {
   const parts = path.split(".");
@@ -168,30 +218,11 @@ function getByPath(obj: Record<string, unknown>, path: string): unknown | undefi
   return current;
 }
 
-function setByPath(
-  obj: Record<string, unknown>,
-  path: string,
-  value: unknown,
-): void {
-  const parts = path.split(".");
-  let current = obj;
-  for (let i = 0; i < parts.length - 1; i++) {
-    const part = parts[i]!;
-    if (!isObject(current[part])) {
-      current[part] = {};
-    }
-    current = current[part] as Record<string, unknown>;
-  }
-  current[parts[parts.length - 1]!] = value;
-}
-
 // ── 查找所有 extend 节点 ──
 
 interface ExtendNode {
   /** extend 所在的父对象 */
   parent: Record<string, unknown>;
-  /** extend 字段的 key（通常就是 "extend"） */
-  key: string;
   /** extend 的值（dot-path 字符串） */
   targetPath: string;
   /** 此节点的 dot-path */
@@ -209,7 +240,6 @@ function findExtendNodes(
       if (typeof val["extend"] === "string") {
         nodes.push({
           parent: val,
-          key: "extend",
           targetPath: val["extend"],
           selfPath: dotPath,
         });
@@ -230,11 +260,9 @@ function resolveExtends(
   const visited = new Set<string>();
 
   for (let i = 0; i < 100; i++) {
-    // 安全上限
     const nodes = findExtendNodes(root, "");
     if (nodes.length === 0) return errors;
 
-    // 选择一个没有依赖的节点（其 target 不含 extend）
     let resolved = false;
     for (const node of nodes) {
       const target = getByPath(root, node.targetPath);
@@ -245,8 +273,7 @@ function resolveExtends(
           parentPath: node.selfPath,
           message: `extend 目标 "${node.targetPath}" 不存在（在 "${node.selfPath}" 中引用）`,
         });
-        // 移除无效 extend，继续处理其他
-        delete node.parent[node.key];
+        delete node.parent["extend"];
         resolved = true;
         break;
       }
@@ -258,14 +285,14 @@ function resolveExtends(
           parentPath: node.selfPath,
           message: `extend 目标 "${node.targetPath}" 不是 object（在 "${node.selfPath}" 中引用）`,
         });
-        delete node.parent[node.key];
+        delete node.parent["extend"];
         resolved = true;
         break;
       }
 
       // 检查目标是否还有未解析的 extend
       if (typeof (target as Record<string, unknown>)["extend"] === "string") {
-        continue; // 目标还需要先解析
+        continue;
       }
 
       // 环检测
@@ -276,36 +303,57 @@ function resolveExtends(
           chain: [node.selfPath, node.targetPath],
           message: `检测到循环 extend: ${node.selfPath} → ${node.targetPath}`,
         });
-        delete node.parent[node.key];
+        delete node.parent["extend"];
         resolved = true;
         break;
       }
       visited.add(chainKey);
 
-      // 执行 extend: { ...target, ...own }（own 覆盖 target，但 extend key 移除）
-      const ownExtend = node.parent[node.key]; // 保存，后续删除
-      delete node.parent[node.key];
+      // 执行 deep merge: target 作为 base，own 字段作为 overlay 覆盖
+      delete node.parent["extend"];
 
-      // 将 target 的字段复制到 parent（不覆盖 own 已有字段）
-      for (const [tKey, tVal] of Object.entries(target)) {
-        if (!(tKey in node.parent)) {
-          node.parent[tKey] = tVal;
-          // 复制 trace：target 的字段来源保持不变
-          const targetDotPath = `${node.targetPath}.${tKey}`;
-          const selfDotPath = `${node.selfPath}.${tKey}`;
-          if (trace[targetDotPath] && !trace[selfDotPath]) {
-            trace[selfDotPath] = { ...trace[targetDotPath] };
+      // 获取 overlay(parent/own) 的来源——从 trace 中任一个子字段读取
+      const parentKeys = Object.keys(node.parent);
+      let overlaySource = "unknown";
+      for (const k of parentKeys) {
+        const childPath = node.selfPath ? `${node.selfPath}.${k}` : k;
+        if (trace[childPath]?.source) {
+          overlaySource = trace[childPath].source;
+          break;
+        }
+      }
+
+      // 使用 deepMerge 执行递归合并（own 覆盖 target）
+      const mergedNode = deepMerge(target, node.parent, overlaySource, trace, node.selfPath);
+
+      // 用 merged 结果替换 parent 的全部字段
+      for (const key of Object.keys(node.parent)) {
+        delete node.parent[key];
+      }
+      for (const [key, val] of Object.entries(mergedNode)) {
+        node.parent[key] = val;
+      }
+
+      // deepMerge 已为 overlay 字段写入 trace。
+      // 补全 target-only 字段（不在 overlay 中）的 trace：从 target 路径递归复制
+      function copyTraceSubtree(srcPrefix: string, dstPrefix: string): void {
+        for (const [path, entry] of Object.entries(trace)) {
+          if (path === srcPrefix || path.startsWith(srcPrefix + ".")) {
+            const suffix = path === srcPrefix ? "" : path.slice(srcPrefix.length);
+            const dstPath = dstPrefix + suffix;
+            if (!trace[dstPath]) {
+              trace[dstPath] = { ...entry };
+            }
           }
         }
       }
+      copyTraceSubtree(node.targetPath, node.selfPath);
 
       resolved = true;
       break;
     }
 
     if (!resolved) {
-      // 有 extend 节点但都无法解析 → 可能是循环依赖或缺失目标
-      // 报告剩余未解析的节点
       const remaining = findExtendNodes(root, "");
       for (const node of remaining) {
         const target = getByPath(root, node.targetPath);
@@ -342,8 +390,7 @@ function flattenTrace(
     if (isObject(val)) {
       flattenTrace(val, dotPath, trace);
     } else if (val !== undefined && !trace[dotPath]) {
-      // 只在不存在时写入（保留已记录的来源）
-      trace[dotPath] = { value: val, source: "未知" };
+      trace[dotPath] = { value: val, source: "zod default" };
     }
   }
 }
@@ -408,16 +455,14 @@ export function getConfig<T>(
       for (const [k, v] of Object.entries(newTrace)) {
         trace[k] = v;
       }
-      merged = deepMerge(merged, data, parsedList[0]!.name, name, trace, "");
+      merged = deepMerge(merged, data, name, trace, "");
     }
   }
 
-  // ── 3. $VAR 解析 ──
-  for (const source of sources) {
-    const r = resolveVars(merged, envPool, source.name);
-    merged = r.value as Record<string, unknown>;
-    errors.push(...r.errors);
-  }
+  // ── 3. $VAR 解析（单次遍历，使用 trace 确定来源） ──
+  const varResult = resolveVarsWithPaths(merged, envPool, trace, "");
+  merged = varResult.value as Record<string, unknown>;
+  errors.push(...varResult.errors);
 
   if (errors.length > 0) return { success: false, errors };
 
@@ -443,7 +488,7 @@ export function getConfig<T>(
     return { success: false, errors };
   }
 
-  // ── 6. 补充 trace（遗漏字段） ──
+  // ── 6. 补充 trace（zod default 填充的字段） ──
   flattenTrace(validated as unknown as Record<string, unknown>, "", trace);
 
   return { success: true, data: validated, trace };

@@ -228,7 +228,7 @@ export class OpenAIClient implements LLMClient {
 		this.tags = tags;
 		this.format = format;
 
-		const base = this.pc.baseUrl ?? "https://api.openai.com";
+		const base = this.pc.base_url;
 		// 处理 baseUrl 可能已包含 /v1 或完整路径的情况
 		if (base.includes("/chat/completions")) {
 			this.apiUrl = base;
@@ -246,10 +246,10 @@ export class OpenAIClient implements LLMClient {
 		const apiMessages = toOpenAIMessages(
 			promptMessages,
 			this.pc.provider === "openai-compatible"
-				? this.pc.backendProvider
+				? this.pc.backend_provider
 				: undefined,
 			this.pc.provider === "openai-compatible"
-				? this.pc.enableThinking
+				? this.pc.enable_thinking
 				: undefined,
 		);
 
@@ -277,7 +277,7 @@ export class OpenAIClient implements LLMClient {
 			body.tool_choice = request.toolChoice ?? "auto";
 		}
 
-		if (this.pc.provider === "openai-compatible" && this.pc.enableThinking) {
+		if (this.pc.provider === "openai-compatible" && this.pc.enable_thinking) {
 			body.enable_thinking = true;
 		}
 
@@ -287,7 +287,7 @@ export class OpenAIClient implements LLMClient {
 				method: "POST",
 				headers: {
 					"Content-Type": "application/json",
-					Authorization: `Bearer ${this.pc.apiKey}`,
+					Authorization: `Bearer ${this.pc.api_key}`,
 				},
 				body: JSON.stringify(body),
 				signal,
@@ -475,7 +475,7 @@ export class OpenAIClient implements LLMClient {
 					method: "POST",
 					headers: {
 						"Content-Type": "application/json",
-						Authorization: `Bearer ${this.pc.apiKey}`,
+						Authorization: `Bearer ${this.pc.api_key}`,
 					},
 					body: JSON.stringify(body),
 				});
@@ -524,7 +524,7 @@ export class OpenAIClient implements LLMClient {
 			const resp = await fetch(modelsUrl, {
 				method: "GET",
 				headers: {
-					Authorization: `Bearer ${this.pc.apiKey}`,
+					Authorization: `Bearer ${this.pc.api_key}`,
 					"Content-Type": "application/json",
 				},
 				signal: controller.signal,

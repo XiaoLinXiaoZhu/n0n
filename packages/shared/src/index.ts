@@ -7,14 +7,6 @@
 
 // AGENTS.md
 export { formatAgentsMdPrompt, loadAgentsMd } from "./agents-md.ts";
-export type { LLMConnectionTester } from "./bootstrap/index.ts";
-// Bootstrap
-export {
-	bootstrap,
-	buildEditorLLMEnvGroup,
-	buildLLMEnvGroup,
-	generateEnvTemplate,
-} from "./bootstrap/index.ts";
 // Conversation Log
 export type {
 	ConversationLog,

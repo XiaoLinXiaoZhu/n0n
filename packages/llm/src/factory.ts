@@ -2,14 +2,13 @@
  * LLM Client 工厂函数
  *
  * 唯一的 Client 创建入口。负责：
- * 1. 确定 tagStyle 和构造 TagAdapter
+ * 1. 构造 TagAdapter（tag_style 由 schema 默认值保证，无需 fallback）
  * 2. 绑定 formatPrompt + FormatOptions 为 FormatFn 闭包
  * 3. 将闭包注入 Client — Client 不感知 formatPrompt 的存在
  */
 
 import {
 	createTagAdapter,
-	detectTagStyle,
 	type FormatOptions,
 	formatPrompt,
 } from "@n0n/shared";
@@ -35,7 +34,7 @@ export function createLLMClient(
 	formatOptions?: FormatOptions,
 ): LLMClient {
 	const pc = config.providerConfig;
-	const tagStyle = pc.tagStyle ?? detectTagStyle(pc.model);
+	const tagStyle = pc.tag_style;
 	const tags = createTagAdapter(tagStyle);
 	const format: FormatFn = (msgs) => formatPrompt(msgs, tags, formatOptions);
 

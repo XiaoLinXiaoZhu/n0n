@@ -199,7 +199,7 @@ export class DeepSeekClient implements LLMClient {
 		this.format = format;
 		this.systemFormat = systemFormat;
 
-		const base = this.pc.baseUrl ?? "https://api.deepseek.com";
+		const base = this.pc.base_url;
 		if (base.includes("/chat/completions")) {
 			this.apiUrl = base;
 		} else {
@@ -219,7 +219,7 @@ export class DeepSeekClient implements LLMClient {
 		const promptMessages = this.format(request.messages);
 		const apiMessages = toDeepSeekMessages(
 			promptMessages,
-			this.pc.enableThinking,
+			this.pc.enable_thinking,
 		);
 
 		// 过滤空消息
@@ -251,12 +251,12 @@ export class DeepSeekClient implements LLMClient {
 			body.tool_choice = request.toolChoice ?? "auto";
 		}
 
-		if (this.pc.enableThinking) {
+		if (this.pc.enable_thinking) {
 			body.enable_thinking = true;
 		}
 
-		if (this.pc.thinkingEffort) {
-			body.reasoning_effort = this.pc.thinkingEffort;
+		if (this.pc.reasoning_effort) {
+			body.reasoning_effort = this.pc.reasoning_effort;
 		}
 
 		let res: Response;
@@ -265,7 +265,7 @@ export class DeepSeekClient implements LLMClient {
 				method: "POST",
 				headers: {
 					"Content-Type": "application/json",
-					Authorization: `Bearer ${this.pc.apiKey}`,
+					Authorization: `Bearer ${this.pc.api_key}`,
 				},
 				body: JSON.stringify(body),
 				signal,
@@ -447,7 +447,7 @@ export class DeepSeekClient implements LLMClient {
 					method: "POST",
 					headers: {
 						"Content-Type": "application/json",
-						Authorization: `Bearer ${this.pc.apiKey}`,
+						Authorization: `Bearer ${this.pc.api_key}`,
 					},
 					body: JSON.stringify(body),
 				});
@@ -496,7 +496,7 @@ export class DeepSeekClient implements LLMClient {
 			const resp = await fetch(modelsUrl, {
 				method: "GET",
 				headers: {
-					Authorization: `Bearer ${this.pc.apiKey}`,
+					Authorization: `Bearer ${this.pc.api_key}`,
 					"Content-Type": "application/json",
 				},
 				signal: controller.signal,

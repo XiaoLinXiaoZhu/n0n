@@ -203,7 +203,7 @@ export class GeminiClient implements LLMClient {
 		this.tags = tags;
 		this.format = format;
 
-		const base = this.pc.baseUrl ?? "https://generativelanguage.googleapis.com";
+		const base = this.pc.base_url;
 		if (base.includes("/chat/completions")) {
 			this.apiUrl = base;
 		} else {
@@ -244,7 +244,7 @@ export class GeminiClient implements LLMClient {
 		}
 
 		// Gemini 始终思考，必须传 reasoning_effort 才能让 thinking 独立流式传输
-		body.reasoning_effort = this.pc.thinkingEffort ?? "high";
+		body.reasoning_effort = this.pc.reasoning_effort;
 
 		let res: Response;
 		try {
@@ -252,7 +252,7 @@ export class GeminiClient implements LLMClient {
 				method: "POST",
 				headers: {
 					"Content-Type": "application/json",
-					Authorization: `Bearer ${this.pc.apiKey}`,
+					Authorization: `Bearer ${this.pc.api_key}`,
 				},
 				body: JSON.stringify(body),
 				signal,
@@ -419,7 +419,7 @@ export class GeminiClient implements LLMClient {
 			model: this.modelId,
 			messages,
 			stream: false,
-			reasoning_effort: this.pc.thinkingEffort ?? "high",
+			reasoning_effort: this.pc.reasoning_effort,
 		};
 
 		if (request.temperature !== undefined) {
@@ -440,7 +440,7 @@ export class GeminiClient implements LLMClient {
 					method: "POST",
 					headers: {
 						"Content-Type": "application/json",
-						Authorization: `Bearer ${this.pc.apiKey}`,
+						Authorization: `Bearer ${this.pc.api_key}`,
 					},
 					body: JSON.stringify(body),
 				});

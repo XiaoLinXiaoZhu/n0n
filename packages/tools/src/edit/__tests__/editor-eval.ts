@@ -20,7 +20,7 @@ import type {
 	OpenAIProviderConfig,
 	ProviderConfig,
 } from "@n0n/llm";
-import { createLLMClient, createResponsesClient } from "@n0n/llm";
+import { createLLMClient, createResponsesClient, ProviderConfigSchema } from "@n0n/llm";
 import type { LLMProvider, StreamEvent, TokenUsage } from "@n0n/types";
 import type { EditBackend, EditBackendResult } from "../backend.ts";
 import { FreeformPatchBackend } from "../freeform-patch/index.ts";
@@ -107,65 +107,74 @@ function buildProviderConfig(
 	const cfg = preset.config;
 	const provider = (cfg.EDITOR_LLM_PROVIDER || "openai-compatible") as LLMProvider;
 
+	let raw: Record<string, unknown>;
+
 	switch (provider) {
 		case "openai":
-			return {
+			raw = {
 				provider: "openai",
-				apiKey: secrets.api_key,
+				api_key: secrets.api_key,
 				model: cfg.EDITOR_LLM_MODEL,
-				...(secrets.base_url ? { baseUrl: secrets.base_url } : {}),
-			} satisfies OpenAIProviderConfig;
+				...(secrets.base_url ? { base_url: secrets.base_url } : {}),
+			};
+			break;
 
 		case "anthropic":
-			return {
+			raw = {
 				provider: "anthropic",
-				apiKey: secrets.api_key,
+				api_key: secrets.api_key,
 				model: cfg.EDITOR_LLM_MODEL,
-				...(secrets.base_url ? { baseUrl: secrets.base_url } : {}),
+				...(secrets.base_url ? { base_url: secrets.base_url } : {}),
 				...(cfg.EDITOR_LLM_ENABLE_THINKING
-					? { thinking: { budgetTokens: 1024 } }
+					? { thinking: { type: "enabled", budget_tokens: 1024 } }
 					: {}),
-			} satisfies AnthropicProviderConfig;
+			};
+			break;
 
 		case "openai-compatible":
-			return {
+			raw = {
 				provider: "openai-compatible",
-				apiKey: secrets.api_key,
+				api_key: secrets.api_key,
 				model: cfg.EDITOR_LLM_MODEL,
-				baseUrl: secrets.base_url,
+				base_url: secrets.base_url,
 				...(cfg.EDITOR_LLM_BACKEND_PROVIDER
 					? {
-							backendProvider: cfg.EDITOR_LLM_BACKEND_PROVIDER as
+							backend_provider: cfg.EDITOR_LLM_BACKEND_PROVIDER as
 								| "anthropic"
 								| "google"
 								| "openai",
 						}
 					: {}),
-				...(cfg.EDITOR_LLM_ENABLE_THINKING ? { enableThinking: true } : {}),
-			} satisfies OpenAICompatibleProviderConfig;
+				...(cfg.EDITOR_LLM_ENABLE_THINKING ? { enable_thinking: true } : {}),
+			};
+			break;
 
 		case "google":
-			return {
+			raw = {
 				provider: "google",
-				apiKey: secrets.api_key,
+				api_key: secrets.api_key,
 				model: cfg.EDITOR_LLM_MODEL,
-				...(secrets.base_url ? { baseUrl: secrets.base_url } : {}),
-			} satisfies GoogleProviderConfig;
+				...(secrets.base_url ? { base_url: secrets.base_url } : {}),
+			};
+			break;
 
 		case "deepseek":
-			return {
+			raw = {
 				provider: "deepseek",
-				apiKey: secrets.api_key,
+				api_key: secrets.api_key,
 				model: cfg.EDITOR_LLM_MODEL,
-				...(secrets.base_url ? { baseUrl: secrets.base_url } : {}),
-				...(cfg.EDITOR_LLM_ENABLE_THINKING ? { enableThinking: true } : {}),
-			} satisfies DeepSeekProviderConfig;
+				...(secrets.base_url ? { base_url: secrets.base_url } : {}),
+				...(cfg.EDITOR_LLM_ENABLE_THINKING ? { enable_thinking: true } : {}),
+			};
+			break;
 
 		default: {
 			const _exhaustive: never = provider;
 			throw new Error(`Unsupported provider: ${_exhaustive}`);
 		}
 	}
+
+	return ProviderConfigSchema.parse(raw) as ProviderConfig;
 }
 
 // ── 创建后端 ──
@@ -183,8 +192,8 @@ function createBackend(
 
 	if (backendType === "freeform-patch") {
 		const client = createResponsesClient({
-			baseUrl: (providerConfig as OpenAICompatibleProviderConfig).baseUrl,
-			apiKey: providerConfig.apiKey,
+			base_url: (providerConfig as OpenAICompatibleProviderConfig).base_url,
+			api_key: providerConfig.api_key,
 			model: providerConfig.model,
 		});
 		return new FreeformPatchBackend(client);

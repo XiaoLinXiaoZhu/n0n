@@ -8,6 +8,7 @@
 	},
 	"dependencies": {
 		"@n0n/shared": "workspace:*",
-		"@n0n/types": "workspace:*"
+		"@n0n/types": "workspace:*",
+		"zod": "4.3.6"
 	}
 }

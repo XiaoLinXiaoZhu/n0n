@@ -13,7 +13,7 @@ import { readFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { resolve } from "node:path";
 import type { DomainMessage } from "@n0n/types";
-import { buildLLMConfigFromEnv } from "../config-from-env.ts";
+import { ProviderConfigSchema } from "../config.ts";
 import { createLLMClient } from "../factory.ts";
 
 function loadGlobalEnv(): Record<string, string> | null {
@@ -122,7 +122,14 @@ describe("heartbeat integration", () => {
 	test.skipIf(!loaded || !isAnthropic || !integrationEnabled)(
 		"stream 建立缓存 → heartbeat 命中缓存",
 		async () => {
-			const config = buildLLMConfigFromEnv(loaded!, "LLM");
+			const config = {
+				providerConfig: ProviderConfigSchema.parse({
+					provider: loaded!.LLM_PROVIDER || "openai",
+					api_key: loaded!.LLM_API_KEY,
+					model: loaded!.LLM_MODEL,
+					base_url: loaded!.LLM_BASE_URL,
+				}),
+			};
 			const client = createLLMClient(config);
 
 			expect(client.heartbeat).toBeDefined();

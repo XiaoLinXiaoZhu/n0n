@@ -110,8 +110,8 @@ const editBackend: EditBackendConfig =
 		? {
 				type: "freeform-patch",
 				responsesClient: createResponsesClient({
-					baseUrl: source.EDITOR_LLM_BASE_URL || source.LLM_BASE_URL || "",
-					apiKey: source.EDITOR_LLM_API_KEY || source.LLM_API_KEY || "",
+					base_url: source.EDITOR_LLM_BASE_URL || source.LLM_BASE_URL || "",
+					api_key: source.EDITOR_LLM_API_KEY || source.LLM_API_KEY || "",
 					model: source.EDITOR_LLM_MODEL || "gpt-5.4-mini",
 				}),
 			}

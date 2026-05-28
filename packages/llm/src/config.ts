@@ -1,82 +1,79 @@
 /**
  * LLM 配置类型 — Single Source of Truth
  *
- * 使用 zod schema 定义所有配置形状，TypeScript 类型从 schema 派生。
- * ProviderConfig 是 discriminated union，各分支具有独立的字段约束。
+ * ProviderConfig 是 discriminated union on `provider`，各分支自包含——
+ * 不共享 base schema，因为不同 provider 的同名字段语义不同
+ * （如 base_url 在 openai-compatible 是必填，在 openai 是可选）。
  *
- * 双套 schema：
- * - LLMConfigTOMLSchema: TOML 解析后的中间形状（snake_case，描述 settings.llm/editor）
- * - ProviderConfigSchema: 最终运行时配置（camelCase，discriminated union）
- * config-from-config.ts 负责两者之间的映射。
+ * 字段名与 API 请求体一致（snake_case），不做命名风格转换。
+ * Client 代码直接从 ProviderConfig 赋值到请求体，无需映射层。
+ *
+ * parse, don't verify：有默认回退的字段在 parse 时填入默认值，
+ * 消费方拿到的类型不含 optional，不存在不确定传播。
  */
 
 import { z } from "zod";
 
 // ═══════════════════════════════════════════════════════════
-// TOML 中间形状（snake_case，直接对应 TOML 字段名）
+// ProviderConfig — discriminated union on `provider`
 // ═══════════════════════════════════════════════════════════
 
-/** TOML 解析后 settings.llm / settings.editor 的形状 */
-export const LLMConfigTOMLSchema = z.object({
-  type: z.string(),
-  base_url: z.string().default(""),
+export const OpenAIProviderConfigSchema = z.object({
+  provider: z.literal("openai"),
   api_key: z.string(),
   model: z.string(),
-  thinking: z.boolean().optional(),
-  thinking_budget_tokens: z.number().optional(),
-  thinking_effort: z.string().optional(),
-  backend_provider: z.string().optional(),
-  enable_thinking: z.boolean().optional(),
-  edit_backend: z.string().optional(),
-});
-
-/** TOML → ProviderConfig 映射的输入类型 */
-export type LLMConfigTOML = z.infer<typeof LLMConfigTOMLSchema>;
-
-// ═══════════════════════════════════════════════════════════
-// ProviderConfig（运行时 discriminated union）
-// ═══════════════════════════════════════════════════════════
-
-const providerBaseSchema = z.object({
-  apiKey: z.string(),
-  model: z.string(),
-  baseUrl: z.string().optional(),
-  tagStyle: z.string().optional(),
-});
-
-export const OpenAIProviderConfigSchema = providerBaseSchema.extend({
-  provider: z.literal("openai"),
+  base_url: z.string().default("https://api.openai.com"),
+  tag_style: z.enum(["deepseek", "glm", "minimax", "default"]).default("default"),
+  edit_backend: z.enum(["str-replace", "freeform-patch"]).default("str-replace"),
 });
 export type OpenAIProviderConfig = z.infer<typeof OpenAIProviderConfigSchema>;
 
-export const AnthropicProviderConfigSchema = providerBaseSchema.extend({
+export const AnthropicProviderConfigSchema = z.object({
   provider: z.literal("anthropic"),
-  thinking: z
-    .object({
-      budgetTokens: z.number(),
-    })
-    .optional(),
+  api_key: z.string(),
+  model: z.string(),
+  base_url: z.string().default("https://api.anthropic.com"),
+  tag_style: z.enum(["deepseek", "glm", "minimax", "default"]).default("default"),
+  thinking: z.object({
+    type: z.literal("enabled"),
+    budget_tokens: z.number(),
+  }).optional(),
+  edit_backend: z.enum(["str-replace", "freeform-patch"]).default("str-replace"),
 });
 export type AnthropicProviderConfig = z.infer<typeof AnthropicProviderConfigSchema>;
 
-export const GoogleProviderConfigSchema = providerBaseSchema.extend({
+export const GoogleProviderConfigSchema = z.object({
   provider: z.literal("google"),
-  thinkingEffort: z.enum(["low", "medium", "high"]).optional(),
+  api_key: z.string(),
+  model: z.string(),
+  base_url: z.string().default("https://generativelanguage.googleapis.com"),
+  tag_style: z.enum(["deepseek", "glm", "minimax", "default"]).default("default"),
+  reasoning_effort: z.enum(["low", "medium", "high"]).default("high"),
+  edit_backend: z.enum(["str-replace", "freeform-patch"]).default("str-replace"),
 });
 export type GoogleProviderConfig = z.infer<typeof GoogleProviderConfigSchema>;
 
-export const OpenAICompatibleProviderConfigSchema = providerBaseSchema.extend({
+export const OpenAICompatibleProviderConfigSchema = z.object({
   provider: z.literal("openai-compatible"),
-  baseUrl: z.string(),
-  backendProvider: z.enum(["anthropic", "google", "openai"]).optional(),
-  enableThinking: z.boolean().optional(),
+  api_key: z.string(),
+  model: z.string(),
+  base_url: z.string(),
+  tag_style: z.enum(["deepseek", "glm", "minimax", "default"]).default("default"),
+  backend_provider: z.enum(["anthropic", "google", "openai"]).default("openai"),
+  enable_thinking: z.boolean().default(false),
+  edit_backend: z.enum(["str-replace", "freeform-patch"]).default("str-replace"),
 });
 export type OpenAICompatibleProviderConfig = z.infer<typeof OpenAICompatibleProviderConfigSchema>;
 
-export const DeepSeekProviderConfigSchema = providerBaseSchema.extend({
+export const DeepSeekProviderConfigSchema = z.object({
   provider: z.literal("deepseek"),
-  enableThinking: z.boolean().optional(),
-  thinkingEffort: z.enum(["high", "max"]).optional(),
+  api_key: z.string(),
+  model: z.string(),
+  base_url: z.string().default("https://api.deepseek.com"),
+  tag_style: z.enum(["deepseek", "glm", "minimax", "default"]).default("deepseek"),
+  enable_thinking: z.boolean().default(false),
+  reasoning_effort: z.enum(["high", "max"]).optional(),
+  edit_backend: z.enum(["str-replace", "freeform-patch"]).default("str-replace"),
 });
 export type DeepSeekProviderConfig = z.infer<typeof DeepSeekProviderConfigSchema>;
 
@@ -88,7 +85,7 @@ export const ProviderConfigSchema = z.discriminatedUnion("provider", [
   DeepSeekProviderConfigSchema,
 ]);
 
-/** 统一的 LLM provider 运行时配置 */
+/** 统一的 LLM provider 配置 — discriminated union on `provider` */
 export type ProviderConfig = z.infer<typeof ProviderConfigSchema>;
 
 // ═══════════════════════════════════════════════════════════

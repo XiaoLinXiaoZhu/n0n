@@ -8,15 +8,15 @@
 import type { ResponsesClient } from "@n0n/tools";
 
 export interface ResponsesClientConfig {
-	baseUrl: string;
-	apiKey: string;
+	base_url: string;
+	api_key: string;
 	model: string;
 }
 
 export function createResponsesClient(
 	config: ResponsesClientConfig,
 ): ResponsesClient {
-	const base = config.baseUrl.replace(/\/v1\/?$/, "").replace(/\/$/, "");
+	const base = config.base_url.replace(/\/v1\/?$/, "").replace(/\/$/, "");
 	const apiUrl = `${base}/v1/responses`;
 
 	return {
@@ -27,7 +27,7 @@ export function createResponsesClient(
 					method: "POST",
 					headers: {
 						"Content-Type": "application/json",
-						Authorization: `Bearer ${config.apiKey}`,
+						Authorization: `Bearer ${config.api_key}`,
 					},
 					body: JSON.stringify({ model: config.model, input, tools }),
 					signal,
