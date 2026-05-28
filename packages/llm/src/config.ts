@@ -1,115 +1,110 @@
 /**
- * LLM 配置类型 — Discriminated Union Provider Config
+ * LLM 配置类型 — Single Source of Truth
  *
- * 运行时依赖注入：通过 ProviderConfig 描述 provider 类型、凭据和行为参数，
- * 由 createLLMClient() 工厂函数构造 LLMClient 实例。
+ * 使用 zod schema 定义所有配置形状，TypeScript 类型从 schema 派生。
+ * ProviderConfig 是 discriminated union，各分支具有独立的字段约束。
  *
- * 各 provider 的行为参数（thinking、effort 等）语义不同，
- * 因此直接放在对应的 ProviderConfig 分支中，而非抽到公共层。
- * 各 Client 只读取自己分支上的字段，不存在"这个字段对我有没有用"的歧义。
+ * 双套 schema：
+ * - LLMConfigTOMLSchema: TOML 解析后的中间形状（snake_case，描述 settings.llm/editor）
+ * - ProviderConfigSchema: 最终运行时配置（camelCase，discriminated union）
+ * config-from-config.ts 负责两者之间的映射。
  */
 
-import type { LLMProvider, TagStyle } from "@n0n/types";
+import { z } from "zod";
 
-// ── Provider 配置 ──
+// ═══════════════════════════════════════════════════════════
+// TOML 中间形状（snake_case，直接对应 TOML 字段名）
+// ═══════════════════════════════════════════════════════════
 
-interface ProviderConfigBase {
-	apiKey: string;
-	model: string;
-	baseUrl?: string;
-	/** 覆盖基于模型名推断的 XML tag 风格 */
-	tagStyle?: TagStyle;
-}
+/** TOML 解析后 settings.llm / settings.editor 的形状 */
+export const LLMConfigTOMLSchema = z.object({
+  type: z.string(),
+  base_url: z.string().default(""),
+  api_key: z.string(),
+  model: z.string(),
+  thinking: z.boolean().optional(),
+  thinking_budget_tokens: z.number().optional(),
+  thinking_effort: z.string().optional(),
+  backend_provider: z.string().optional(),
+  enable_thinking: z.boolean().optional(),
+  edit_backend: z.string().optional(),
+});
 
-/** OpenAI 原生 API 配置 */
-export interface OpenAIProviderConfig extends ProviderConfigBase {
-	provider: "openai";
-}
+/** TOML → ProviderConfig 映射的输入类型 */
+export type LLMConfigTOML = z.infer<typeof LLMConfigTOMLSchema>;
 
-/**
- * Anthropic Claude API 配置（原生 + 兼容代理）
- *
- * 通过自实现 Anthropic Messages API Client 直接通信。
- * 当 baseUrl 存在时，通过自定义 baseURL 访问第三方代理。
- * 原生支持：
- * - thinking/reasoning 流式输出（thinking_delta 事件）
- * - prompt caching（cache_control 注入）
- * - 交替思考（thinking content block 回传）
- */
-export interface AnthropicProviderConfig extends ProviderConfigBase {
-	provider: "anthropic";
-	/**
-	 * 思考模式配置。设置即启用，不设置则不启用。
-	 * Anthropic 要求提供明确的 budget_tokens。
-	 */
-	thinking?: {
-		budgetTokens: number;
-	};
-}
+// ═══════════════════════════════════════════════════════════
+// ProviderConfig（运行时 discriminated union）
+// ═══════════════════════════════════════════════════════════
 
-/** Google Gemini API 配置（通过 OpenAI 兼容端点） */
-export interface GoogleProviderConfig extends ProviderConfigBase {
-	provider: "google";
-	/**
-	 * 思考强度。Gemini 始终内部思考，此参数控制思考内容的独立流式传输。
-	 * 不设置时默认 "high"。
-	 */
-	thinkingEffort?: "low" | "medium" | "high";
-}
+const providerBaseSchema = z.object({
+  apiKey: z.string(),
+  model: z.string(),
+  baseUrl: z.string().optional(),
+  tagStyle: z.string().optional(),
+});
 
-/** OpenAI 兼容 API 配置（第三方代理、国产模型等） */
-export interface OpenAICompatibleProviderConfig extends ProviderConfigBase {
-	provider: "openai-compatible";
-	baseUrl: string;
-	/**
-	 * 代理后端的实际 provider 类型。
-	 *
-	 * 当通过 litellm 等代理访问 Anthropic/Google 模型时，
-	 * OpenAI 兼容协议不会传递 provider-specific 字段
-	 * （如 Anthropic 的 cache_control）。设置此字段后，
-	 * 会在请求层自动注入对应 provider 的缓存控制标记。
-	 */
-	backendProvider?: "anthropic" | "google" | "openai";
-	/** 启用思考模式（国产模型大多用 enable_thinking flag） */
-	enableThinking?: boolean;
-}
+export const OpenAIProviderConfigSchema = providerBaseSchema.extend({
+  provider: z.literal("openai"),
+});
+export type OpenAIProviderConfig = z.infer<typeof OpenAIProviderConfigSchema>;
 
-/** DeepSeek API 专用配置 */
-export interface DeepSeekProviderConfig extends ProviderConfigBase {
-	provider: "deepseek";
-	/** 启用思考模式（DeepSeek-R1 等推理模型） */
-	enableThinking?: boolean;
-	/** 思考强度。仅 "max" 会触发额外行为（API 内部注入深度思考前缀），"high" 等同于默认。 */
-	thinkingEffort?: "high" | "max";
-}
+export const AnthropicProviderConfigSchema = providerBaseSchema.extend({
+  provider: z.literal("anthropic"),
+  thinking: z
+    .object({
+      budgetTokens: z.number(),
+    })
+    .optional(),
+});
+export type AnthropicProviderConfig = z.infer<typeof AnthropicProviderConfigSchema>;
 
-/**
- * ProviderConfig — 统一的 LLM provider 配置
- *
- * 通过 `provider` 字段判别，各分支具有独立的字段约束和行为参数。
- */
-export type ProviderConfig =
-	| OpenAIProviderConfig
-	| AnthropicProviderConfig
-	| GoogleProviderConfig
-	| OpenAICompatibleProviderConfig
-	| DeepSeekProviderConfig;
+export const GoogleProviderConfigSchema = providerBaseSchema.extend({
+  provider: z.literal("google"),
+  thinkingEffort: z.enum(["low", "medium", "high"]).optional(),
+});
+export type GoogleProviderConfig = z.infer<typeof GoogleProviderConfigSchema>;
 
-// ── LLMConfig ──
+export const OpenAICompatibleProviderConfigSchema = providerBaseSchema.extend({
+  provider: z.literal("openai-compatible"),
+  baseUrl: z.string(),
+  backendProvider: z.enum(["anthropic", "google", "openai"]).optional(),
+  enableThinking: z.boolean().optional(),
+});
+export type OpenAICompatibleProviderConfig = z.infer<typeof OpenAICompatibleProviderConfigSchema>;
 
-/**
- * LLMConfig — 运行时完整配置
- *
- * 行为参数已下沉到各 ProviderConfig 分支。
- * 保留此包装层，便于后续在不改动所有 Client 签名的情况下
- * 添加跨 provider 的通用行为（如 retry 策略、超时、审计日志钩子等）。
- */
-export interface LLMConfig {
-	/** Provider 配置（决定使用哪个 Client，含行为参数） */
-	providerConfig: ProviderConfig;
-}
+export const DeepSeekProviderConfigSchema = providerBaseSchema.extend({
+  provider: z.literal("deepseek"),
+  enableThinking: z.boolean().optional(),
+  thinkingEffort: z.enum(["high", "max"]).optional(),
+});
+export type DeepSeekProviderConfig = z.infer<typeof DeepSeekProviderConfigSchema>;
 
-// ── 穷尽性编译时校验 ──
-// 确保 ProviderConfig union 覆盖了所有 LLMProvider 类型
+export const ProviderConfigSchema = z.discriminatedUnion("provider", [
+  OpenAIProviderConfigSchema,
+  AnthropicProviderConfigSchema,
+  GoogleProviderConfigSchema,
+  OpenAICompatibleProviderConfigSchema,
+  DeepSeekProviderConfigSchema,
+]);
+
+/** 统一的 LLM provider 运行时配置 */
+export type ProviderConfig = z.infer<typeof ProviderConfigSchema>;
+
+// ═══════════════════════════════════════════════════════════
+// LLMConfig
+// ═══════════════════════════════════════════════════════════
+
+export const LLMConfigSchema = z.object({
+  providerConfig: ProviderConfigSchema,
+});
+
+export type LLMConfig = z.infer<typeof LLMConfigSchema>;
+
+// ═══════════════════════════════════════════════════════════
+// 穷尽性编译时校验
+// ═══════════════════════════════════════════════════════════
+
+import type { LLMProvider } from "@n0n/types";
 type _AssertExhaustive = Exclude<LLMProvider, ProviderConfig["provider"]> extends never ? true : never;
 const _: _AssertExhaustive = true;
