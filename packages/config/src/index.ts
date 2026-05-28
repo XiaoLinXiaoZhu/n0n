@@ -443,34 +443,8 @@ export function getConfig<T>(
     return { success: false, errors };
   }
 
-  // ── 6. 补充 trace（zod default 填充的字段 + 遗漏字段） ──
+  // ── 6. 补充 trace（遗漏字段） ──
   flattenTrace(validated as unknown as Record<string, unknown>, "", trace);
 
-  // 标记 zod 提供的默认值：在 validated 中存在但 trace 中没有的字段
-  markDefaults(validated as unknown as Record<string, unknown>, "", trace);
-
   return { success: true, data: validated, trace };
-}
-
-/** 标记由 zod default 提供的字段 */
-function markDefaults(
-  obj: Record<string, unknown>,
-  prefix: string,
-  trace: Trace,
-): void {
-  for (const [key, val] of Object.entries(obj)) {
-    const dotPath = prefix ? `${prefix}.${key}` : key;
-    if (isObject(val)) {
-      markDefaults(val, dotPath, trace);
-    } else if (val !== undefined) {
-      const entry = trace[dotPath];
-      // 如果 trace 中记录的 value 与最终值不同，说明被 zod 的 default 或其他 transform 修改
-      if (!entry) {
-        trace[dotPath] = { value: val, source: "默认" };
-      } else if (entry.value !== val) {
-        // 值被 zod 的 transform/default 改变了
-        trace[dotPath] = { value: val, source: `默认 (原: ${entry.source})` };
-      }
-    }
-  }
 }
