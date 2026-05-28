@@ -16,6 +16,7 @@
  */
 
 import type { TagAdapter, TagStyle } from "@n0n/types";
+
 export type { TagAdapter, TagStyle };
 
 /** 生成开标签 */

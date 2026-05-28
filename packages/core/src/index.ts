@@ -25,8 +25,6 @@ export type {
 	EditBackendConfig,
 	SecurityConfig,
 } from "./runtime.ts";
-export {
-	buildToolsConfig,
-} from "./runtime.ts";
+export { buildToolsConfig } from "./runtime.ts";
 // PlainRenderer（供需要默认渲染器的场景）
 export { PlainRenderer } from "./ui/renderer.ts";

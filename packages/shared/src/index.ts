@@ -52,4 +52,5 @@ export {
 	ensureDirs,
 	parseWorkspaceArg,
 	resolveBasePaths,
+	resolvePlatform,
 } from "./workspace.ts";

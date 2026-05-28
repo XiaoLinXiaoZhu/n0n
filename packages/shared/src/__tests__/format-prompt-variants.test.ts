@@ -190,7 +190,7 @@ describe("formatPrompt 变体端到端", () => {
 				type: "assistant_tool_call",
 				content: null,
 				reasoning: { ok: false },
-				reasoningSignature: null,
+				reasoningSignature: undefined,
 				toolCalls: [
 					{
 						id: callId,
@@ -264,7 +264,7 @@ describe("formatPrompt 变体端到端", () => {
 				type: "assistant_tool_call",
 				content: null,
 				reasoning: { ok: false },
-				reasoningSignature: null,
+				reasoningSignature: undefined,
 				toolCalls: [
 					{ id: "tc_old", tool: "observe", args: { script: "npm run foo" } },
 				],
@@ -288,7 +288,7 @@ describe("formatPrompt 变体端到端", () => {
 				type: "assistant_tool_call",
 				content: null,
 				reasoning: { ok: false },
-				reasoningSignature: null,
+				reasoningSignature: undefined,
 				toolCalls: [
 					{ id: "tc_new", tool: "observe", args: { script: "echo hi" } },
 				],
@@ -324,7 +324,7 @@ describe("formatPrompt 变体端到端", () => {
 				type: "assistant_tool_call",
 				content: null,
 				reasoning: { ok: false },
-				reasoningSignature: null,
+				reasoningSignature: undefined,
 				toolCalls: [
 					{ id: "tc_1", tool: "observe", args: { script: "npm run foo" } },
 				],

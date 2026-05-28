@@ -77,8 +77,7 @@ export function formatWriteResult(
 			return {
 				fact: tags.wrapTag(
 					"error",
-					// biome-ignore lint/suspicious/noExplicitAny: exhaustive switch default
-					`Unknown write status: ${(msg as any).status}`,
+					`Unknown write status: ${(msg as { status: string }).status}`,
 				),
 				hint: null,
 			};

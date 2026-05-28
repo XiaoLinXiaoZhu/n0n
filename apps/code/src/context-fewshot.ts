@@ -313,7 +313,7 @@ function buildCompletedCall(ctx: RuntimeCtx): DomainMessage {
 			value:
 				"All tools verified working. Clean up temp files and submit the final completed report with environment summary.",
 		},
-		reasoningSignature: null,
+		reasoningSignature: undefined,
 		toolCalls: [ACT_CLEANUP, call],
 	};
 }
@@ -393,7 +393,7 @@ const FEWSHOT_TEMPLATE: FewshotEntry[] = [
 			value:
 				"The system-reminder instructs me to run n0n-init and n0n-skill for environment discovery. I should call all three in parallel since they're independent, plus report progress.",
 		},
-		reasoningSignature: null,
+		reasoningSignature: undefined,
 		toolCalls: [INIT_GLOBAL, INIT_PROJECT, SKILL_LIST, WORKING_1],
 	},
 
@@ -411,7 +411,7 @@ const FEWSHOT_TEMPLATE: FewshotEntry[] = [
 			value:
 				"Environment info collected. The system-reminder mentions a bootstrap verification task but hasn't provided specifics. I need to ask the user for the task details using progress(blocked).",
 		},
-		reasoningSignature: null,
+		reasoningSignature: undefined,
 		toolCalls: [BLOCKED_TASK],
 	},
 
@@ -426,7 +426,7 @@ const FEWSHOT_TEMPLATE: FewshotEntry[] = [
 			value:
 				"The verification task requires demonstrating parallel tool calls. I'll create two files, edit both, execute both, and report progress — all in one batch to prove no conflicts.",
 		},
-		reasoningSignature: null,
+		reasoningSignature: undefined,
 		toolCalls: [
 			WRITE_HELLO,
 			WRITE_TEST,

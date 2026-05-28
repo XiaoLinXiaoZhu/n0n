@@ -115,7 +115,7 @@ function findLastAssistantToolCallIndex(messages: DomainMessage[]): number {
 /** 格式化选项 — 由 LLMClient 构造时注入 */
 export interface FormatOptions {
 	/** 是否剥离历史轮次的 system-hint（默认 true） */
-	stripHint?: boolean;
+	strip_hint?: boolean;
 }
 
 // ── 主函数 ──
@@ -131,7 +131,7 @@ export function formatPrompt(
 	tags: TagAdapter,
 	options?: FormatOptions,
 ): PromptMessage[] {
-	const stripHintEnabled = options?.stripHint ?? true;
+	const stripHintEnabled = options?.strip_hint ?? true;
 	const result: PromptMessage[] = [];
 
 	// 预扫描：找到最后一个 assistant_tool_call 的原始 index，用于判断"最新轮"
@@ -166,7 +166,7 @@ export function formatPrompt(
 					role: "assistant",
 					content: msg.content,
 					reasoning: msg.reasoning.ok ? msg.reasoning.value : undefined,
-					reasoningSignature: msg.reasoningSignature ?? undefined,
+					reasoningSignature: msg.reasoningSignature,
 				});
 				break;
 
@@ -180,7 +180,7 @@ export function formatPrompt(
 					role: "assistant",
 					content: msg.content ?? "",
 					reasoning: msg.reasoning.ok ? msg.reasoning.value : undefined,
-					reasoningSignature: msg.reasoningSignature ?? undefined,
+					reasoningSignature: msg.reasoningSignature,
 					toolCalls,
 				});
 				break;

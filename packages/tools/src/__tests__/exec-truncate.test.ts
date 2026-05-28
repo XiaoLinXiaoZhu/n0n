@@ -15,6 +15,7 @@
 
 import { describe, expect, test } from "bun:test";
 import { existsSync } from "node:fs";
+import { resolvePlatform } from "@n0n/shared";
 import type { ExecToolResult } from "@n0n/types";
 import { ExecArgsSchema, execToolStream } from "../exec/index.ts";
 
@@ -35,7 +36,7 @@ async function collectResult(script: string, runtime?: string) {
 		tempDir: ".temp",
 		blocked_commands: [],
 		default_exec_waitfor: 120,
-		platform: process.platform as "win32" | "darwin" | "linux",
+		platform: resolvePlatform(),
 	})) {
 		if (event.type === "tool_result" && event.tool === "observe") {
 			return event as ExecToolResult;

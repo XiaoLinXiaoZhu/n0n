@@ -9,6 +9,7 @@
  */
 
 import { describe, expect, test } from "bun:test";
+import { resolvePlatform } from "@n0n/shared";
 import { ExecArgsSchema, execToolStream } from "../exec/index.ts";
 
 /** 内部调用类型 — 与 ExecCall 对齐，用于测试 */
@@ -31,7 +32,7 @@ async function collectExecResult(script: string, runtime?: string) {
 		tempDir: ".temp",
 		blocked_commands: [],
 		default_exec_waitfor: 120,
-		platform: process.platform as "win32" | "darwin" | "linux",
+		platform: resolvePlatform(),
 	})) {
 		if (
 			event.type === "tool_result" &&

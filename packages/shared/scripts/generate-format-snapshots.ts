@@ -96,7 +96,7 @@ const scenarios: Scenario[] = [
 				type: "assistant_tool_call",
 				content: "Let me read the file.",
 				reasoning: null,
-				reasoningSignature: null,
+				reasoningSignature: undefined,
 				toolCalls: [
 					{ id: "tc_1", tool: "observe", args: { script: "cat src/auth.ts" } },
 					{

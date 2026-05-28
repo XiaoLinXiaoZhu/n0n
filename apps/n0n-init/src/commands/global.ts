@@ -7,6 +7,7 @@
 
 import { execSync } from "node:child_process";
 import { readdirSync } from "node:fs";
+import { resolvePlatform } from "@n0n/shared";
 import { loadPathToolsConfig, type PathToolsConfig } from "../config/load.ts";
 
 const IS_WINDOWS = process.platform === "win32";
@@ -177,10 +178,7 @@ interface ProbeResult {
 function probeRuntime(def: RuntimeDef): ProbeResult {
 	const base: ProbeResult = { def, available: false, version: null };
 
-	if (
-		def.platforms &&
-		!def.platforms.includes(process.platform as "win32" | "darwin" | "linux")
-	) {
+	if (def.platforms && !def.platforms.includes(resolvePlatform())) {
 		return base;
 	}
 

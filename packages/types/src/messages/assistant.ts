@@ -13,14 +13,14 @@ export interface AssistantTextMessage {
 	type: "assistant_text";
 	content: string;
 	reasoning: ReasoningResult;
-	reasoningSignature?: string | null;
+	reasoningSignature?: string;
 }
 
 export interface AssistantToolCallMessage {
 	type: "assistant_tool_call";
 	content: string | null;
 	reasoning: ReasoningResult;
-	reasoningSignature?: string | null;
+	reasoningSignature?: string;
 	toolCalls: (ToolCallRecord | PartialToolCallRecord)[];
 }
 

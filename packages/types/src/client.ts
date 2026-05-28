@@ -218,7 +218,7 @@ export interface AssistantMessage {
 	role: "assistant";
 	content: string | null;
 	reasoningText: string | null;
-	reasoningSignature: string | null;
+	reasoningSignature: string | undefined;
 	toolCalls: AssistantToolCallPart[];
 }
 
@@ -280,7 +280,7 @@ export class StreamAccumulator {
 			role: "assistant",
 			content: this.content || null,
 			reasoningText: this.reasoning || null,
-			reasoningSignature: this.reasoningSignature || null,
+			reasoningSignature: this.reasoningSignature || undefined,
 			toolCalls: [...this.toolCalls.values()],
 		};
 	}

@@ -16,10 +16,7 @@ import { homedir } from "node:os";
 import { dirname, resolve } from "node:path";
 import { style, writeln } from "@n0n/cli-ui";
 import { type ConfigSource, getConfig } from "@n0n/config";
-import {
-	buildToolsConfig,
-	type EditBackendConfig,
-} from "@n0n/core";
+import { buildToolsConfig, type EditBackendConfig } from "@n0n/core";
 import {
 	createLLMClient,
 	createResponsesClient,
@@ -169,11 +166,16 @@ function maskSecret(value: string): string {
 
 function sourceTag(source: string): string {
 	switch (source) {
-		case "默认": return style.dim("[默认]");
-		case "全局": return style.cyan("[全局]");
-		case "项目": return style.green("[项目]");
-		case "zod default": return style.dim("[default]");
-		default: return style.dim(`[${source}]`);
+		case "默认":
+			return style.dim("[默认]");
+		case "全局":
+			return style.cyan("[全局]");
+		case "项目":
+			return style.green("[项目]");
+		case "zod default":
+			return style.dim("[default]");
+		default:
+			return style.dim(`[${source}]`);
 	}
 }
 
@@ -183,35 +185,61 @@ function formatValue(key: string, value: unknown): string {
 	return String(value);
 }
 
-function displayProvider(label: string, pc: Record<string, unknown>, prefix: string): void {
+function displayProvider(
+	label: string,
+	pc: Record<string, unknown>,
+	prefix: string,
+): void {
 	writeln(`  ${style.dim("──")} ${style.cyan(label)}`);
 	for (const [key, value] of Object.entries(pc)) {
 		const src = trace[`${prefix}.${key}`]?.source;
-		writeln(`    ${style.white(key)} = ${formatValue(key, value)}${src ? ` ${sourceTag(src)}` : ""}`);
+		writeln(
+			`    ${style.white(key)} = ${formatValue(key, value)}${src ? ` ${sourceTag(src)}` : ""}`,
+		);
 	}
 }
 
 // 配置来源
 writeln(`${style.cyan("i")} ${style.bold("配置来源:")}`);
 writeln();
-writeln(`  ${style.gray("全局 env:")}  ${style.white(globalEnvPath)}${existsSync(globalEnvPath) ? " " + style.green("✓") : " " + style.dim("(不存在)")}`);
-writeln(`  ${style.gray("项目 env:")}  ${style.white(projectEnvPath)}${existsSync(projectEnvPath) ? " " + style.green("✓") : " " + style.dim("(不存在)")}`);
-writeln(`  ${style.gray("全局 TOML:")} ${style.white(globalTomlPath)}${existsSync(globalTomlPath) ? " " + style.green("✓") : " " + style.dim("(不存在)")}`);
-writeln(`  ${style.gray("项目 TOML:")} ${style.white(projectTomlPath)}${existsSync(projectTomlPath) ? " " + style.green("✓") : " " + style.dim("(不存在)")}`);
+writeln(
+	`  ${style.gray("全局 env:")}  ${style.white(globalEnvPath)}${existsSync(globalEnvPath) ? " " + style.green("✓") : " " + style.dim("(不存在)")}`,
+);
+writeln(
+	`  ${style.gray("项目 env:")}  ${style.white(projectEnvPath)}${existsSync(projectEnvPath) ? " " + style.green("✓") : " " + style.dim("(不存在)")}`,
+);
+writeln(
+	`  ${style.gray("全局 TOML:")} ${style.white(globalTomlPath)}${existsSync(globalTomlPath) ? " " + style.green("✓") : " " + style.dim("(不存在)")}`,
+);
+writeln(
+	`  ${style.gray("项目 TOML:")} ${style.white(projectTomlPath)}${existsSync(projectTomlPath) ? " " + style.green("✓") : " " + style.dim("(不存在)")}`,
+);
 writeln();
 
 // LLM & Editor
 writeln(`${style.cyan("i")} ${style.bold("当前配置:")}`);
 writeln();
-displayProvider("LLM", llm as unknown as Record<string, unknown>, "settings.llm");
+displayProvider(
+	"LLM",
+	llm as unknown as Record<string, unknown>,
+	"settings.llm",
+);
 writeln();
-displayProvider("Editor", editor as unknown as Record<string, unknown>, "settings.editor");
+displayProvider(
+	"Editor",
+	editor as unknown as Record<string, unknown>,
+	"settings.editor",
+);
 
 // 通用设置
 writeln();
 writeln(`  ${style.dim("──")} ${style.cyan("设置")}`);
-writeln(`    ${style.white("strip_hint")} = ${settings.strip_hint} ${sourceTag(trace["settings.strip_hint"]?.source ?? "")}`);
-writeln(`    ${style.white("notify_sound")} = ${settings.notify_sound} ${sourceTag(trace["settings.notify_sound"]?.source ?? "")}`);
+writeln(
+	`    ${style.white("strip_hint")} = ${settings.strip_hint} ${sourceTag(trace["settings.strip_hint"]?.source ?? "")}`,
+);
+writeln(
+	`    ${style.white("notify_sound")} = ${settings.notify_sound} ${sourceTag(trace["settings.notify_sound"]?.source ?? "")}`,
+);
 
 writeln();
 writeln(`${style.green("✓")} 配置加载完成`);
@@ -249,7 +277,7 @@ ensureDirs(paths);
 
 const llmConfig = { providerConfig: llm };
 const formatOptions: FormatOptions = {
-	stripHint: settings.strip_hint,
+	strip_hint: settings.strip_hint,
 };
 
 const editBackendType = editor.edit_backend;
@@ -268,15 +296,18 @@ const editBackend: EditBackendConfig =
 				),
 			};
 
-// 从配置直接构造 AgentConfig 和 SecurityConfig
-const agentConfig = settings.agent;
 const securityConfig = settings.security;
 
 const client = createLLMClient(llmConfig, formatOptions);
-const toolsConfig = buildToolsConfig(editBackend, agentConfig, securityConfig, {
-	workspace: paths.workspace,
-	tempDir: paths.temp,
-});
+const toolsConfig = buildToolsConfig(
+	editBackend,
+	settings.agent,
+	securityConfig,
+	{
+		workspace: paths.workspace,
+		tempDir: paths.temp,
+	},
+);
 
 const notifyConfig: NotifyConfig = {
 	enabled: settings.notify_sound,
@@ -306,7 +337,7 @@ await startCodeRepl(paths, {
 	promptVersion,
 	client,
 	toolsConfig,
-	agentConfig,
+	agentConfig: settings.agent,
 	notifyConfig,
 	expandExec,
 });

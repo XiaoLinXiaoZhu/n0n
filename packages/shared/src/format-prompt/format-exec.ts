@@ -220,9 +220,8 @@ export function formatExecResult(
 		}
 		default: {
 			const _exhaustive: never = msg;
-			// biome-ignore lint/suspicious/noExplicitAny: exhaustive switch default
 			return {
-				fact: `Unknown ${toolLabel} status: ${(msg as any).status}`,
+				fact: `Unknown ${toolLabel} status: ${(msg as { status: string }).status}`,
 				hint: null,
 			};
 		}

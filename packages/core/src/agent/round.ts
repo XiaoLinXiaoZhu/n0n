@@ -58,7 +58,7 @@ export function buildToolCallMessage(
 		reasoning: acc.reasoning
 			? { ok: true as const, value: acc.reasoning }
 			: { ok: false as const },
-		reasoningSignature: acc.reasoningSignature || undefined,
+		reasoningSignature: acc.reasoningSignature,
 		toolCalls,
 	};
 }

@@ -7,6 +7,7 @@
  */
 
 import { describe, expect, test } from "bun:test";
+import { resolvePlatform } from "@n0n/shared";
 import type { ExecToolResult } from "@n0n/types";
 import { ExecArgsSchema, execToolStream } from "../exec/index.ts";
 
@@ -37,7 +38,7 @@ async function collectWithHardTimeout(
 			tempDir: ".temp",
 			blocked_commands: [],
 			default_exec_waitfor: execWaitfor,
-			platform: process.platform as "win32" | "darwin" | "linux",
+			platform: resolvePlatform(),
 		})) {
 			if (event.type === "tool_result" && event.tool === "observe") {
 				return { status: "completed" as const, result: event };

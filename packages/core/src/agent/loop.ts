@@ -332,7 +332,7 @@ function classifyRound(
 				reasoning: acc.reasoning
 					? { ok: true as const, value: acc.reasoning }
 					: { ok: false as const },
-				reasoningSignature: acc.reasoningSignature || undefined,
+				reasoningSignature: acc.reasoningSignature,
 			},
 		};
 	}
@@ -346,7 +346,7 @@ function classifyRound(
 				reasoning: acc.reasoning
 					? { ok: true as const, value: acc.reasoning }
 					: { ok: false as const },
-				reasoningSignature: acc.reasoningSignature || undefined,
+				reasoningSignature: acc.reasoningSignature,
 			},
 			retryMessage: {
 				type: "generic_user_text",
@@ -365,7 +365,7 @@ function classifyRound(
 				reasoning: acc.reasoning
 					? { ok: true as const, value: acc.reasoning }
 					: { ok: false as const },
-				reasoningSignature: acc.reasoningSignature || undefined,
+				reasoningSignature: acc.reasoningSignature,
 			},
 		};
 	}

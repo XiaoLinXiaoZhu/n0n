@@ -20,6 +20,18 @@ export interface BaseWorkspacePaths {
 	temp: string;
 }
 
+// ── 平台 ──
+
+/**
+ * 返回当前运行时平台，类型收窄为已知值。
+ * 非 win32/darwin/linux 时抛出（不支持）。
+ */
+export function resolvePlatform(): "win32" | "darwin" | "linux" {
+	const p = process.platform;
+	if (p === "win32" || p === "darwin" || p === "linux") return p;
+	throw new Error(`Unsupported platform: ${p}`);
+}
+
 // ── 路径解析（纯函数）──
 
 /** 解析 base 路径 — 最小路径集 */

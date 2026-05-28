@@ -5,6 +5,7 @@
  * 不再维护全局状态 — 所有依赖通过参数显式传递。
  */
 
+import { resolvePlatform } from "@n0n/shared";
 import type { ResponsesClient, ToolsConfig } from "@n0n/tools";
 import type { LLMClient } from "@n0n/types";
 
@@ -41,8 +42,7 @@ export function buildToolsConfig(
 		agent,
 		workspace: paths.workspace,
 		tempDir: paths.tempDir,
-		platform:
-			paths.platform ?? (process.platform as "win32" | "darwin" | "linux"),
+		platform: paths.platform ?? resolvePlatform(),
 	};
 	if (editBackend.type === "freeform-patch") {
 		return {

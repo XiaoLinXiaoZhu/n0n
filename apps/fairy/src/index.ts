@@ -144,7 +144,7 @@ ensureFairyFiles(paths);
 const llmConfig = { providerConfig: settings.llm };
 const editorLlmConfig = { providerConfig: settings.editor };
 const formatOptions: FormatOptions = {
-	stripHint: settings.strip_hint,
+	strip_hint: settings.strip_hint,
 };
 
 const client = createLLMClient(llmConfig, formatOptions);

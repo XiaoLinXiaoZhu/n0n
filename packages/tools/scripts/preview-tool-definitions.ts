@@ -10,7 +10,7 @@
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { makeToolkit } from "../src/index.ts";
-import { createTagAdapter } from "@n0n/shared";
+import { createTagAdapter, resolvePlatform } from "@n0n/shared";
 import { CodeResultSchema } from "../../../apps/code/src/schema.ts";
 
 const MODEL = "claude-sonnet-4-20250514";
@@ -21,7 +21,7 @@ mkdirSync(PREVIEW_DIR, { recursive: true });
 const toolkit = makeToolkit(CodeResultSchema, {
 	workspace: process.cwd(),
 	tempDir: join(process.cwd(), ".temp"),
-	platform: process.platform as "win32" | "darwin" | "linux",
+	platform: resolvePlatform(),
 	security: { blockedCommands: [] },
 	agent: { defaultExecWaitfor: 120 },
 	editBackendType: "str-replace" as const,
