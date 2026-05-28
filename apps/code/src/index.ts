@@ -157,6 +157,55 @@ if (!configResult.success) {
 const { settings } = configResult.data;
 const { llm, editor } = settings;
 
+// ── 配置摘要 ──
+
+const trace = configResult.trace;
+
+function maskSecret(value: string): string {
+  if (value.length <= 8) return "****";
+  return `${value.slice(0, 4)}…${value.slice(-4)}`;
+}
+
+function sourceTag(source: string): string {
+  switch (source) {
+    case "默认": return style.dim("[默认]");
+    case "全局": return style.cyan("[全局]");
+    case "项目": return style.green("[项目]");
+    case "zod default": return style.dim("[zod default]");
+    default: return style.dim(`[${source}]`);
+  }
+}
+
+writeln(style.cyan("ℹ") + " " + style.bold("当前配置:"));
+writeln();
+
+// LLM
+writeln(`  ${style.dim("──")} ${style.cyan("LLM")}`);
+writeln(`    ${style.white("provider")} = ${llm.provider} ${sourceTag(trace["settings.llm.provider"]?.source ?? "")}`);
+writeln(`    ${style.white("model")} = ${llm.model} ${sourceTag(trace["settings.llm.model"]?.source ?? "")}`);
+writeln(`    ${style.white("base_url")} = ${llm.base_url} ${sourceTag(trace["settings.llm.base_url"]?.source ?? "")}`);
+writeln(`    ${style.white("api_key")} = ${maskSecret(llm.api_key)} ${sourceTag(trace["settings.llm.api_key"]?.source ?? "")}`);
+writeln(`    ${style.white("edit_backend")} = ${llm.edit_backend} ${sourceTag(trace["settings.llm.edit_backend"]?.source ?? "")}`);
+
+// Editor
+writeln();
+writeln(`  ${style.dim("──")} ${style.cyan("Editor")}`);
+writeln(`    ${style.white("provider")} = ${editor.provider} ${sourceTag(trace["settings.editor.provider"]?.source ?? "")}`);
+writeln(`    ${style.white("model")} = ${editor.model} ${sourceTag(trace["settings.editor.model"]?.source ?? "")}`);
+writeln(`    ${style.white("base_url")} = ${editor.base_url} ${sourceTag(trace["settings.editor.base_url"]?.source ?? "")}`);
+writeln(`    ${style.white("api_key")} = ${maskSecret(editor.api_key)} ${sourceTag(trace["settings.editor.api_key"]?.source ?? "")}`);
+writeln(`    ${style.white("edit_backend")} = ${editor.edit_backend} ${sourceTag(trace["settings.editor.edit_backend"]?.source ?? "")}`);
+
+// Settings
+writeln();
+writeln(`  ${style.dim("──")} ${style.cyan("设置")}`);
+writeln(`    ${style.white("strip_hint")} = ${settings.strip_hint} ${sourceTag(trace["settings.strip_hint"]?.source ?? "")}`);
+writeln(`    ${style.white("notify_sound")} = ${settings.notify_sound} ${sourceTag(trace["settings.notify_sound"]?.source ?? "")}`);
+
+writeln();
+writeln(style.green("✓") + " 配置加载完成");
+writeln();
+
 // ── CLI 选项 ──
 
 const cliOpts = (globalThis as Record<string, unknown>).__n0n_cli_opts as
