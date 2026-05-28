@@ -21,8 +21,6 @@ export { FinishReason, StreamAccumulator } from "./client.ts";
 export type * from "./domain.ts";
 export type * from "./renderer.ts";
 export { findLastUsage } from "./renderer.ts";
-export type * from "./setup-renderer.ts";
-
 export type {
 	EditArgs,
 	ExecArgs,

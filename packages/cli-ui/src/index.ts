@@ -20,4 +20,3 @@ export {
 } from "./ansi.ts";
 export { LiveRegion } from "./live-region.ts";
 export { RichRenderer, type RichRendererOptions } from "./rich-renderer.ts";
-export { CliSetupRenderer } from "./setup-renderer.ts";

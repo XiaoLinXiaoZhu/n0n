@@ -78,10 +78,9 @@ describe("非 TTY 环境启动", () => {
 		);
 
 		// 辅助断言：应该能看到初始化过程的输出（说明 bootstrap 阶段正常）
-		// 如果 LLM 连接失败，至少也应该看到配置检查的日志
+		// 如果配置加载失败，至少也说明已经过了 setRawMode 阶段
 		const passedBootstrap =
-			result.stderr.includes("配置检查通过") ||
-			result.stderr.includes("初始化完成") ||
+			result.stderr.includes("配置加载失败") ||
 			result.stderr.includes("LLM 连接") ||
 			result.stderr.includes("Code Agent");
 

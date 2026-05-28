@@ -6,22 +6,25 @@
  */
 
 import { createInterface } from "node:readline";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { homedir } from "node:os";
+import { resolve } from "node:path";
 import { isTTY, label, RichRenderer, style, writeln } from "@n0n/cli-ui";
 import {
 	agentLoop,
-	buildAgentConfig,
-	buildSecurityConfig,
 	buildToolsConfig,
 	PlainRenderer,
 } from "@n0n/core";
+import type { AgentConfig, SecurityConfig } from "@n0n/core";
+import { getConfig, type ConfigSource } from "@n0n/config";
 import {
-	buildLLMConfigFromEnv,
-	type ConfigSource,
+	ProviderConfigSchema,
 	createLLMClient,
 } from "@n0n/llm";
 import { type FormatOptions, parseWorkspaceArg } from "@n0n/shared";
 import { makeToolkit } from "@n0n/tools";
 import type { DomainMessage } from "@n0n/types";
+import { z } from "zod";
 import { fairyProgressConfig } from "./progress-config.ts";
 import type { FairyProgressResult } from "./schema.ts";
 import {
@@ -33,12 +36,73 @@ import {
 } from "./state.ts";
 import { buildView } from "./view.ts";
 
-// ── 配置源（Fairy 无 bootstrap，直接从 process.env 快照构造） ──
+// ── 配置加载 ──
 
-const source: ConfigSource = {};
-for (const [k, v] of Object.entries(process.env)) {
-	if (v !== undefined) source[k] = v;
+const fairyConfigSchema = z.object({
+  settings: z.object({
+    strip_hint: z.boolean().default(true),
+    llm: ProviderConfigSchema,
+    editor: ProviderConfigSchema,
+    agent: z.object({
+      max_iterations: z.number().default(50),
+      max_idle_rounds: z.number().default(5),
+      default_exec_waitfor: z.number().default(120),
+    }),
+    security: z.object({
+      blocked_commands: z.array(z.string()).default([]),
+    }),
+  }),
+});
+
+const DEFAULT_TOML = `
+[settings]
+strip_hint = true
+
+[settings.agent]
+max_iterations = 50
+max_idle_rounds = 5
+default_exec_waitfor = 120
+
+[settings.security]
+blocked_commands = []
+`;
+
+const globalConfigDir = resolve(homedir(), ".n0n");
+if (!existsSync(globalConfigDir)) {
+	mkdirSync(globalConfigDir, { recursive: true });
 }
+
+const globalTomlPath = resolve(globalConfigDir, "config.toml");
+const projectTomlPath = resolve(process.cwd(), ".n0n", "config.toml");
+
+const sources: ConfigSource[] = [
+  { name: "默认", content: DEFAULT_TOML },
+];
+
+if (existsSync(globalTomlPath)) {
+  sources.push({ name: "全局", content: readFileSync(globalTomlPath, "utf-8") });
+}
+
+if (existsSync(projectTomlPath)) {
+  sources.push({ name: "项目", content: readFileSync(projectTomlPath, "utf-8") });
+}
+
+const envPool: Record<string, string> = {};
+for (const [k, v] of Object.entries(process.env)) {
+	if (v !== undefined) envPool[k] = v;
+}
+
+const configResult = getConfig(fairyConfigSchema, sources, envPool);
+
+if (!configResult.success) {
+	writeln(style.red("配置加载失败："));
+	for (const err of configResult.errors) {
+		writeln(style.red(`  ${err.kind}: ${err.message}`));
+	}
+	process.exit(1);
+}
+
+const { settings } = configResult.data;
 
 // ── 初始化 ──
 
@@ -51,20 +115,22 @@ const { workspace, remainingArgs } = parseWorkspaceArg(
 const paths = resolveFairyPaths(workspace);
 ensureFairyFiles(paths);
 
-const llmConfig = buildLLMConfigFromEnv(source, "LLM");
-const editorLlmConfig = buildLLMConfigFromEnv(
-	source,
-	"EDITOR_LLM",
-	llmConfig.providerConfig,
-);
+const llmConfig = { providerConfig: settings.llm };
+const editorLlmConfig = { providerConfig: settings.editor };
 const formatOptions: FormatOptions = {
-	stripHint: source.N0N_STRIP_HINT !== "0",
+	stripHint: settings.strip_hint,
 };
 
 const client = createLLMClient(llmConfig, formatOptions);
 const editorClient = createLLMClient(editorLlmConfig, formatOptions);
-const agentConfig = buildAgentConfig(source);
-const securityConfig = buildSecurityConfig(source);
+const agentConfig: AgentConfig = {
+  maxIterations: settings.agent.max_iterations,
+  maxIdleRounds: settings.agent.max_idle_rounds,
+  defaultExecWaitfor: settings.agent.default_exec_waitfor,
+};
+const securityConfig: SecurityConfig = {
+  blockedCommands: settings.security.blocked_commands,
+};
 const toolsConfig = buildToolsConfig(
 	{ type: "str-replace", editorClient },
 	agentConfig,

@@ -4,10 +4,11 @@
 	"type": "module",
 	"dependencies": {
 		"@n0n/cli-ui": "workspace:*",
+		"@n0n/config": "workspace:*",
 		"@n0n/core": "workspace:*",
 		"@n0n/llm": "workspace:*",
 		"@n0n/shared": "workspace:*",
 		"@n0n/types": "workspace:*",
-		"zod": "^4.3.6"
+		"zod": "4.3.6"
 	}
 }
