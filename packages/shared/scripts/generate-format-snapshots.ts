@@ -82,8 +82,11 @@ const scenarios: Scenario[] = [
 			{
 				type: "assistant_text",
 				content: "I'll help you fix that bug.",
-				reasoning:
-					"The user wants me to fix an auth bug. Let me read the file first.",
+				reasoning: {
+					ok: true,
+					value:
+						"The user wants me to fix an auth bug. Let me read the file first.",
+				},
 				reasoningSignature: "sig_abc123",
 			},
 		],
@@ -95,7 +98,7 @@ const scenarios: Scenario[] = [
 			{
 				type: "assistant_tool_call",
 				content: "Let me read the file.",
-				reasoning: null,
+				reasoning: { ok: false },
 				reasoningSignature: undefined,
 				toolCalls: [
 					{ id: "tc_1", tool: "observe", args: { script: "cat src/auth.ts" } },
@@ -291,8 +294,8 @@ function formatResult(r: PromptMessage): string {
 		lines.push(`toolCallId: ${r.toolCallId}`);
 		lines.push(`toolName: ${r.toolName}`);
 	}
-	if (r.role === "assistant" && r.reasoning.ok) {
-		lines.push(`reasoning: ${r.reasoning.value}`);
+	if (r.role === "assistant" && r.reasoning) {
+		lines.push(`reasoning: ${r.reasoning}`);
 	}
 	if (r.role === "assistant" && r.toolCalls?.length) {
 		lines.push(`toolCalls: ${JSON.stringify(r.toolCalls, null, 2)}`);
