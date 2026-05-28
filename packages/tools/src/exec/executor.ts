@@ -115,8 +115,8 @@ export async function* execToolStream(
 	toolsConfig: {
 		workspace: string;
 		tempDir: string;
-		blockedCommands: string[];
-		defaultExecWaitfor: number;
+		blocked_commands: string[];
+		default_exec_waitfor: number;
 		platform: "win32" | "darwin" | "linux";
 	},
 ): AsyncGenerator<ToolStreamEvent> {
@@ -131,7 +131,7 @@ export async function* execToolStream(
 	// prompt cache 的 TTL 为 5 分钟，等待过长会导致缓存失效
 	const MAX_WAITFOR_S = 240;
 	const waitforS = Math.min(
-		call.args.waitfor ?? toolsConfig.defaultExecWaitfor,
+		call.args.waitfor ?? toolsConfig.default_exec_waitfor,
 		MAX_WAITFOR_S,
 	);
 	const waitforMs = waitforS * 1000;
@@ -140,7 +140,7 @@ export async function* execToolStream(
 	// Security check
 	const blockedCmd = findBlockedCommand(
 		call.args.script,
-		toolsConfig.blockedCommands,
+		toolsConfig.blocked_commands,
 		toolsConfig.platform,
 	);
 	if (blockedCmd !== null) {

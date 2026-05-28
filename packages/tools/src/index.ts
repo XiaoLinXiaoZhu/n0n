@@ -121,8 +121,8 @@ function buildBaseRegistry(
 		workspace: toolsConfig.workspace,
 		tempDir: toolsConfig.tempDir,
 		platform: toolsConfig.platform,
-		blockedCommands: toolsConfig.security.blockedCommands,
-		defaultExecWaitfor: toolsConfig.agent.defaultExecWaitfor,
+		blocked_commands: toolsConfig.security.blocked_commands,
+		default_exec_waitfor: toolsConfig.agent.default_exec_waitfor,
 	};
 
 	// observe / reason / act 共享同一个执行后端 execToolStream，

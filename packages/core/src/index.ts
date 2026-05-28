@@ -26,8 +26,6 @@ export type {
 	SecurityConfig,
 } from "./runtime.ts";
 export {
-	buildAgentConfig,
-	buildSecurityConfig,
 	buildToolsConfig,
 } from "./runtime.ts";
 // PlainRenderer（供需要默认渲染器的场景）

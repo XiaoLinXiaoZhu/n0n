@@ -11,7 +11,6 @@ import { resolve } from "node:path";
 import { createInterface } from "node:readline";
 import { isTTY, label, RichRenderer, style, writeln } from "@n0n/cli-ui";
 import { type ConfigSource, getConfig } from "@n0n/config";
-import type { AgentConfig, SecurityConfig } from "@n0n/core";
 import { agentLoop, buildToolsConfig, PlainRenderer } from "@n0n/core";
 import { createLLMClient, ProviderConfigSchema } from "@n0n/llm";
 import { type FormatOptions, parseWorkspaceArg } from "@n0n/shared";
@@ -150,18 +149,10 @@ const formatOptions: FormatOptions = {
 
 const client = createLLMClient(llmConfig, formatOptions);
 const editorClient = createLLMClient(editorLlmConfig, formatOptions);
-const agentConfig: AgentConfig = {
-	maxIterations: settings.agent.max_iterations,
-	maxIdleRounds: settings.agent.max_idle_rounds,
-	defaultExecWaitfor: settings.agent.default_exec_waitfor,
-};
-const securityConfig: SecurityConfig = {
-	blockedCommands: settings.security.blocked_commands,
-};
 const toolsConfig = buildToolsConfig(
 	{ type: "str-replace", editorClient },
-	agentConfig,
-	securityConfig,
+	settings.agent,
+	settings.security,
 	{ workspace: paths.workspace, tempDir: paths.temp },
 );
 
@@ -227,8 +218,8 @@ async function main(): Promise<void> {
 			agentResult = await agentLoop<FairyProgressResult>(viewMessages, {
 				client,
 				toolkit,
-				maxIterations: agentConfig.maxIterations,
-				maxIdleRounds: agentConfig.maxIdleRounds,
+				max_iterations: settings.agent.max_iterations,
+				max_idle_rounds: settings.agent.max_idle_rounds,
 				renderer,
 				signal: abortController.signal,
 			});

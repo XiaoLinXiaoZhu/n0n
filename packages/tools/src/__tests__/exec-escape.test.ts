@@ -29,8 +29,8 @@ async function collectExecResult(script: string, runtime?: string) {
 	for await (const event of execToolStream(call, undefined, {
 		workspace: process.cwd(),
 		tempDir: ".temp",
-		blockedCommands: [],
-		defaultExecWaitfor: 120,
+		blocked_commands: [],
+		default_exec_waitfor: 120,
 		platform: process.platform as "win32" | "darwin" | "linux",
 	})) {
 		if (

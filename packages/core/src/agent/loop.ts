@@ -46,8 +46,8 @@ export interface AgentOptions<T = unknown> {
 	client: LLMClient;
 	/** 工具集实例 — 由 app 层通过 makeToolkit 构造并注入 */
 	toolkit: Toolkit;
-	maxIterations?: number;
-	maxIdleRounds?: number;
+	max_iterations?: number;
+	max_idle_rounds?: number;
 	renderer?: Renderer;
 	confirmFn?: (question: string) => Promise<string>;
 	signal?: AbortSignal;
@@ -59,8 +59,8 @@ export async function agentLoop<T = unknown>(
 	history: DomainMessage[],
 	options: AgentOptions<T>,
 ): Promise<AgentResult<T>> {
-	const maxIter = options.maxIterations ?? 50;
-	const maxIdleRounds = options.maxIdleRounds ?? 5;
+	const maxIter = options.max_iterations ?? 50;
+	const maxIdleRounds = options.max_idle_rounds ?? 5;
 	const renderer: Renderer = options.renderer ?? new PlainRenderer();
 	const client = options.client;
 	const toolkit = options.toolkit;

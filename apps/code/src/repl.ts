@@ -427,8 +427,8 @@ export async function startCodeRepl(
 			agentResult = await agentLoop<CodeProgressResult>(history, {
 				client,
 				toolkit,
-				maxIterations: agentConfig.maxIterations,
-				maxIdleRounds: agentConfig.maxIdleRounds,
+				max_iterations: agentConfig.max_iterations,
+				max_idle_rounds: agentConfig.max_idle_rounds,
 				renderer,
 				confirmFn,
 				signal: stdin?.abortController.signal,

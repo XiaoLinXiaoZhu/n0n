@@ -29,7 +29,7 @@ export interface HeadlessOptions {
 	/** 工作目录路径 */
 	paths: BaseWorkspacePaths;
 	/** 最大迭代次数 */
-	maxIterations?: number;
+	max_iterations?: number;
 	/** 超时（毫秒） */
 	timeoutMs?: number;
 	/** 额外的 system prompt 前缀 */
@@ -91,7 +91,7 @@ export async function runHeadless(
 	const {
 		instruction,
 		paths,
-		maxIterations = 100,
+		max_iterations = 100,
 		timeoutMs = 900_000, // 15 分钟默认
 		systemPromptPrefix,
 		promptVersion,
@@ -150,7 +150,7 @@ export async function runHeadless(
 			const agentResult = await agentLoop<CodeProgressResult>(history, {
 				client,
 				toolkit,
-				maxIterations,
+				max_iterations,
 				renderer,
 				confirmFn: async () => "y",
 				signal: abortController.signal,

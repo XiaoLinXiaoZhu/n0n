@@ -10,10 +10,10 @@ import type { ResponsesClient } from "./edit/freeform-patch/index.ts";
 
 interface ToolsConfigBase {
 	security: {
-		blockedCommands: string[];
+		blocked_commands: string[];
 	};
 	agent: {
-		defaultExecWaitfor: number;
+		default_exec_waitfor: number;
 	};
 	platform: "win32" | "darwin" | "linux";
 	workspace: string;

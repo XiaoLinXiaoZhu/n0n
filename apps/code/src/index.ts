@@ -17,10 +17,8 @@ import { dirname, resolve } from "node:path";
 import { style, writeln } from "@n0n/cli-ui";
 import { type ConfigSource, getConfig } from "@n0n/config";
 import {
-	type AgentConfig,
 	buildToolsConfig,
 	type EditBackendConfig,
-	type SecurityConfig,
 } from "@n0n/core";
 import {
 	createLLMClient,
@@ -271,14 +269,8 @@ const editBackend: EditBackendConfig =
 			};
 
 // 从配置直接构造 AgentConfig 和 SecurityConfig
-const agentConfig: AgentConfig = {
-	maxIterations: settings.agent.max_iterations,
-	maxIdleRounds: settings.agent.max_idle_rounds,
-	defaultExecWaitfor: settings.agent.default_exec_waitfor,
-};
-const securityConfig: SecurityConfig = {
-	blockedCommands: settings.security.blocked_commands,
-};
+const agentConfig = settings.agent;
+const securityConfig = settings.security;
 
 const client = createLLMClient(llmConfig, formatOptions);
 const toolsConfig = buildToolsConfig(editBackend, agentConfig, securityConfig, {
