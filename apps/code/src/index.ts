@@ -171,68 +171,49 @@ function maskSecret(value: string): string {
 
 function sourceTag(source: string): string {
 	switch (source) {
-		case "默认":
-			return style.dim("[默认]");
-		case "全局":
-			return style.cyan("[全局]");
-		case "项目":
-			return style.green("[项目]");
-		case "zod default":
-			return style.dim("[zod default]");
-		default:
-			return style.dim(`[${source}]`);
+		case "默认": return style.dim("[默认]");
+		case "全局": return style.cyan("[全局]");
+		case "项目": return style.green("[项目]");
+		case "zod default": return style.dim("[default]");
+		default: return style.dim(`[${source}]`);
 	}
 }
 
-writeln(`${style.cyan("ℹ")} ${style.bold("当前配置:")}`);
+function formatValue(key: string, value: unknown): string {
+	if (key === "api_key" && typeof value === "string") return maskSecret(value);
+	if (typeof value === "object" && value !== null) return JSON.stringify(value);
+	return String(value);
+}
+
+function displayProvider(label: string, pc: Record<string, unknown>, prefix: string): void {
+	writeln(`  ${style.dim("──")} ${style.cyan(label)}`);
+	for (const [key, value] of Object.entries(pc)) {
+		const src = trace[`${prefix}.${key}`]?.source;
+		writeln(`    ${style.white(key)} = ${formatValue(key, value)}${src ? ` ${sourceTag(src)}` : ""}`);
+	}
+}
+
+// 配置来源
+writeln(`${style.cyan("i")} ${style.bold("配置来源:")}`);
+writeln();
+writeln(`  ${style.gray("全局 env:")}  ${style.white(globalEnvPath)}${existsSync(globalEnvPath) ? " " + style.green("✓") : " " + style.dim("(不存在)")}`);
+writeln(`  ${style.gray("项目 env:")}  ${style.white(projectEnvPath)}${existsSync(projectEnvPath) ? " " + style.green("✓") : " " + style.dim("(不存在)")}`);
+writeln(`  ${style.gray("全局 TOML:")} ${style.white(globalTomlPath)}${existsSync(globalTomlPath) ? " " + style.green("✓") : " " + style.dim("(不存在)")}`);
+writeln(`  ${style.gray("项目 TOML:")} ${style.white(projectTomlPath)}${existsSync(projectTomlPath) ? " " + style.green("✓") : " " + style.dim("(不存在)")}`);
 writeln();
 
-// LLM
-writeln(`  ${style.dim("──")} ${style.cyan("LLM")}`);
-writeln(
-	`    ${style.white("provider")} = ${llm.provider} ${sourceTag(trace["settings.llm.provider"]?.source ?? "")}`,
-);
-writeln(
-	`    ${style.white("model")} = ${llm.model} ${sourceTag(trace["settings.llm.model"]?.source ?? "")}`,
-);
-writeln(
-	`    ${style.white("base_url")} = ${llm.base_url} ${sourceTag(trace["settings.llm.base_url"]?.source ?? "")}`,
-);
-writeln(
-	`    ${style.white("api_key")} = ${maskSecret(llm.api_key)} ${sourceTag(trace["settings.llm.api_key"]?.source ?? "")}`,
-);
-writeln(
-	`    ${style.white("edit_backend")} = ${llm.edit_backend} ${sourceTag(trace["settings.llm.edit_backend"]?.source ?? "")}`,
-);
-
-// Editor
+// LLM & Editor
+writeln(`${style.cyan("i")} ${style.bold("当前配置:")}`);
 writeln();
-writeln(`  ${style.dim("──")} ${style.cyan("Editor")}`);
-writeln(
-	`    ${style.white("provider")} = ${editor.provider} ${sourceTag(trace["settings.editor.provider"]?.source ?? "")}`,
-);
-writeln(
-	`    ${style.white("model")} = ${editor.model} ${sourceTag(trace["settings.editor.model"]?.source ?? "")}`,
-);
-writeln(
-	`    ${style.white("base_url")} = ${editor.base_url} ${sourceTag(trace["settings.editor.base_url"]?.source ?? "")}`,
-);
-writeln(
-	`    ${style.white("api_key")} = ${maskSecret(editor.api_key)} ${sourceTag(trace["settings.editor.api_key"]?.source ?? "")}`,
-);
-writeln(
-	`    ${style.white("edit_backend")} = ${editor.edit_backend} ${sourceTag(trace["settings.editor.edit_backend"]?.source ?? "")}`,
-);
+displayProvider("LLM", llm as unknown as Record<string, unknown>, "settings.llm");
+writeln();
+displayProvider("Editor", editor as unknown as Record<string, unknown>, "settings.editor");
 
-// Settings
+// 通用设置
 writeln();
 writeln(`  ${style.dim("──")} ${style.cyan("设置")}`);
-writeln(
-	`    ${style.white("strip_hint")} = ${settings.strip_hint} ${sourceTag(trace["settings.strip_hint"]?.source ?? "")}`,
-);
-writeln(
-	`    ${style.white("notify_sound")} = ${settings.notify_sound} ${sourceTag(trace["settings.notify_sound"]?.source ?? "")}`,
-);
+writeln(`    ${style.white("strip_hint")} = ${settings.strip_hint} ${sourceTag(trace["settings.strip_hint"]?.source ?? "")}`);
+writeln(`    ${style.white("notify_sound")} = ${settings.notify_sound} ${sourceTag(trace["settings.notify_sound"]?.source ?? "")}`);
 
 writeln();
 writeln(`${style.green("✓")} 配置加载完成`);
