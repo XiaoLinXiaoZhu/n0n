@@ -569,6 +569,10 @@ export function readMultilineInput(
 		// resizeGridIfNeeded(默认 false) 此时尺寸已对齐会 return，不重复 remount。
 		// 拖动调整窗口时高频触发，debounce 300ms 仅在停止后执行一次，避免闪烁。
 		const onResize = debounce(() => {
+			// TODO patch: remount 稳定少清理一行（底部残留），疑似 terminal-renderer 的
+			// computeReflowHeight/moveUp off-by-one，待溯源。这里在 remount 前手动上移一行
+			// 并清到屏底，把清理边界上提一行作为补偿。溯源修复后应移除本行。
+			w("\x1b[1A\x1b[J");
 			resizeGridIfNeeded(true);
 			render();
 		}, 300);
