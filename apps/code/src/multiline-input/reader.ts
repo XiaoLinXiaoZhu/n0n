@@ -34,8 +34,10 @@ import {
 	setupMenuOwnership,
 } from "./mention.ts";
 import {
+	calcScrollOverflow,
 	countVisualLines,
 	getLayout,
+	paintScrollIndicator,
 	paintStatusBar,
 	STATUS_ROWS,
 } from "./ui.ts";
@@ -149,8 +151,8 @@ export function readMultilineInput(
 
 		let disconnectStdin: (() => void) | null = null;
 
-		function setupOwnership(): void {
-			const layout = getLayout(grid.rows);
+		function setupOwnership(hasIndicator: boolean): void {
+			const layout = getLayout(grid.rows, hasIndicator);
 			for (let r = 0; r < grid.rows; r++) {
 				for (let c = 0; c < grid.cols; c++) {
 					grid.setOwner(r, c, "");
@@ -215,11 +217,38 @@ export function readMultilineInput(
 		function render(): void {
 			vp.beginSync();
 			resizeGridIfNeeded();
-			setupOwnership();
 			// 每次重算 @token 高亮区间——decorations 是静态绝对 offset，不随编辑平移
 			ti.decorations = computeMentionDecorations(ti.text);
+
+			// 第一遍：无指示行布局，确定 scrollOffset 与可见行数，算溢出
+			setupOwnership(false);
 			ti.ensureCursorVisible(grid, OWNER_INPUT);
 			ti.paint(grid, OWNER_INPUT);
+			const layout0 = getLayout(grid.rows, false);
+			const visibleRows0 = layout0.inputEndRow - layout0.inputStartRow + 1;
+			let overflow = calcScrollOverflow(
+				ti.text,
+				ti.scrollOffset,
+				grid.cols,
+				visibleRows0,
+			);
+			const hasIndicator = overflow.above > 0 || overflow.below > 0;
+
+			// 第二遍：若需指示行，输入区让出 1 行，重排并重算溢出
+			if (hasIndicator) {
+				setupOwnership(true);
+				ti.ensureCursorVisible(grid, OWNER_INPUT);
+				ti.paint(grid, OWNER_INPUT);
+				const layout1 = getLayout(grid.rows, true);
+				const visibleRows1 = layout1.inputEndRow - layout1.inputStartRow + 1;
+				overflow = calcScrollOverflow(
+					ti.text,
+					ti.scrollOffset,
+					grid.cols,
+					visibleRows1,
+				);
+			}
+
 			if (menuOpen && menuItems.length > 0) {
 				const labels = menuItems.map(mentionLabel);
 				const box = calcMenuPosition(
@@ -256,6 +285,10 @@ export function readMultilineInput(
 						paintDescBox(grid, desc, descBox, descTextStyle);
 					}
 				}
+			}
+			if (hasIndicator) {
+				const layout = getLayout(grid.rows, true);
+				paintScrollIndicator(grid, layout.indicatorRow, overflow);
 			}
 			paintStatusBar(grid, ti);
 			vp.render({ row: ti.cursorRow, col: ti.cursorCol });

@@ -22,21 +22,29 @@ const statusStyle = encodeStyle(-1, -1, DIM);
 
 /** 状态栏占用的行数 */
 export const STATUS_ROWS = 1;
+/** 滚动指示行占用的行数（仅在有溢出时存在） */
+export const INDICATOR_ROWS = 1;
 
 export interface Layout {
 	/** 输入区起始行（含） */
 	inputStartRow: number;
 	/** 输入区结束行（含） */
 	inputEndRow: number;
+	/** 滚动指示行（无则为 -1） */
+	indicatorRow: number;
 	/** 状态栏所在行 */
 	statusRow: number;
 }
 
-export function getLayout(gridRows: number): Layout {
+export function getLayout(gridRows: number, hasIndicator = false): Layout {
+	const statusRow = gridRows - 1;
+	const indicatorRow = hasIndicator ? statusRow - INDICATOR_ROWS : -1;
+	const inputEndRow = (hasIndicator ? indicatorRow : statusRow) - 1;
 	return {
 		inputStartRow: 0,
-		inputEndRow: gridRows - STATUS_ROWS - 1,
-		statusRow: gridRows - 1,
+		inputEndRow,
+		indicatorRow,
+		statusRow,
 	};
 }
 
@@ -131,4 +139,71 @@ export function paintStatusBar(grid: Grid, ti: TextInput): void {
 	else text = min;
 
 	writeStr(grid, layout.statusRow, 0, text, statusStyle);
+}
+
+// ── 滚动溢出指示 ──
+
+export interface ScrollOverflow {
+	/** 可见窗口上方被隐藏的视觉行数 */
+	above: number;
+	/** 可见窗口下方被隐藏的视觉行数 */
+	below: number;
+}
+
+/** 计算从 offset 起、文本前段占用的视觉行数（与 TextInput.paint 折行一致） */
+function visualLinesBefore(text: string, offset: number, cols: number): number {
+	const w = Math.max(1, cols);
+	let lines = 0;
+	let colW = 0;
+	const end = Math.min(offset, text.length);
+	for (let i = 0; i < end; i++) {
+		const ch = text[i] ?? "";
+		if (ch === "\n") {
+			lines++;
+			colW = 0;
+			continue;
+		}
+		const cw = charWidth(ch);
+		if (colW + cw > w) {
+			lines++;
+			colW = cw;
+		} else {
+			colW += cw;
+		}
+	}
+	return lines;
+}
+
+/**
+ * 计算输入区上下被隐藏的视觉行数。
+ *
+ * @param scrollOffset TextInput 当前视口首字符的 code unit offset
+ * @param visibleRows 输入区可见行数
+ */
+export function calcScrollOverflow(
+	text: string,
+	scrollOffset: number,
+	cols: number,
+	visibleRows: number,
+): ScrollOverflow {
+	const total = countVisualLines(text, cols);
+	const above = visualLinesBefore(text, scrollOffset, cols);
+	const shown = Math.max(0, Math.min(visibleRows, total - above));
+	const below = Math.max(0, total - above - shown);
+	return { above, below };
+}
+
+/** 绘制滚动指示行：`↑N 行  ↓M 行`，dim 样式。仅在 above/below 有值时绘制对应部分 */
+export function paintScrollIndicator(
+	grid: Grid,
+	row: number,
+	overflow: ScrollOverflow,
+): void {
+	if (row < 0 || row >= grid.rows) return;
+	clearRow(grid, row);
+	const parts: string[] = [];
+	if (overflow.above > 0) parts.push(`↑${overflow.above} 行`);
+	if (overflow.below > 0) parts.push(`↓${overflow.below} 行`);
+	if (parts.length === 0) return;
+	writeStr(grid, row, 0, parts.join("  "), statusStyle);
 }
