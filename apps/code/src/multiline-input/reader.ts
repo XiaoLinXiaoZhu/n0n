@@ -196,7 +196,7 @@ export function readMultilineInput(
 			}
 		}
 
-		function resizeGridIfNeeded(): void {
+		function resizeGridIfNeeded(force = false): void {
 			const menuReserve =
 				menuOpen && menuItems.length > 0
 					? Math.min(menuItems.length + 2, MENU_MAX_RESERVE)
@@ -209,7 +209,10 @@ export function readMultilineInput(
 				menuReserve,
 			);
 			const newCols = getCols();
-			if (newRows === gridRows && newCols === grid.cols) return;
+			// 编辑路径（force=false）：尺寸没变就跳过，避免无谓清屏闪烁。
+			// resize 路径（force=true）：终端尺寸已变，即使算出的 grid 尺寸相同也必须 remount——
+			// remount 内部的 \x1B[J 清除旧动态区残留并按回流高度重新对齐光标，缺它会导致清理不足。
+			if (!force && newRows === gridRows && newCols === grid.cols) return;
 			gridRows = newRows;
 			vp.remount(newCols, gridRows);
 		}
@@ -560,9 +563,15 @@ export function readMultilineInput(
 			};
 		}
 
-		// resize 处理：debounce 后重绘——render 内部 resizeGridIfNeeded 会按新列/行 remount。
-		// 拖动调整窗口时高频触发，debounce 300ms 仅在停止后重绘一次，避免闪烁。
-		const onResize = debounce(() => render(), 300);
+		// resize 处理：debounce 后先强制 remount 再重绘。
+		// 终端尺寸变化时即使算出的 grid 尺寸相同也必须 remount——清除旧动态区残留并按回流
+		// 高度重新对齐光标（参照 terminal-renderer 的 centered demo）。render 内的
+		// resizeGridIfNeeded(默认 false) 此时尺寸已对齐会 return，不重复 remount。
+		// 拖动调整窗口时高频触发，debounce 300ms 仅在停止后执行一次，避免闪烁。
+		const onResize = debounce(() => {
+			resizeGridIfNeeded(true);
+			render();
+		}, 300);
 		out.on("resize", onResize);
 		const prevDisconnect = disconnectStdin;
 		disconnectStdin = () => {
