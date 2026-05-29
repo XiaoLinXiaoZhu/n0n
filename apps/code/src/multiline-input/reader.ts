@@ -287,6 +287,9 @@ export function readMultilineInput(
 				);
 			}
 
+			// 侧边框花纹作为底层背景先绘制，菜单/desc 浮层随后画在其上
+			paintSideFrame(grid, colSpan);
+
 			if (menuOpen && menuItems.length > 0) {
 				const labels = menuItems.map(mentionLabel);
 				const menuMaxWidth = Math.min(MENU_MAX_WIDTH, colSpan.width);
@@ -356,7 +359,6 @@ export function readMultilineInput(
 			}
 
 			paintStatusBar(grid, ti, finalLayout.statusRow, colSpan.startCol);
-			paintSideFrame(grid, colSpan);
 			vp.render({ row: ti.cursorRow, col: ti.cursorCol });
 			vp.endSync();
 		}
