@@ -19,6 +19,7 @@ import {
 	Viewport,
 } from "@xlxz/terminal-renderer";
 import {
+	calcDescBox,
 	calcMenuPosition,
 	detectMention,
 	filterMentions,
@@ -26,6 +27,7 @@ import {
 	type MentionItem,
 	maxLabelWidth,
 	mentionLabel,
+	paintDescBox,
 	paintMenu,
 	setupMenuOwnership,
 } from "./mention.ts";
@@ -51,6 +53,8 @@ const TERM_RESERVE = 2;
 
 const OWNER_INPUT = "input";
 const OWNER_MENU = "menu";
+const OWNER_DESC = "desc";
+const descTextStyle = encodeStyle(-1, -1, 0);
 /** 菜单候选框最大宽度 */
 const MENU_MAX_WIDTH = 40;
 const menuHighlightStyle = encodeStyle(0, 6, 0);
@@ -206,6 +210,10 @@ export function readMultilineInput(
 				);
 				if (box) {
 					setupMenuOwnership(grid, box, OWNER_MENU);
+					const descBox = calcDescBox(box, grid.cols);
+					if (descBox) {
+						setupMenuOwnership(grid, descBox, OWNER_DESC);
+					}
 					ti.paint(grid, OWNER_INPUT);
 					paintMenu(
 						grid,
@@ -216,6 +224,10 @@ export function readMultilineInput(
 						menuNormalStyle,
 						0,
 					);
+					if (descBox) {
+						const desc = menuItems[menuSelected]?.description ?? "";
+						paintDescBox(grid, desc, descBox, descTextStyle);
+					}
 				}
 			}
 			paintStatusBar(grid, ti);

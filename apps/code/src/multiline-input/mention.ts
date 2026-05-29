@@ -154,7 +154,12 @@ export function calcMenuPosition(
 /** 为菜单区域设置 ownership（覆盖输入区） */
 export function setupMenuOwnership(
 	grid: Grid,
-	box: MenuBox,
+	box: {
+		anchorRow: number;
+		anchorCol: number;
+		boxWidth: number;
+		boxHeight: number;
+	},
 	ownerId: string,
 ): void {
 	for (
@@ -244,4 +249,127 @@ export function maxLabelWidth(labels: string[], cap: number): number {
 	let max = 0;
 	for (const l of labels) max = Math.max(max, stringWidth(l));
 	return Math.min(Math.max(max, 8), cap);
+}
+
+// ── desc 描述框（与菜单联动）──
+
+export interface DescBox {
+	anchorRow: number;
+	anchorCol: number;
+	boxWidth: number;
+	boxHeight: number;
+}
+
+/** 描述框最大宽度 */
+export const DESC_MAX_WIDTH = 34;
+
+/**
+ * 计算描述框位置：紧贴菜单框，优先右侧，空间不够则左侧，都不够返回 null。
+ * 高度与菜单框一致，顶部对齐。
+ */
+export function calcDescBox(menu: MenuBox, gridCols: number): DescBox | null {
+	const menuRight = menu.anchorCol + menu.boxWidth;
+	const rightSpace = gridCols - menuRight;
+	const leftSpace = menu.anchorCol;
+
+	if (rightSpace >= 8) {
+		const boxWidth = Math.min(rightSpace, DESC_MAX_WIDTH);
+		return {
+			anchorRow: menu.anchorRow,
+			anchorCol: menuRight,
+			boxWidth,
+			boxHeight: menu.boxHeight,
+		};
+	}
+	if (leftSpace >= 8) {
+		const boxWidth = Math.min(leftSpace, DESC_MAX_WIDTH);
+		return {
+			anchorRow: menu.anchorRow,
+			anchorCol: menu.anchorCol - boxWidth,
+			boxWidth,
+			boxHeight: menu.boxHeight,
+		};
+	}
+	return null;
+}
+
+/** 将文本按显示宽度折行到指定列宽（处理 CJK 宽字符），返回视觉行数组 */
+export function wrapText(text: string, width: number): string[] {
+	const lines: string[] = [];
+	const w = Math.max(1, width);
+	for (const para of text.split("\n")) {
+		let cur = "";
+		let curW = 0;
+		for (const ch of para) {
+			const cw = charWidth(ch);
+			if (curW + cw > w) {
+				lines.push(cur);
+				cur = ch;
+				curW = cw;
+			} else {
+				cur += ch;
+				curW += cw;
+			}
+		}
+		lines.push(cur);
+	}
+	return lines;
+}
+
+/** 绘制带边框的描述框，内容折行；超过框高的行被截断 */
+export function paintDescBox(
+	grid: Grid,
+	text: string,
+	box: DescBox,
+	textStyle: number,
+): void {
+	const { anchorRow, anchorCol, boxWidth, boxHeight } = box;
+	const topRow = anchorRow;
+	const botRow = anchorRow + boxHeight - 1;
+	const rightCol = Math.min(anchorCol + boxWidth - 1, grid.cols - 1);
+	const contentWidth = rightCol - anchorCol - 1;
+	if (contentWidth < 1) return;
+
+	if (topRow >= 0 && topRow < grid.rows) {
+		grid.setChar(topRow, anchorCol, "┌", BORDER_STYLE);
+		grid.setChar(topRow, rightCol, "┐", BORDER_STYLE);
+		for (let c = anchorCol + 1; c < rightCol; c++)
+			grid.setChar(topRow, c, "─", BORDER_STYLE);
+	}
+	if (botRow > topRow && botRow < grid.rows) {
+		grid.setChar(botRow, anchorCol, "└", BORDER_STYLE);
+		grid.setChar(botRow, rightCol, "┘", BORDER_STYLE);
+		for (let c = anchorCol + 1; c < rightCol; c++)
+			grid.setChar(botRow, c, "─", BORDER_STYLE);
+	}
+
+	const wrapped = wrapText(text, contentWidth);
+	const contentRows = boxHeight - 2;
+	for (let i = 0; i < contentRows; i++) {
+		const row = topRow + 1 + i;
+		if (row >= grid.rows || row >= botRow) break;
+		grid.setChar(row, anchorCol, "│", BORDER_STYLE);
+		grid.setChar(row, rightCol, "│", BORDER_STYLE);
+		const line = wrapped[i] ?? "";
+		let charIdx = 0;
+		const chars = [...line];
+		for (let c = anchorCol + 1; c < rightCol; c++) {
+			if (charIdx < chars.length) {
+				const ch = chars[charIdx] ?? "";
+				const cw = charWidth(ch);
+				if (cw === 2 && c + 1 < rightCol) {
+					grid.setWideChar(row, c, ch, textStyle);
+					c++;
+					charIdx++;
+				} else if (cw === 2) {
+					grid.setChar(row, c, " ", textStyle);
+				} else {
+					grid.setChar(row, c, ch, textStyle);
+					charIdx++;
+				}
+			} else {
+				grid.setChar(row, c, " ", textStyle);
+			}
+		}
+	}
 }
