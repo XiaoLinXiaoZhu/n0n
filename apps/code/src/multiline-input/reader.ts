@@ -12,6 +12,7 @@
  */
 
 import {
+	debounce,
 	encodeStyle,
 	Grid,
 	parseKey,
@@ -207,9 +208,10 @@ export function readMultilineInput(
 				maxInputRows,
 				menuReserve,
 			);
-			if (newRows === gridRows) return;
+			const newCols = getCols();
+			if (newRows === gridRows && newCols === grid.cols) return;
 			gridRows = newRows;
-			vp.remount(getCols(), gridRows);
+			vp.remount(newCols, gridRows);
 		}
 
 		function refreshMention(): void {
@@ -558,8 +560,9 @@ export function readMultilineInput(
 			};
 		}
 
-		// resize 处理
-		const onResize = () => render();
+		// resize 处理：debounce 后重绘——render 内部 resizeGridIfNeeded 会按新列/行 remount。
+		// 拖动调整窗口时高频触发，debounce 300ms 仅在停止后重绘一次，避免闪烁。
+		const onResize = debounce(() => render(), 300);
 		out.on("resize", onResize);
 		const prevDisconnect = disconnectStdin;
 		disconnectStdin = () => {
