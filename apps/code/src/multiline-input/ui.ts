@@ -1,8 +1,11 @@
 /**
  * multiline-input UI — 布局计算 + 绘制
  *
- * 封装动态区域的布局（输入区 + 状态栏）、宽字符写入、状态栏绘制（含宽度降级）。
- * reader.ts 负责输入循环与状态机，绘制细节集中在此。
+ * 封装动态区域的布局（输入区 + 状态栏 + 上下滚动指示器）、宽字符写入、
+ * 状态栏绘制（含宽度降级）。reader.ts 负责输入循环与状态机，绘制细节集中在此。
+ *
+ * 指示器布局：上溢出指示行贴输入区顶部、下溢出指示行贴输入区底部，
+ * 各自独立出现/隐藏（最多占 2 行）。
  */
 
 import {
@@ -22,28 +25,43 @@ const statusStyle = encodeStyle(-1, -1, DIM);
 
 /** 状态栏占用的行数 */
 export const STATUS_ROWS = 1;
-/** 滚动指示行占用的行数（仅在有溢出时存在） */
-export const INDICATOR_ROWS = 1;
+/** 滚动指示行最多占用的行数（上 + 下各 1 行） */
+export const INDICATOR_ROWS = 2;
 
 export interface Layout {
 	/** 输入区起始行（含） */
 	inputStartRow: number;
 	/** 输入区结束行（含） */
 	inputEndRow: number;
-	/** 滚动指示行（无则为 -1） */
-	indicatorRow: number;
+	/** 上方溢出指示行（无则为 -1） */
+	aboveIndicatorRow: number;
+	/** 下方溢出指示行（无则为 -1） */
+	belowIndicatorRow: number;
 	/** 状态栏所在行 */
 	statusRow: number;
 }
 
-export function getLayout(gridRows: number, hasIndicator = false): Layout {
+/**
+ * 计算各区域的行范围。
+ *
+ * 上方指示行（如有）在 row 0；下方指示行（如有）紧贴状态栏上方。
+ * 输入区夹在上下指示行之间。
+ */
+export function getLayout(
+	gridRows: number,
+	hasAbove: boolean,
+	hasBelow: boolean,
+): Layout {
 	const statusRow = gridRows - 1;
-	const indicatorRow = hasIndicator ? statusRow - INDICATOR_ROWS : -1;
-	const inputEndRow = (hasIndicator ? indicatorRow : statusRow) - 1;
+	const aboveIndicatorRow = hasAbove ? 0 : -1;
+	const inputStartRow = hasAbove ? 1 : 0;
+	const belowIndicatorRow = hasBelow ? statusRow - 1 : -1;
+	const inputEndRow = (hasBelow ? belowIndicatorRow : statusRow) - 1;
 	return {
-		inputStartRow: 0,
+		inputStartRow,
 		inputEndRow,
-		indicatorRow,
+		aboveIndicatorRow,
+		belowIndicatorRow,
 		statusRow,
 	};
 }
@@ -120,9 +138,12 @@ function cursorLineCol(ti: TextInput): { line: number; col: number } {
  *  - 简写：`C:N · L:C · Ln:M`
  *  - 最小：`L:C`
  */
-export function paintStatusBar(grid: Grid, ti: TextInput): void {
-	const layout = getLayout(grid.rows);
-	clearRow(grid, layout.statusRow);
+export function paintStatusBar(
+	grid: Grid,
+	ti: TextInput,
+	statusRow: number,
+): void {
+	clearRow(grid, statusRow);
 
 	const chars = ti.text.length;
 	const lines = ti.text.split("\n").length;
@@ -138,7 +159,7 @@ export function paintStatusBar(grid: Grid, ti: TextInput): void {
 	else if (stringWidth(short) <= cols) text = short;
 	else text = min;
 
-	writeStr(grid, layout.statusRow, 0, text, statusStyle);
+	writeStr(grid, statusRow, 0, text, statusStyle);
 }
 
 // ── 滚动溢出指示 ──
@@ -193,19 +214,26 @@ export function calcScrollOverflow(
 	return { above, below };
 }
 
-/** 绘制滚动指示行：`↑N 行  ↓M 行`，dim 样式。仅在 above/below 有值时绘制对应部分 */
-export function paintScrollIndicator(
+/** 绘制上方溢出指示行：`↑N 行`，dim 样式 */
+export function paintAboveIndicator(
 	grid: Grid,
 	row: number,
-	overflow: ScrollOverflow,
+	count: number,
 ): void {
-	if (row < 0 || row >= grid.rows) return;
+	if (row < 0 || row >= grid.rows || count <= 0) return;
 	clearRow(grid, row);
-	const parts: string[] = [];
-	if (overflow.above > 0) parts.push(`↑${overflow.above} 行`);
-	if (overflow.below > 0) parts.push(`↓${overflow.below} 行`);
-	if (parts.length === 0) return;
-	writeStr(grid, row, 0, parts.join("  "), statusStyle);
+	writeStr(grid, row, 0, `↑${count} 行`, statusStyle);
+}
+
+/** 绘制下方溢出指示行：`↓N 行`，dim 样式 */
+export function paintBelowIndicator(
+	grid: Grid,
+	row: number,
+	count: number,
+): void {
+	if (row < 0 || row >= grid.rows || count <= 0) return;
+	clearRow(grid, row);
+	writeStr(grid, row, 0, `↓${count} 行`, statusStyle);
 }
 
 // ── 列布局（align / max-width）──

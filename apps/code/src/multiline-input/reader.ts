@@ -8,7 +8,7 @@
  * → Promise<{text, lineCount} | null>，使 repl 调用点零改动。
  *
  * 阶段一：对等替换（编辑/粘贴/提交/中断/宽字符/动态高度）。
- * 状态栏、滚动指示器、@mention 菜单见后续阶段。
+ * 状态栏、上下滚动指示器、@mention 菜单见后续阶段。
  */
 
 import {
@@ -38,7 +38,9 @@ import {
 	calcScrollOverflow,
 	countVisualLines,
 	getLayout,
-	paintScrollIndicator,
+	INDICATOR_ROWS,
+	paintAboveIndicator,
+	paintBelowIndicator,
 	paintStatusBar,
 	STATUS_ROWS,
 } from "./ui.ts";
@@ -60,7 +62,7 @@ const OWNER_INPUT = "input";
 const OWNER_MENU = "menu";
 const OWNER_DESC = "desc";
 
-const DEFAULT_EDITOR_CONFIG: UserInputConfig = {
+const _DEFAULT_EDITOR_CONFIG: UserInputConfig = {
 	maxWidth: null,
 	maxHeight: null,
 	align: "left",
@@ -93,7 +95,7 @@ export interface MultilineInputResult {
 	lineCount: number;
 }
 
-/** 根据文本和终端尺寸计算输入区所需的 grid 行数 */
+/** 根据文本和终端尺寸计算输入区所需的 grid 行数（含状态栏和指标行预留） */
 function calcGridRows(
 	text: string,
 	termCols: number,
@@ -104,13 +106,20 @@ function calcGridRows(
 		MIN_INPUT_ROWS,
 		Math.min(MAX_INPUT_ROWS, termRows - TERM_RESERVE),
 	);
-	const needed = countVisualLines(text, termCols) + STATUS_ROWS;
-	const base = Math.max(MIN_INPUT_ROWS + STATUS_ROWS, Math.min(needed, maxRows));
+	const needed =
+		countVisualLines(text, termCols) + STATUS_ROWS + INDICATOR_ROWS;
+	const base = Math.max(
+		MIN_INPUT_ROWS + STATUS_ROWS,
+		Math.min(needed, maxRows),
+	);
 	if (menuReserveRows <= 0) return base;
 	// 菜单打开时，保证 grid 高度能容纳「输入文本 + 菜单 + 状态栏」，
 	// 但整体仍受终端可见高度硬约束（动态区高度 ≤ termRows - TERM_RESERVE）。
 	const withMenu = needed + menuReserveRows;
-	const hardCap = Math.max(MIN_INPUT_ROWS + STATUS_ROWS, termRows - TERM_RESERVE);
+	const hardCap = Math.max(
+		MIN_INPUT_ROWS + STATUS_ROWS,
+		termRows - TERM_RESERVE,
+	);
 	return Math.max(base, Math.min(withMenu, hardCap));
 }
 
@@ -160,8 +169,8 @@ export function readMultilineInput(
 
 		let disconnectStdin: (() => void) | null = null;
 
-		function setupOwnership(hasIndicator: boolean): void {
-			const layout = getLayout(grid.rows, hasIndicator);
+		function setupOwnership(hasAbove: boolean, hasBelow: boolean): void {
+			const layout = getLayout(grid.rows, hasAbove, hasBelow);
 			for (let r = 0; r < grid.rows; r++) {
 				for (let c = 0; c < grid.cols; c++) {
 					grid.setOwner(r, c, "");
@@ -179,12 +188,7 @@ export function readMultilineInput(
 				menuOpen && menuItems.length > 0
 					? Math.min(menuItems.length + 2, MENU_MAX_RESERVE)
 					: 0;
-			const newRows = calcGridRows(
-				ti.text,
-				getCols(),
-				getRows(),
-				menuReserve,
-			);
+			const newRows = calcGridRows(ti.text, getCols(), getRows(), menuReserve);
 			if (newRows === gridRows) return;
 			gridRows = newRows;
 			vp.remount(getCols(), gridRows);
@@ -230,10 +234,10 @@ export function readMultilineInput(
 			ti.decorations = computeMentionDecorations(ti.text);
 
 			// 第一遍：无指示行布局，确定 scrollOffset 与可见行数，算溢出
-			setupOwnership(false);
+			setupOwnership(false, false);
 			ti.ensureCursorVisible(grid, OWNER_INPUT);
 			ti.paint(grid, OWNER_INPUT);
-			const layout0 = getLayout(grid.rows, false);
+			const layout0 = getLayout(grid.rows, false, false);
 			const visibleRows0 = layout0.inputEndRow - layout0.inputStartRow + 1;
 			let overflow = calcScrollOverflow(
 				ti.text,
@@ -241,14 +245,16 @@ export function readMultilineInput(
 				grid.cols,
 				visibleRows0,
 			);
-			const hasIndicator = overflow.above > 0 || overflow.below > 0;
+			const hasAbove = overflow.above > 0;
+			const hasBelow = overflow.below > 0;
+			const hasIndicator = hasAbove || hasBelow;
 
-			// 第二遍：若需指示行，输入区让出 1 行，重排并重算溢出
+			// 第二遍：若需指示行，输入区让出对应行数，重排并重算溢出
 			if (hasIndicator) {
-				setupOwnership(true);
+				setupOwnership(hasAbove, hasBelow);
 				ti.ensureCursorVisible(grid, OWNER_INPUT);
 				ti.paint(grid, OWNER_INPUT);
-				const layout1 = getLayout(grid.rows, true);
+				const layout1 = getLayout(grid.rows, hasAbove, hasBelow);
 				const visibleRows1 = layout1.inputEndRow - layout1.inputStartRow + 1;
 				overflow = calcScrollOverflow(
 					ti.text,
@@ -295,11 +301,25 @@ export function readMultilineInput(
 					}
 				}
 			}
-			if (hasIndicator) {
-				const layout = getLayout(grid.rows, true);
-				paintScrollIndicator(grid, layout.indicatorRow, overflow);
+
+			// 绘制上下指示行（各自独立出现/隐藏）
+			const finalLayout = getLayout(grid.rows, hasAbove, hasBelow);
+			if (hasAbove) {
+				paintAboveIndicator(
+					grid,
+					finalLayout.aboveIndicatorRow,
+					overflow.above,
+				);
 			}
-			paintStatusBar(grid, ti);
+			if (hasBelow) {
+				paintBelowIndicator(
+					grid,
+					finalLayout.belowIndicatorRow,
+					overflow.below,
+				);
+			}
+
+			paintStatusBar(grid, ti, finalLayout.statusRow);
 			vp.render({ row: ti.cursorRow, col: ti.cursorCol });
 			vp.endSync();
 		}

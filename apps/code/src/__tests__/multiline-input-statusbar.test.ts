@@ -1,13 +1,16 @@
 /**
- * 状态栏宽度降级 + 滚动溢出指示测试
+ * 状态栏宽度降级 + 上下滚动溢出指示测试
+ *
+ * 上下指示器分开：上溢出贴输入区顶部、下溢出贴输入区底部，各自独立出现/隐藏。
  */
 
-import { Grid, TextInput } from "@xlxz/terminal-renderer";
 import { describe, expect, test } from "bun:test";
+import { Grid, TextInput } from "@xlxz/terminal-renderer";
 import {
 	calcScrollOverflow,
 	getLayout,
-	paintScrollIndicator,
+	paintAboveIndicator,
+	paintBelowIndicator,
 	paintStatusBar,
 } from "../multiline-input/ui.ts";
 
@@ -28,8 +31,9 @@ function paintAt(cols: number, text: string): string {
 	const ti = new TextInput();
 	ti.text = text;
 	ti.cursorOffset = text.length;
-	paintStatusBar(grid, ti);
-	return readRow(grid as unknown as GridLike, getLayout(rows).statusRow);
+	const layout = getLayout(rows, false, false);
+	paintStatusBar(grid, ti, layout.statusRow);
+	return readRow(grid as unknown as GridLike, layout.statusRow);
 }
 
 describe("状态栏宽度降级", () => {
@@ -46,24 +50,48 @@ describe("状态栏宽度降级", () => {
 	});
 });
 
-describe("getLayout 指示行", () => {
-	test("无指示行时 indicatorRow 为 -1，输入区到状态栏上一行", () => {
-		const l = getLayout(5, false);
+describe("getLayout 上下指示行独立", () => {
+	test("无指示行时输入区占满状态栏上方所有行", () => {
+		const l = getLayout(5, false, false);
 		expect(l).toEqual({
 			inputStartRow: 0,
 			inputEndRow: 3,
-			indicatorRow: -1,
+			aboveIndicatorRow: -1,
+			belowIndicatorRow: -1,
 			statusRow: 4,
 		});
 	});
 
-	test("有指示行时输入区让出 1 行，指示行在状态栏上方", () => {
-		const l = getLayout(5, true);
+	test("仅上溢出：上指示行在 row 0，输入区从 row 1 开始", () => {
+		const l = getLayout(5, true, false);
+		expect(l).toEqual({
+			inputStartRow: 1,
+			inputEndRow: 3,
+			aboveIndicatorRow: 0,
+			belowIndicatorRow: -1,
+			statusRow: 4,
+		});
+	});
+
+	test("仅下溢出：下指示行在状态栏上方，输入区缩 1 行", () => {
+		const l = getLayout(5, false, true);
 		expect(l).toEqual({
 			inputStartRow: 0,
 			inputEndRow: 2,
-			indicatorRow: 3,
+			aboveIndicatorRow: -1,
+			belowIndicatorRow: 3,
 			statusRow: 4,
+		});
+	});
+
+	test("上下同时溢出：各占 1 行", () => {
+		const l = getLayout(6, true, true);
+		expect(l).toEqual({
+			inputStartRow: 1,
+			inputEndRow: 3,
+			aboveIndicatorRow: 0,
+			belowIndicatorRow: 4,
+			statusRow: 5,
 		});
 	});
 });
@@ -92,24 +120,40 @@ describe("calcScrollOverflow", () => {
 	});
 });
 
-describe("paintScrollIndicator", () => {
-	function readIndicator(cols: number, above: number, below: number): string {
+describe("上下指示器绘制", () => {
+	function readIndicatorLine(
+		cols: number,
+		paint: (grid: Grid, row: number) => void,
+	): string {
 		const grid = Grid.create(cols, 3);
-		paintScrollIndicator(grid, 1, { above, below });
+		paint(grid, 1);
 		let s = "";
 		for (let c = 0; c < cols; c++) s += grid.charAt(1, c);
 		return s.replace(/\s+$/, "");
 	}
 
-	test("上下都有溢出时同时显示", () => {
-		expect(readIndicator(40, 3, 2)).toBe("↑3 行  ↓2 行");
+	test("上方指示行：↑N 行", () => {
+		expect(readIndicatorLine(40, (g, r) => paintAboveIndicator(g, r, 3))).toBe(
+			"↑3 行",
+		);
 	});
 
-	test("仅下溢出时只显示下", () => {
-		expect(readIndicator(40, 0, 2)).toBe("↓2 行");
+	test("下方指示行：↓N 行", () => {
+		expect(readIndicatorLine(40, (g, r) => paintBelowIndicator(g, r, 2))).toBe(
+			"↓2 行",
+		);
 	});
 
-	test("无溢出时整行为空", () => {
-		expect(readIndicator(40, 0, 0)).toBe("");
+	test("count 为 0 时不上色", () => {
+		expect(readIndicatorLine(40, (g, r) => paintAboveIndicator(g, r, 0))).toBe(
+			"",
+		);
+	});
+
+	test("行号越界不上色", () => {
+		const grid = Grid.create(40, 3);
+		paintAboveIndicator(grid, -1, 3);
+		paintAboveIndicator(grid, 99, 3);
+		// 不应抛异常
 	});
 });
