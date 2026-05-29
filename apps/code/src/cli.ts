@@ -21,6 +21,15 @@ import { version } from "../package.json";
 
 const args = process.argv.slice(2);
 
+// ── 全局 SIGINT 守卫 ──
+// 屏蔽 Ctrl+C 默认的进程终止：本程序在各阶段（输入、agent 执行、子进程管理）
+// 都需要自己掌控退出时机与清理逻辑（如未来代码执行时需先优雅终止子进程），
+// 不能被默认 SIGINT 中途打断。退出统一走 `exit` 命令 / Ctrl+Q 中断 / 关闭终端。
+// 注册一个 no-op listener 即可阻止 Node 的默认终止行为。
+process.on("SIGINT", () => {
+	// 故意不做任何事——吞掉 Ctrl+C，避免进程被默认信号处理终止。
+});
+
 // ── --version / -v ──
 if (args.includes("--version") || args.includes("-v")) {
 	console.log(`n0n v${version}`);

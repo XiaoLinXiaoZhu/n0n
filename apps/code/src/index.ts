@@ -29,6 +29,10 @@ import {
 	resolveBasePaths,
 } from "@n0n/shared";
 import { z } from "zod";
+import {
+	type UserInputConfig,
+	UserInputConfigSchema,
+} from "./multiline-input/config.ts";
 import type { NotifyConfig } from "./notify-sound.ts";
 
 // ── 配置 schema ──
@@ -48,6 +52,7 @@ const codeConfigSchema = z.object({
 		}),
 		llm: ProviderConfigSchema,
 		editor: ProviderConfigSchema,
+		user_input: UserInputConfigSchema,
 	}),
 });
 
@@ -66,6 +71,11 @@ default_exec_waitfor = 120
 
 [settings.security]
 blocked_commands = []
+
+[settings.user_input]
+max_width = -1
+max_height = -1
+align = "left"
 `;
 
 // ── 加载配置 ──
@@ -338,6 +348,7 @@ await startCodeRepl(paths, {
 	client,
 	toolsConfig,
 	agentConfig: settings.agent,
+	userInputConfig: settings.user_input,
 	notifyConfig,
 	expandExec,
 });
