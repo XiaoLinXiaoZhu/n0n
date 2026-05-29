@@ -207,3 +207,36 @@ export function paintScrollIndicator(
 	if (parts.length === 0) return;
 	writeStr(grid, row, 0, parts.join("  "), statusStyle);
 }
+
+// ── 列布局（align / max-width）──
+
+export type EditorAlign = "left" | "center" | "right";
+
+export interface ColSpan {
+	/** 输入区起始列（含） */
+	startCol: number;
+	/** 输入区列宽 */
+	width: number;
+	/** 输入区结束列（不含） */
+	endCol: number;
+}
+
+/**
+ * 根据终端列数、最大宽度、对齐方式计算输入区的列起止。
+ * maxWidth 为 null 或 ≤0 表示无限制（占满终端宽度）。
+ * maxWidth 超过终端宽度时退化为占满。
+ */
+export function calcColSpan(
+	termCols: number,
+	maxWidth: number | null,
+	align: EditorAlign,
+): ColSpan {
+	const width =
+		maxWidth && maxWidth > 0 ? Math.min(maxWidth, termCols) : termCols;
+	let startCol: number;
+	if (align === "center") startCol = Math.floor((termCols - width) / 2);
+	else if (align === "right") startCol = termCols - width;
+	else startCol = 0;
+	if (startCol < 0) startCol = 0;
+	return { startCol, width, endCol: startCol + width };
+}

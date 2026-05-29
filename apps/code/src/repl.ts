@@ -19,6 +19,7 @@ import {
 	PlainRenderer,
 } from "@n0n/core";
 import { readMultilineInput } from "./multiline-input/index.ts";
+import type { UserInputConfig } from "./multiline-input/config.ts";
 import {
 	type BaseWorkspacePaths,
 	loadConversation,
@@ -46,6 +47,7 @@ export interface CodeReplOptions {
 	client: LLMClient;
 	toolsConfig: ToolsConfig;
 	agentConfig: AgentConfig;
+	userInputConfig?: UserInputConfig;
 	notifyConfig?: NotifyConfig;
 	expandExec?: boolean;
 }
@@ -144,6 +146,7 @@ export async function startCodeRepl(
 		saveEveryLoop = false,
 		promptVersion,
 		expandExec = false,
+		userInputConfig,
 	} = options;
 
 	// 基础系统提示词（稳定前缀，不含 agents.md 和环境信息）
@@ -245,6 +248,7 @@ export async function startCodeRepl(
 		const result = await readMultilineInput({
 			prompt: `${label.user()}`,
 			hint: style.gray("(Alt+Enter 提交)"),
+			editor: userInputConfig,
 			connectStdin: (handler) => {
 				stdin.dataHandler = handler;
 				stdin.phase = "input";

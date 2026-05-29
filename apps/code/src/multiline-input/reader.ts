@@ -18,6 +18,7 @@ import {
 	TextInput,
 	Viewport,
 } from "@xlxz/terminal-renderer";
+import type { UserInputConfig } from "./config.ts";
 import {
 	calcDescBox,
 	calcMenuPosition,
@@ -58,6 +59,12 @@ const TERM_RESERVE = 2;
 const OWNER_INPUT = "input";
 const OWNER_MENU = "menu";
 const OWNER_DESC = "desc";
+
+const DEFAULT_EDITOR_CONFIG: UserInputConfig = {
+	maxWidth: null,
+	maxHeight: null,
+	align: "left",
+};
 const descTextStyle = encodeStyle(-1, -1, 0);
 /** 菜单候选框最大宽度 */
 const MENU_MAX_WIDTH = 40;
@@ -69,6 +76,8 @@ const menuNormalStyle = encodeStyle(-1, -1, 0);
 export interface MultilineInputOptions {
 	prompt?: string;
 	hint?: string;
+	/** 编辑器配置（最大宽高、对齐）。未提供时用内部默认（全部无限制、左对齐）。 */
+	editor?: UserInputConfig;
 	output?: NodeJS.WriteStream;
 	/**
 	 * 外部 stdin 数据源注入点。提供时本函数不自管 stdin（不设 raw mode、
@@ -406,7 +415,8 @@ export function readMultilineInput(
 						submit();
 						return;
 					}
-					// 其他 ctrl 忽略
+					// 其他 ctrl 一律忽略——尤其 Ctrl+C（\x03）在 raw mode 下作为数据到达，
+					// 这里吞掉以阻止其终止进程（退出走 exit 命令 / Ctrl+Q）。
 					return;
 				case "enter":
 					if (key.alt) {
