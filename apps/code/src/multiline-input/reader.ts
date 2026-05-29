@@ -11,7 +11,24 @@
  * 状态栏、滚动指示器、@mention 菜单见后续阶段。
  */
 
-import { Grid, parseKey, TextInput, Viewport } from "@xlxz/terminal-renderer";
+import {
+	encodeStyle,
+	Grid,
+	parseKey,
+	TextInput,
+	Viewport,
+} from "@xlxz/terminal-renderer";
+import {
+	calcMenuPosition,
+	detectMention,
+	filterMentions,
+	loadMentionItems,
+	type MentionItem,
+	maxLabelWidth,
+	mentionLabel,
+	paintMenu,
+	setupMenuOwnership,
+} from "./mention.ts";
 import {
 	countVisualLines,
 	getLayout,
@@ -33,6 +50,11 @@ const MAX_INPUT_ROWS = 20;
 const TERM_RESERVE = 2;
 
 const OWNER_INPUT = "input";
+const OWNER_MENU = "menu";
+/** 菜单候选框最大宽度 */
+const MENU_MAX_WIDTH = 40;
+const menuHighlightStyle = encodeStyle(0, 6, 0);
+const menuNormalStyle = encodeStyle(-1, -1, 0);
 
 export interface MultilineInputOptions {
 	prompt?: string;
@@ -76,6 +98,17 @@ export function readMultilineInput(
 		const getRows = (): number => out.rows || 24;
 
 		const ti = new TextInput();
+		let allMentions: MentionItem[] = [];
+		let menuOpen = false;
+		let menuItems: MentionItem[] = [];
+		let menuSelected = 0;
+		let menuQuery = "";
+		// 异步加载 skill 候选（失败则补全不可用，不影响输入）
+		loadMentionItems()
+			.then((items) => {
+				allMentions = items;
+			})
+			.catch(() => {});
 		let gridRows = calcGridRows("", getCols(), getRows());
 		const grid = Grid.create(getCols(), gridRows);
 		const vp = new Viewport(grid, out);
@@ -122,12 +155,69 @@ export function readMultilineInput(
 			vp.remount(getCols(), gridRows);
 		}
 
+		function refreshMention(): void {
+			const ctx = detectMention(ti.text, ti.cursorOffset);
+			if (ctx && allMentions.length > 0) {
+				menuQuery = ctx.query;
+				menuItems = filterMentions(allMentions, menuQuery);
+				if (menuItems.length > 0) {
+					menuOpen = true;
+					if (menuSelected >= menuItems.length) menuSelected = 0;
+					return;
+				}
+			}
+			menuOpen = false;
+			menuItems = [];
+			menuSelected = 0;
+		}
+
+		function acceptMention(): void {
+			const item = menuItems[menuSelected];
+			if (!item) return;
+			const ctx = detectMention(ti.text, ti.cursorOffset);
+			if (!ctx) return;
+			// 当前逻辑行从 lineStart 到光标处替换为 @name
+			const head = ti.text.slice(0, ctx.lineStart);
+			const tail = ti.text.slice(ti.cursorOffset);
+			const inserted = `@${item.name}`;
+			ti.text = head + inserted + tail;
+			ti.cursorOffset = head.length + inserted.length;
+			ti.stickyCol = null;
+			menuOpen = false;
+			menuItems = [];
+			menuSelected = 0;
+		}
+
 		function render(): void {
 			vp.beginSync();
 			resizeGridIfNeeded();
 			setupOwnership();
 			ti.ensureCursorVisible(grid, OWNER_INPUT);
 			ti.paint(grid, OWNER_INPUT);
+			if (menuOpen && menuItems.length > 0) {
+				const labels = menuItems.map(mentionLabel);
+				const box = calcMenuPosition(
+					grid.rows,
+					grid.cols,
+					ti.cursorRow,
+					ti.cursorCol,
+					menuItems.length,
+					maxLabelWidth(labels, MENU_MAX_WIDTH),
+				);
+				if (box) {
+					setupMenuOwnership(grid, box, OWNER_MENU);
+					ti.paint(grid, OWNER_INPUT);
+					paintMenu(
+						grid,
+						labels,
+						menuSelected,
+						box,
+						menuHighlightStyle,
+						menuNormalStyle,
+						0,
+					);
+				}
+			}
 			paintStatusBar(grid, ti);
 			vp.render({ row: ti.cursorRow, col: ti.cursorCol });
 			vp.endSync();
@@ -188,6 +278,50 @@ export function readMultilineInput(
 				// 粘贴期间所有数据原样累积（包括 char / enter / 多字节）
 				pasteBuffer += data;
 				return;
+			}
+
+			if (menuOpen) {
+				switch (key.type) {
+					case "up":
+						menuSelected =
+							(menuSelected - 1 + menuItems.length) % menuItems.length;
+						render();
+						return;
+					case "down":
+						menuSelected = (menuSelected + 1) % menuItems.length;
+						render();
+						return;
+					case "enter":
+						if (key.alt) {
+							submit();
+							return;
+						}
+						acceptMention();
+						render();
+						return;
+					case "tab":
+						acceptMention();
+						render();
+						return;
+					case "escape":
+						menuOpen = false;
+						menuItems = [];
+						menuSelected = 0;
+						render();
+						return;
+					case "ctrl":
+						if (key.key === "q") {
+							abort();
+							return;
+						}
+						if (key.key === "d") {
+							submit();
+							return;
+						}
+						return;
+					default:
+						break;
+				}
 			}
 
 			switch (key.type) {
@@ -263,6 +397,7 @@ export function readMultilineInput(
 					return;
 			}
 
+			refreshMention();
 			render();
 		}
 
