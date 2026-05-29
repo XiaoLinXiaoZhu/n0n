@@ -151,13 +151,25 @@ export async function agentLoop<T = unknown>(
 		}
 		renderer.streamEnd();
 
-		// ── 2. 分类本轮结果，决定后续动作 ──
-		// biome-ignore lint/style/noNonNullAssertion: streamResult is always set by the stream loop above
-		const outcome = classifyRound(streamResult!, idleCount, maxIdleRounds);
+		const result = streamResult;
+		if (!result) {
+			scheduler.seal();
+			await runPromise;
+			return {
+				result: null,
+				report:
+					"Agent terminated: stream parsing failed without producing a result",
+				history: messages,
+				tools: toolkit.tools,
+			};
+		}
 
-		const roundUsage = streamResult!.accumulator.usage;
+		// ── 2. 分类本轮结果，决定后续动作 ──
+		const outcome = classifyRound(result, idleCount, maxIdleRounds);
+
+		const roundUsage = result.accumulator.usage;
 		const roundFinishReason =
-			streamResult!.accumulator.finishReason ?? "unknown";
+			result.accumulator.finishReason ?? "unknown";
 
 		if (outcome.action === "exit") {
 			scheduler.seal();
@@ -186,8 +198,7 @@ export async function agentLoop<T = unknown>(
 				renderer.roundEnd();
 				return {
 					result: null,
-					// biome-ignore lint/style/noNonNullAssertion: streamResult is always set by the stream loop above
-					report: `Agent terminated: max idle rounds exceeded. Last content: ${(streamResult!.accumulator.content || "").slice(0, 200)}`,
+					report: `Agent terminated: max idle rounds exceeded. Last content: ${(result.accumulator.content || "").slice(0, 200)}`,
 					history: messages,
 					tools: toolkit.tools,
 				};
@@ -224,13 +235,11 @@ export async function agentLoop<T = unknown>(
 				(await entry?.recoverAndExecute?.(toolCallId, partialJson)) ?? null
 			);
 		};
-		// biome-ignore lint/style/noNonNullAssertion: streamResult is always set by the stream loop above
-		const truncation = await recoverTruncatedCalls(streamResult!, tryRecover);
+		const truncation = await recoverTruncatedCalls(result, tryRecover);
 		scheduler.seal();
 
 		const allCalls: (ToolCallRecord | PartialToolCallRecord)[] = [
-			// biome-ignore lint/style/noNonNullAssertion: streamResult is always set by the stream loop above
-			...streamResult!.readyTools.values(),
+			...result.readyTools.values(),
 			...truncation.pairs.map((p) => p.call),
 		];
 
@@ -240,8 +249,7 @@ export async function agentLoop<T = unknown>(
 		}
 
 		// ── 4. 构建 assistant 消息 ──
-		// biome-ignore lint/style/noNonNullAssertion: streamResult is always set by the stream loop above
-		messages.push(buildToolCallMessage(streamResult!.accumulator, allCalls));
+		messages.push(buildToolCallMessage(result.accumulator, allCalls));
 		pushTokenUsage(messages, roundUsage, roundFinishReason);
 
 		// ── 5. 等待执行 + 渲染完成 ──
