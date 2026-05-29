@@ -21,6 +21,7 @@ import {
 import {
 	calcDescBox,
 	calcMenuPosition,
+	calcMenuScrollTop,
 	computeMentionDecorations,
 	detectMention,
 	filterMentions,
@@ -58,6 +59,8 @@ const OWNER_DESC = "desc";
 const descTextStyle = encodeStyle(-1, -1, 0);
 /** 菜单候选框最大宽度 */
 const MENU_MAX_WIDTH = 40;
+/** 菜单打开时期望预留的最大行数（含上下边框），实际受终端高度 clamp */
+const MENU_MAX_RESERVE = 10;
 const menuHighlightStyle = encodeStyle(0, 6, 0);
 const menuNormalStyle = encodeStyle(-1, -1, 0);
 
@@ -84,13 +87,20 @@ function calcGridRows(
 	text: string,
 	termCols: number,
 	termRows: number,
+	menuReserveRows = 0,
 ): number {
 	const maxRows = Math.max(
 		MIN_INPUT_ROWS,
 		Math.min(MAX_INPUT_ROWS, termRows - TERM_RESERVE),
 	);
 	const needed = countVisualLines(text, termCols) + STATUS_ROWS;
-	return Math.max(MIN_INPUT_ROWS + STATUS_ROWS, Math.min(needed, maxRows));
+	const base = Math.max(MIN_INPUT_ROWS + STATUS_ROWS, Math.min(needed, maxRows));
+	if (menuReserveRows <= 0) return base;
+	// 菜单打开时，保证 grid 高度能容纳「输入文本 + 菜单 + 状态栏」，
+	// 但整体仍受终端可见高度硬约束（动态区高度 ≤ termRows - TERM_RESERVE）。
+	const withMenu = needed + menuReserveRows;
+	const hardCap = Math.max(MIN_INPUT_ROWS + STATUS_ROWS, termRows - TERM_RESERVE);
+	return Math.max(base, Math.min(withMenu, hardCap));
 }
 
 export function readMultilineInput(
@@ -154,7 +164,16 @@ export function readMultilineInput(
 		}
 
 		function resizeGridIfNeeded(): void {
-			const newRows = calcGridRows(ti.text, getCols(), getRows());
+			const menuReserve =
+				menuOpen && menuItems.length > 0
+					? Math.min(menuItems.length + 2, MENU_MAX_RESERVE)
+					: 0;
+			const newRows = calcGridRows(
+				ti.text,
+				getCols(),
+				getRows(),
+				menuReserve,
+			);
 			if (newRows === gridRows) return;
 			gridRows = newRows;
 			vp.remount(getCols(), gridRows);
@@ -218,6 +237,11 @@ export function readMultilineInput(
 						setupMenuOwnership(grid, descBox, OWNER_DESC);
 					}
 					ti.paint(grid, OWNER_INPUT);
+					const scrollTop = calcMenuScrollTop(
+						menuSelected,
+						box.visibleItems,
+						menuItems.length,
+					);
 					paintMenu(
 						grid,
 						labels,
@@ -225,7 +249,7 @@ export function readMultilineInput(
 						box,
 						menuHighlightStyle,
 						menuNormalStyle,
-						0,
+						scrollTop,
 					);
 					if (descBox) {
 						const desc = menuItems[menuSelected]?.description ?? "";

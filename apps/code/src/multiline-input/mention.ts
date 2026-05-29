@@ -187,6 +187,24 @@ export function calcMenuPosition(
 	return null;
 }
 
+/**
+ * 计算菜单滚动窗口起点，使 selectedIndex 始终落在 [scrollTop, scrollTop+visibleItems) 内。
+ * 选中项靠近窗口边缘时滚动窗口。
+ */
+export function calcMenuScrollTop(
+	selectedIndex: number,
+	visibleItems: number,
+	itemCount: number,
+): number {
+	if (itemCount <= visibleItems) return 0;
+	const maxTop = itemCount - visibleItems;
+	// 选中项尽量居中，再 clamp 到合法范围
+	let top = selectedIndex - Math.floor(visibleItems / 2);
+	if (top < 0) top = 0;
+	if (top > maxTop) top = maxTop;
+	return top;
+}
+
 /** 为菜单区域设置 ownership（覆盖输入区） */
 export function setupMenuOwnership(
 	grid: Grid,
@@ -246,6 +264,17 @@ export function paintMenu(
 		grid.setChar(botRow, rightCol, "┘", BORDER_STYLE);
 		for (let c = anchorCol + 1; c < rightCol; c++)
 			grid.setChar(botRow, c, "─", BORDER_STYLE);
+	}
+
+	// 滚动溢出提示：嵌入上/下边框中央
+	const hasAbove = scrollTop > 0;
+	const hasBelow = scrollTop + visibleItems < labels.length;
+	const midCol = anchorCol + Math.floor(boxWidth / 2);
+	if (hasAbove && topRow >= 0 && topRow < grid.rows) {
+		grid.setChar(topRow, midCol, "▲", BORDER_STYLE);
+	}
+	if (hasBelow && botRow > topRow && botRow < grid.rows) {
+		grid.setChar(botRow, midCol, "▼", BORDER_STYLE);
 	}
 
 	for (let i = 0; i < visibleItems; i++) {

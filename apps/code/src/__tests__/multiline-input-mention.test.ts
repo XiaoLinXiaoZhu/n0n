@@ -6,6 +6,7 @@
 
 import { describe, expect, test } from "bun:test";
 import {
+	calcMenuScrollTop,
 	computeMentionDecorations,
 	detectMention,
 	filterMentions,
@@ -137,5 +138,33 @@ describe("computeMentionDecorations 行首 @token 高亮", () => {
 		expect(before[0]?.start).toBe(0);
 		expect(after[0]?.start).toBe(4);
 		expect(after[0]?.end).toBe(9);
+	});
+});
+
+describe("calcMenuScrollTop 滚动窗口", () => {
+	test("项数不超过可见数时不滚动", () => {
+		expect(calcMenuScrollTop(2, 8, 3)).toBe(0);
+	});
+
+	test("选中靠前时窗口贴顶", () => {
+		expect(calcMenuScrollTop(1, 4, 10)).toBe(0);
+	});
+
+	test("选中居中时窗口跟随", () => {
+		expect(calcMenuScrollTop(5, 4, 10)).toBe(3);
+	});
+
+	test("选中末项时窗口贴底（不越界）", () => {
+		expect(calcMenuScrollTop(9, 4, 10)).toBe(6);
+	});
+
+	test("任意选中项都落在可见窗口内", () => {
+		const visible = 4;
+		const count = 10;
+		for (let sel = 0; sel < count; sel++) {
+			const top = calcMenuScrollTop(sel, visible, count);
+			expect(sel).toBeGreaterThanOrEqual(top);
+			expect(sel).toBeLessThan(top + visible);
+		}
 	});
 });
