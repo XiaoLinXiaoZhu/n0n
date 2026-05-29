@@ -1,6 +1,6 @@
 # 用 @xlxz/terminal-renderer 替换 apps/code 多行输入 — 设计方案
 
-> 状态：设计阶段（讨论已收敛，待包侧前置缺口补齐后实现）
+> 状态：依赖已接入 @xlxz/terminal-renderer@0.1.3（parseKey 前置缺口已补齐），待进入阶段一编码
 > 分支：`feat/terminal-renderer-input`
 > 关联 issue：https://github.com/XiaoLinXiaoZhu/terminal-renderer/issues/1
 
@@ -95,6 +95,8 @@
   - Viewport 统一管理整块高度
 
 ## 前置阻塞项（包侧）
+
+> **✅ 已解除（0.1.3）**：以下 parseKey 缺口在 `@xlxz/terminal-renderer@0.1.3` 已全部补齐——Alt+Enter（返回 `{type:"enter", alt:true}`）、bracketed paste（`pasteStart`/`pasteEnd`）、Home/End、带修饰符方向键（shift/alt/ctrl）。依赖已通过 `bun add` 接入 apps/code。下列为历史记录。
 
 阶段一落地前，包的 `parseKey` 需补齐（已在 issue #1，由包维护者补）：
 
