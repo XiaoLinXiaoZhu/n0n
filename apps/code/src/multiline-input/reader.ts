@@ -19,6 +19,7 @@ import {
 	TextInput,
 	Viewport,
 } from "@xlxz/terminal-renderer";
+import { normalizePastedText, pasteFromClipboard } from "./clipboard.ts";
 import type { UserInputConfig } from "./config.ts";
 import {
 	calcDescBox,
@@ -411,6 +412,18 @@ export function readMultilineInput(
 			render();
 		}
 
+		/**
+		 * Ctrl+V 主动粘贴：从系统剪贴板读取，作为 bracketed paste 不可用时的兜底。
+		 * 读取是同步阻塞（spawnSync），仅在 Ctrl+V 低频动作时触发。
+		 */
+		function doPaste(): void {
+			const raw = pasteFromClipboard();
+			if (raw == null || raw.length === 0) return;
+			ti.insertChar(normalizePastedText(raw));
+			refreshMention();
+			render();
+		}
+
 		function onData(data: string): void {
 			const buf = Buffer.from(data, "utf8");
 			const key = parseKey(buf);
@@ -469,6 +482,11 @@ export function readMultilineInput(
 							submit();
 							return;
 						}
+						if (key.key === "v") {
+							// Ctrl+V 主动粘贴：插入后 doPaste 内部 refreshMention 会按新内容更新/关闭菜单
+							doPaste();
+							return;
+						}
 						return;
 					default:
 						break;
@@ -483,6 +501,11 @@ export function readMultilineInput(
 					}
 					if (key.key === "d") {
 						submit();
+						return;
+					}
+					if (key.key === "v") {
+						// Ctrl+V 主动粘贴（bracketed paste 不可用时的兜底）
+						doPaste();
 						return;
 					}
 					// 其他 ctrl 一律忽略——尤其 Ctrl+C（\x03）在 raw mode 下作为数据到达，
