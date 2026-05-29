@@ -35,6 +35,8 @@ import {
 	setupMenuOwnership,
 } from "./mention.ts";
 import {
+	type ColSpan,
+	calcColSpan,
 	calcScrollOverflow,
 	countVisualLines,
 	getLayout,
@@ -53,7 +55,7 @@ const TAB_SPACES = "  ";
 // ── 动态高度配置 ──
 /** 输入区最小行数 */
 const MIN_INPUT_ROWS = 1;
-/** 输入区最大行数（运行时再用终端高度 clamp） */
+/** 输入区最大行数（运行时再用终端高度和配置 clamp） */
 const MAX_INPUT_ROWS = 20;
 /** 终端底部保留行数（避免动态区贴到终端最底、给 commit 留余量） */
 const TERM_RESERVE = 2;
@@ -62,13 +64,8 @@ const OWNER_INPUT = "input";
 const OWNER_MENU = "menu";
 const OWNER_DESC = "desc";
 
-const _DEFAULT_EDITOR_CONFIG: UserInputConfig = {
-	maxWidth: null,
-	maxHeight: null,
-	align: "left",
-};
 const descTextStyle = encodeStyle(-1, -1, 0);
-/** 菜单候选框最大宽度 */
+/** 菜单候选框默认最大宽度 */
 const MENU_MAX_WIDTH = 40;
 /** 菜单打开时期望预留的最大行数（含上下边框），实际受终端高度 clamp */
 const MENU_MAX_RESERVE = 10;
@@ -100,11 +97,12 @@ function calcGridRows(
 	text: string,
 	termCols: number,
 	termRows: number,
+	maxInputRows: number,
 	menuReserveRows = 0,
 ): number {
 	const maxRows = Math.max(
 		MIN_INPUT_ROWS,
-		Math.min(MAX_INPUT_ROWS, termRows - TERM_RESERVE),
+		Math.min(maxInputRows, termRows - TERM_RESERVE),
 	);
 	const needed =
 		countVisualLines(text, termCols) + STATUS_ROWS + INDICATOR_ROWS;
@@ -132,6 +130,12 @@ export function readMultilineInput(
 		const getCols = (): number => out.columns || 80;
 		const getRows = (): number => out.rows || 24;
 
+		const editorConfig = options?.editor ?? {
+			maxWidth: null,
+			maxHeight: null,
+			align: "left",
+		};
+
 		const ti = new TextInput();
 		let allMentions: MentionItem[] = [];
 		let menuOpen = false;
@@ -144,7 +148,14 @@ export function readMultilineInput(
 				allMentions = items;
 			})
 			.catch(() => {});
-		let gridRows = calcGridRows("", getCols(), getRows());
+
+		const maxInputRows = editorConfig.maxHeight ?? MAX_INPUT_ROWS;
+		let gridRows = calcGridRows("", getCols(), getRows(), maxInputRows);
+		let colSpan: ColSpan = calcColSpan(
+			getCols(),
+			editorConfig.maxWidth,
+			editorConfig.align,
+		);
 		const grid = Grid.create(getCols(), gridRows);
 		const vp = new Viewport(grid, out);
 
@@ -177,7 +188,7 @@ export function readMultilineInput(
 				}
 			}
 			for (let r = layout.inputStartRow; r <= layout.inputEndRow; r++) {
-				for (let c = 0; c < grid.cols; c++) {
+				for (let c = colSpan.startCol; c < colSpan.endCol; c++) {
 					grid.setOwner(r, c, OWNER_INPUT);
 				}
 			}
@@ -188,7 +199,13 @@ export function readMultilineInput(
 				menuOpen && menuItems.length > 0
 					? Math.min(menuItems.length + 2, MENU_MAX_RESERVE)
 					: 0;
-			const newRows = calcGridRows(ti.text, getCols(), getRows(), menuReserve);
+			const newRows = calcGridRows(
+				ti.text,
+				getCols(),
+				getRows(),
+				maxInputRows,
+				menuReserve,
+			);
 			if (newRows === gridRows) return;
 			gridRows = newRows;
 			vp.remount(getCols(), gridRows);
@@ -230,6 +247,11 @@ export function readMultilineInput(
 		function render(): void {
 			vp.beginSync();
 			resizeGridIfNeeded();
+			colSpan = calcColSpan(
+				grid.cols,
+				editorConfig.maxWidth,
+				editorConfig.align,
+			);
 			// 每次重算 @token 高亮区间——decorations 是静态绝对 offset，不随编辑平移
 			ti.decorations = computeMentionDecorations(ti.text);
 
@@ -266,15 +288,26 @@ export function readMultilineInput(
 
 			if (menuOpen && menuItems.length > 0) {
 				const labels = menuItems.map(mentionLabel);
+				const menuMaxWidth = Math.min(MENU_MAX_WIDTH, colSpan.width);
 				const box = calcMenuPosition(
 					grid.rows,
 					grid.cols,
 					ti.cursorRow,
 					ti.cursorCol,
 					menuItems.length,
-					maxLabelWidth(labels, MENU_MAX_WIDTH),
+					maxLabelWidth(labels, menuMaxWidth),
 				);
 				if (box) {
+					// 菜单高度不能超过输入区可见高度（含边框），需求 3
+					const curLayout = hasIndicator
+						? getLayout(grid.rows, hasAbove, hasBelow)
+						: layout0;
+					const inputVisibleRows =
+						curLayout.inputEndRow - curLayout.inputStartRow + 1;
+					if (box.boxHeight > inputVisibleRows) {
+						box.boxHeight = inputVisibleRows;
+						box.visibleItems = Math.max(1, inputVisibleRows - 2);
+					}
 					setupMenuOwnership(grid, box, OWNER_MENU);
 					const descBox = calcDescBox(box, grid.cols);
 					if (descBox) {

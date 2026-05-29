@@ -7,6 +7,7 @@
 import { describe, expect, test } from "bun:test";
 import { Grid, TextInput } from "@xlxz/terminal-renderer";
 import {
+	calcColSpan,
 	calcScrollOverflow,
 	getLayout,
 	paintAboveIndicator,
@@ -155,5 +156,23 @@ describe("上下指示器绘制", () => {
 		paintAboveIndicator(grid, -1, 3);
 		paintAboveIndicator(grid, 99, 3);
 		// 不应抛异常
+	});
+});
+
+describe("calcColSpan", () => {
+	test("null maxWidth → full terminal width", () => {
+		expect(calcColSpan(80, null, "left")).toEqual({ startCol: 0, width: 80, endCol: 80 });
+	});
+
+	test("maxWidth=60, center on 80 col terminal → startCol=10, width=60", () => {
+		expect(calcColSpan(80, 60, "center")).toEqual({ startCol: 10, width: 60, endCol: 70 });
+	});
+
+	test("maxWidth=60, right on 80 col terminal → startCol=20, width=60", () => {
+		expect(calcColSpan(80, 60, "right")).toEqual({ startCol: 20, width: 60, endCol: 80 });
+	});
+
+	test("maxWidth=100 on 80 col terminal → clamped to 80, startCol=0", () => {
+		expect(calcColSpan(80, 100, "left")).toEqual({ startCol: 0, width: 80, endCol: 80 });
 	});
 });
