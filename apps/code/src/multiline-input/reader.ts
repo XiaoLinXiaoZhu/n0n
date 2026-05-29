@@ -21,6 +21,7 @@ import {
 import {
 	calcDescBox,
 	calcMenuPosition,
+	computeMentionDecorations,
 	detectMention,
 	filterMentions,
 	loadMentionItems,
@@ -196,6 +197,8 @@ export function readMultilineInput(
 			vp.beginSync();
 			resizeGridIfNeeded();
 			setupOwnership();
+			// 每次重算 @token 高亮区间——decorations 是静态绝对 offset，不随编辑平移
+			ti.decorations = computeMentionDecorations(ti.text);
 			ti.ensureCursorVisible(grid, OWNER_INPUT);
 			ti.paint(grid, OWNER_INPUT);
 			if (menuOpen && menuItems.length > 0) {

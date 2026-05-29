@@ -6,6 +6,7 @@
 
 import { describe, expect, test } from "bun:test";
 import {
+	computeMentionDecorations,
 	detectMention,
 	filterMentions,
 	mentionLabel,
@@ -102,5 +103,39 @@ describe("端到端：@ 触发菜单并选中插入", () => {
 		const r = await p;
 		expect(r).not.toBeNull();
 		expect(r?.text).toMatch(/^@[a-z0-9-]+$/);
+	});
+});
+
+describe("computeMentionDecorations 行首 @token 高亮", () => {
+	test("单个行首 @token 生成区间", () => {
+		expect(computeMentionDecorations("@step")).toEqual([
+			{ start: 0, end: 5, style: expect.any(Number) },
+		]);
+	});
+
+	test("token 到首个空格为止", () => {
+		expect(computeMentionDecorations("@step foo")[0]).toMatchObject({
+			start: 0,
+			end: 5,
+		});
+	});
+
+	test("行中 @ 不高亮", () => {
+		expect(computeMentionDecorations("hi @step")).toEqual([]);
+	});
+
+	test("多行各自行首 @token 用绝对 offset", () => {
+		expect(computeMentionDecorations("ab\n@x\n@yy")).toMatchObject([
+			{ start: 3, end: 5 },
+			{ start: 6, end: 9 },
+		]);
+	});
+
+	test("编辑后重算免疫错位：@token 前插入内容后区间随之平移", () => {
+		const before = computeMentionDecorations("@step");
+		const after = computeMentionDecorations("new\n@step");
+		expect(before[0]?.start).toBe(0);
+		expect(after[0]?.start).toBe(4);
+		expect(after[0]?.end).toBe(9);
 	});
 });

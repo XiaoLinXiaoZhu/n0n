@@ -8,7 +8,7 @@
  * 第三步将在此基础上增加 desc 描述框双框联动。
  */
 
-import { charWidth, type Grid, stringWidth } from "@xlxz/terminal-renderer";
+import { BOLD, charWidth, encodeStyle, type Grid, stringWidth } from "@xlxz/terminal-renderer";
 
 // ── 数据 ──
 
@@ -58,6 +58,42 @@ export function detectMention(
 	const query = line.slice(1);
 	if (query.includes(" ")) return null;
 	return { query, lineStart };
+}
+
+// ── @token 高亮 decorations ──
+
+/** @token 高亮样式：青色加粗 */
+const mentionStyle = encodeStyle(6, -1, BOLD);
+
+/**
+ * 扫描全文，为每个行首 @token 生成高亮区间。
+ *
+ * decorations 用绝对 code unit offset，TextInput 不会随编辑自动平移；
+ * 因此每次 render 前都重算（成本仅为遍历各逻辑行），天然免疫编辑错位。
+ *
+ * 一个行首 @token 的范围是 [lineStart, lineStart + tokenLen)，
+ * token 到行尾或首个空格为止（与 detectMention 的触发条件一致）。
+ */
+export function computeMentionDecorations(
+	text: string,
+): { start: number; end: number; style: number }[] {
+	const decos: { start: number; end: number; style: number }[] = [];
+	let lineStart = 0;
+	for (const line of text.split("\n")) {
+		if (line.startsWith("@")) {
+			const spaceIdx = line.indexOf(" ");
+			const tokenLen = spaceIdx >= 0 ? spaceIdx : line.length;
+			if (tokenLen >= 1) {
+				decos.push({
+					start: lineStart,
+					end: lineStart + tokenLen,
+					style: mentionStyle,
+				});
+			}
+		}
+		lineStart += line.length + 1; // +1 为被 split 掉的 \n
+	}
+	return decos;
 }
 
 /** 按 query 过滤候选（query 空返回全部）；匹配 name 或 alias 子串（不区分大小写） */
