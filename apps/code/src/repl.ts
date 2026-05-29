@@ -18,7 +18,7 @@ import {
 	HeartbeatState,
 	PlainRenderer,
 } from "@n0n/core";
-import { readMultilineInput } from "@n0n/multiline-input";
+import { readMultilineInput } from "./multiline-input/index.ts";
 import {
 	type BaseWorkspacePaths,
 	loadConversation,

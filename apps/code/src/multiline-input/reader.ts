@@ -1,0 +1,299 @@
+/**
+ * @n0n/code 多行输入 — 基于 @xlxz/terminal-renderer 的实现
+ *
+ * 替换 @n0n/multiline-input。用虚拟 Grid + Viewport + TextInput 重建多行输入，
+ * 利用 cell 级 dirty diff 与动态区域管理，零撕裂、自动处理终端高度边界。
+ *
+ * 接口与 @n0n/multiline-input 保持一致：readMultilineInput({prompt, hint, connectStdin})
+ * → Promise<{text, lineCount} | null>，使 repl 调用点零改动。
+ *
+ * 阶段一：对等替换（编辑/粘贴/提交/中断/宽字符/动态高度）。
+ * 状态栏、滚动指示器、@mention 菜单见后续阶段。
+ */
+
+import {
+	Grid,
+	parseKey,
+	stringWidth,
+	TextInput,
+	Viewport,
+} from "@xlxz/terminal-renderer";
+
+// ── bracketed paste 控制序列 ──
+const BP_ON = "\x1b[?2004h";
+const BP_OFF = "\x1b[?2004l";
+const TAB_SPACES = "  ";
+
+// ── 动态高度配置 ──
+/** 输入区最小行数 */
+const MIN_INPUT_ROWS = 1;
+/** 输入区最大行数（运行时再用终端高度 clamp） */
+const MAX_INPUT_ROWS = 20;
+/** 终端底部保留行数（避免动态区贴到终端最底、给 commit 留余量） */
+const TERM_RESERVE = 2;
+
+const OWNER_INPUT = "input";
+
+export interface MultilineInputOptions {
+	prompt?: string;
+	hint?: string;
+	output?: NodeJS.WriteStream;
+	/**
+	 * 外部 stdin 数据源注入点。提供时本函数不自管 stdin（不设 raw mode、
+	 * 不加 listener），通过 handler 接收数据，返回清理函数。
+	 *
+	 * 注意：repl 的 StdinController 使用 setEncoding("utf8")，handler 收到 string。
+	 */
+	connectStdin?: (handler: (data: string) => void) => () => void;
+}
+
+export interface MultilineInputResult {
+	text: string;
+	lineCount: number;
+}
+
+/** 计算文本在给定宽度下占用的视觉行数（含换行 + CJK 折行） */
+function countVisualLines(text: string, cols: number): number {
+	const width = Math.max(1, cols);
+	let lines = 0;
+	let start = 0;
+	for (let i = 0; i <= text.length; i++) {
+		if (i === text.length || text[i] === "\n") {
+			const seg = text.slice(start, i);
+			const w = stringWidth(seg);
+			lines += Math.max(1, Math.ceil(w / width));
+			start = i + 1;
+		}
+	}
+	return Math.max(1, lines);
+}
+
+/** 根据文本和终端尺寸计算输入区所需的 grid 行数 */
+function calcGridRows(
+	text: string,
+	termCols: number,
+	termRows: number,
+): number {
+	const maxRows = Math.max(
+		MIN_INPUT_ROWS,
+		Math.min(MAX_INPUT_ROWS, termRows - TERM_RESERVE),
+	);
+	const needed = countVisualLines(text, termCols);
+	return Math.max(MIN_INPUT_ROWS, Math.min(needed, maxRows));
+}
+
+export function readMultilineInput(
+	options?: MultilineInputOptions,
+): Promise<MultilineInputResult | null> {
+	const out = options?.output ?? process.stderr;
+
+	return new Promise<MultilineInputResult | null>((resolve) => {
+		const getCols = (): number => out.columns || 80;
+		const getRows = (): number => out.rows || 24;
+
+		const ti = new TextInput();
+		let gridRows = calcGridRows("", getCols(), getRows());
+		const grid = Grid.create(getCols(), gridRows);
+		const vp = new Viewport(grid, out);
+
+		// bracketed paste 跨 chunk 聚合状态
+		let isPasting = false;
+		let pasteBuffer = "";
+
+		const w = (s: string) => out.write(s);
+
+		// prompt/hint 作为静态前导行写入历史（不进动态区）
+		if (options?.prompt) {
+			const hint = options?.hint ?? "";
+			w(`${options.prompt}${hint ? ` ${hint}` : ""}\n`);
+		}
+
+		w(BP_ON);
+		// 隐藏光标，渲染期间避免闪动
+		w("\x1b[?25l");
+		vp.mount();
+		render();
+		w("\x1b[?25h");
+
+		let disconnectStdin: (() => void) | null = null;
+
+		function setupOwnership(): void {
+			grid.setOwnerAll(OWNER_INPUT);
+		}
+
+		function resizeGridIfNeeded(): void {
+			const newRows = calcGridRows(ti.text, getCols(), getRows());
+			if (newRows === gridRows) return;
+			gridRows = newRows;
+			vp.remount(getCols(), gridRows);
+		}
+
+		function render(): void {
+			vp.beginSync();
+			resizeGridIfNeeded();
+			setupOwnership();
+			ti.ensureCursorVisible(grid, OWNER_INPUT);
+			ti.paint(grid, OWNER_INPUT);
+			vp.render({ row: ti.cursorRow, col: ti.cursorCol });
+			vp.endSync();
+		}
+
+		function cleanup(): void {
+			w(BP_OFF);
+			disconnectStdin?.();
+			disconnectStdin = null;
+		}
+
+		function finish(result: MultilineInputResult | null): void {
+			// 把光标移到动态区底部之后，固化输入为历史并换行
+			vp.clear();
+			if (result) {
+				// 重新输出输入内容作为历史固定行
+				vp.commit(`${ti.text}\n`);
+			} else {
+				vp.commit("");
+			}
+			w("\x1b[?25h");
+			cleanup();
+			resolve(result);
+		}
+
+		function submit(): void {
+			finish({ text: ti.text, lineCount: ti.text.split("\n").length });
+		}
+
+		function abort(): void {
+			finish(null);
+		}
+
+		function flushPaste(): void {
+			if (pasteBuffer.length > 0) {
+				ti.insertChar(pasteBuffer);
+				pasteBuffer = "";
+			}
+			isPasting = false;
+			render();
+		}
+
+		function onData(data: string): void {
+			const buf = Buffer.from(data, "utf8");
+			const key = parseKey(buf);
+
+			// ── bracketed paste 聚合（跨 chunk）──
+			if (key.type === "pasteStart") {
+				isPasting = true;
+				pasteBuffer = "";
+				return;
+			}
+			if (isPasting) {
+				if (key.type === "pasteEnd") {
+					flushPaste();
+					return;
+				}
+				// 粘贴期间所有数据原样累积（包括 char / enter / 多字节）
+				pasteBuffer += data;
+				return;
+			}
+
+			switch (key.type) {
+				case "ctrl":
+					if (key.key === "q") {
+						abort();
+						return;
+					}
+					if (key.key === "d") {
+						submit();
+						return;
+					}
+					// 其他 ctrl 忽略
+					return;
+				case "enter":
+					if (key.alt) {
+						submit();
+						return;
+					}
+					ti.insertChar("\n");
+					break;
+				case "char":
+					ti.insertChar(key.char);
+					break;
+				case "backspace":
+					ti.deleteBeforeCursor();
+					break;
+				case "tab":
+					ti.insertChar(TAB_SPACES);
+					break;
+				case "left":
+					ti.moveLeft();
+					break;
+				case "right":
+					ti.moveRight();
+					break;
+				case "up":
+					ti.paint(grid, OWNER_INPUT);
+					ti.moveUp(grid, OWNER_INPUT);
+					break;
+				case "down":
+					ti.paint(grid, OWNER_INPUT);
+					ti.moveDown(grid, OWNER_INPUT);
+					break;
+				case "home": {
+					const before = ti.text.slice(0, ti.cursorOffset);
+					const lastNL = before.lastIndexOf("\n");
+					ti.cursorOffset = lastNL >= 0 ? lastNL + 1 : 0;
+					ti.stickyCol = null;
+					break;
+				}
+				case "end": {
+					const after = ti.text.slice(ti.cursorOffset);
+					const nextNL = after.indexOf("\n");
+					ti.cursorOffset += nextNL >= 0 ? nextNL : after.length;
+					ti.stickyCol = null;
+					break;
+				}
+				case "delete":
+					if (ti.cursorOffset < ti.text.length) {
+						const head = ti.text.slice(0, ti.cursorOffset);
+						const rest = ti.text.slice(ti.cursorOffset);
+						const first = [...rest][0] ?? "";
+
+						ti.text = head + rest.slice(first.length);
+					}
+					break;
+				case "escape":
+				case "pasteEnd":
+				case "unknown":
+					return;
+				default:
+					return;
+			}
+
+			render();
+		}
+
+		// ── 接管 stdin ──
+		if (options?.connectStdin) {
+			disconnectStdin = options.connectStdin(onData);
+		} else {
+			const stdin = process.stdin;
+			const wasRaw = stdin.isRaw;
+			stdin.setRawMode(true);
+			stdin.resume();
+			stdin.setEncoding("utf8");
+			stdin.on("data", onData);
+			disconnectStdin = () => {
+				stdin.removeListener("data", onData);
+				stdin.setRawMode(wasRaw ?? false);
+			};
+		}
+
+		// resize 处理
+		const onResize = () => render();
+		out.on("resize", onResize);
+		const prevDisconnect = disconnectStdin;
+		disconnectStdin = () => {
+			out.removeListener("resize", onResize);
+			prevDisconnect?.();
+		};
+	});
+}
