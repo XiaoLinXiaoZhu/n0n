@@ -299,13 +299,11 @@ export async function editorStep(input: StepInput): Promise<StepResult> {
 	messages.push({
 		type: "generic_tool_call",
 		content: message.content ?? "",
-		toolCalls: parsedToolCalls
-			.filter((p) => p.args !== null)
-			.map((p) => ({
-				id: p.tc.toolCallId,
-				tool: p.tc.toolName,
-				args: p.args as Record<string, unknown>,
-			})),
+		toolCalls: parsedToolCalls.map((p) => ({
+			id: p.tc.toolCallId,
+			tool: p.tc.toolName,
+			args: (p.args ?? {}) as Record<string, unknown>,
+		})),
 	});
 
 	// ── 4. 执行工具调用 ──
@@ -323,7 +321,7 @@ export async function editorStep(input: StepInput): Promise<StepResult> {
 				toolResultMessage(
 					tc.toolCallId,
 					name,
-					"Error: Failed to parse tool arguments as JSON.",
+					`Error: Failed to parse tool arguments as JSON.\nRaw input received: ${tc.input}`,
 				),
 			);
 			onToolResult?.(round, "parse error");
