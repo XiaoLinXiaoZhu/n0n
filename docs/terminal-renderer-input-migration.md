@@ -147,3 +147,29 @@
 1. 状态栏（纯展示 + 宽度降级）
 2. @ 补全 menu（行首触发 + skill 数据接入 + 插入）
 3. desc 描述框双框联动（择侧 + 实时同步 + 高度约束）
+
+## 第三轮增强（review 后补强）
+
+基于代码 review 的 5 点反馈，做了如下变更（各为独立 commit）：
+
+### 1. 移除旧包 @n0n/multiline-input
+迁移完成后旧 workspace 包仍残留且无任何消费者，已删除（commit 88d0705），lockfile 同步刷新。
+
+### 2. @token 行首高亮
+设计承诺用 TextInput.decorations 高亮 @token 但此前未实现。补上 `computeMentionDecorations`：每次 render 前扫描全文行首 @token 重算区间。
+
+> **关键约束**：TextInput 的 decorations 是静态绝对 code unit offset，insertChar/deleteBeforeCursor **不会**自动平移它。若持久化存储区间，任何编辑（在 token 前插入/删除、删中间行）都会让高亮错位。因此采用「每次 render 重算」——成本仅为遍历各逻辑行，天然免疫一切编辑错位。
+
+### 3. @mention 菜单滚动
+此前 paintMenu 的 scrollTop 恒传 0，候选超过可见行数时选中项滚出即不可见；且 calcGridRows 未给菜单预留高度，单行输入时菜单可能完全画不出。修复：
+- `calcMenuScrollTop`：滚动窗口跟随 selectedIndex，选中项始终可见。
+- paintMenu 在上/下边框中央嵌 `▲`/`▼` 溢出提示。
+- calcGridRows 增加 menuReserveRows 参数，菜单打开时为其预留高度（仍受终端高度硬约束 clamp）。
+
+### 4. 输入区滚动溢出指示行
+独立指示行显示「上方隐藏 ↑N 行 / 下方隐藏 ↓M 行」，dim 样式，**无溢出时隐藏不占高度**。
+- `calcScrollOverflow` 据 `ti.scrollOffset` + 可见行数 + 全文视觉行数算上下隐藏行数。
+- 布局两遍法：先按无指示行布局算溢出，若有溢出则输入区让出 1 行重排并重算，避免「是否有指示行」与「可见行数」的循环依赖。
+
+### 5. 输入区行号列 —— 暂不做
+评估后搁置：行号需对应逻辑行（与状态栏 Ln 一致），但 TextInput.paint 不暴露每视觉行的 charIdx 映射，应用层要复制其折行逻辑才能推算逻辑行号，工作量集中且易与折行实现脱节。更适合未来作为 terminal-renderer 的内部组件直接提供。
