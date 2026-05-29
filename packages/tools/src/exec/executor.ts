@@ -337,6 +337,12 @@ export async function* execToolStream(
 						await new Promise<void>((r) => setTimeout(r, 500));
 					}
 
+					/* DESIGN NOTE: 此处未加超时理由：
+					 * 1. 若进程为 daemon（关闭 stdout/stderr 但持续运行），streamsDone 已达 2，
+					 *    数据已全部收集，setInterval 仅刷新 last_updated 时间戳 — 无数据泄漏，
+					 *    可忽略 I/O。
+					 * 2. 硬超时会杀死有意后台运行的进程（例如 observe 启动的 dev server）。
+					 * 3. 模型/agent 应自主通过 ps/taskkill 判断进程状态，决定等待、终止或忽略。 */
 					const exitCode = await proc.exited;
 					const endedAt = new Date().toISOString();
 					const totalDurationMs = Date.now() - start;
