@@ -8,7 +8,13 @@
  * 第三步将在此基础上增加 desc 描述框双框联动。
  */
 
-import { BOLD, charWidth, encodeStyle, type Grid, stringWidth } from "@xlxz/terminal-renderer";
+import {
+	BOLD,
+	charWidth,
+	encodeStyle,
+	type Grid,
+	stringWidth,
+} from "@xlxz/terminal-renderer";
 
 // ── 数据 ──
 
@@ -145,7 +151,8 @@ export function calcMenuPosition(
 	const boxHeight = itemCount + 2; // 上下边框
 	const anchorCol = Math.min(Math.max(0, cursorCol), gridCols - boxWidth);
 
-	const belowRows = gridRows - cursorRow - 1;
+	// 下方可用行数排除最后一行状态栏（gridRows-1），否则菜单底边框会落到状态栏行被裁切
+	const belowRows = gridRows - cursorRow - 2;
 	const aboveRows = cursorRow;
 
 	if (belowRows >= boxHeight) {

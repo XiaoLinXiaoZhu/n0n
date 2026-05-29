@@ -6,12 +6,13 @@
 
 import { describe, expect, test } from "bun:test";
 import {
+	calcMenuPosition,
 	calcMenuScrollTop,
 	computeMentionDecorations,
 	detectMention,
 	filterMentions,
-	mentionLabel,
 	type MentionItem,
+	mentionLabel,
 } from "../multiline-input/mention.ts";
 import { readMultilineInput } from "../multiline-input/reader.ts";
 
@@ -166,5 +167,39 @@ describe("calcMenuScrollTop 滚动窗口", () => {
 			expect(sel).toBeGreaterThanOrEqual(top);
 			expect(sel).toBeLessThan(top + visible);
 		}
+	});
+});
+
+describe("calcMenuPosition 底边框避让状态栏行", () => {
+	// gridRows 含最后一行状态栏；菜单底边框 botRow 不应 >= statusRow(gridRows-1)
+	test("下方空间恰好时菜单不裁切到状态栏行", () => {
+		// gridRows=11, cursorRow=2, 6 项 → boxHeight=8
+		// 修复前 belowRows=8 会判定 fits，botRow=10=statusRow 被裁
+		const box = calcMenuPosition(11, 40, 2, 0, 6, 20);
+		expect(box).not.toBeNull();
+		const statusRow = 11 - 1;
+		const botRow =
+			(box as { anchorRow: number; boxHeight: number }).anchorRow +
+			(box as { boxHeight: number }).boxHeight -
+			1;
+		expect(botRow).toBeLessThan(statusRow);
+	});
+
+	test("下方空间充足时完整展开且不撞状态栏", () => {
+		// gridRows=12, cursorRow=2, 6 项 → boxHeight=8, 完整
+		const box = calcMenuPosition(12, 40, 2, 0, 6, 20);
+		expect(box).not.toBeNull();
+		expect(box?.boxHeight).toBe(8);
+		expect(box?.anchorRow).toBe(3);
+		const botRow =
+			(box as { anchorRow: number }).anchorRow + (box?.boxHeight ?? 0) - 1;
+		expect(botRow).toBeLessThan(12 - 1);
+	});
+
+	test("下方不足转上方时不裁切", () => {
+		// cursorRow 靠下，下方空间不足，转上方
+		const box = calcMenuPosition(14, 40, 11, 0, 6, 20);
+		expect(box).not.toBeNull();
+		expect(box?.anchorRow).toBeGreaterThanOrEqual(0);
 	});
 });
