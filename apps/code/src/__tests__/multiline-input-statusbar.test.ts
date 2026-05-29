@@ -12,6 +12,7 @@ import {
 	getLayout,
 	paintAboveIndicator,
 	paintBelowIndicator,
+	paintSideFrame,
 	paintStatusBar,
 } from "../multiline-input/ui.ts";
 
@@ -161,18 +162,85 @@ describe("上下指示器绘制", () => {
 
 describe("calcColSpan", () => {
 	test("null maxWidth → full terminal width", () => {
-		expect(calcColSpan(80, null, "left")).toEqual({ startCol: 0, width: 80, endCol: 80 });
+		expect(calcColSpan(80, null, "left")).toEqual({
+			startCol: 0,
+			width: 80,
+			endCol: 80,
+		});
 	});
 
 	test("maxWidth=60, center on 80 col terminal → startCol=10, width=60", () => {
-		expect(calcColSpan(80, 60, "center")).toEqual({ startCol: 10, width: 60, endCol: 70 });
+		expect(calcColSpan(80, 60, "center")).toEqual({
+			startCol: 10,
+			width: 60,
+			endCol: 70,
+		});
 	});
 
 	test("maxWidth=60, right on 80 col terminal → startCol=20, width=60", () => {
-		expect(calcColSpan(80, 60, "right")).toEqual({ startCol: 20, width: 60, endCol: 80 });
+		expect(calcColSpan(80, 60, "right")).toEqual({
+			startCol: 20,
+			width: 60,
+			endCol: 80,
+		});
 	});
 
 	test("maxWidth=100 on 80 col terminal → clamped to 80, startCol=0", () => {
-		expect(calcColSpan(80, 100, "left")).toEqual({ startCol: 0, width: 80, endCol: 80 });
+		expect(calcColSpan(80, 100, "left")).toEqual({
+			startCol: 0,
+			width: 80,
+			endCol: 80,
+		});
+	});
+});
+
+describe("paintSideFrame 侧边框 + 花纹", () => {
+	function readRow(grid: GridLike, row: number): string {
+		let s = "";
+		for (let c = 0; c < grid.cols; c++) s += grid.charAt(row, c);
+		return s;
+	}
+
+	test("无边距（占满终端）时不绘制任何内容", () => {
+		const grid = Grid.create(20, 3);
+		paintSideFrame(grid, { startCol: 0, width: 20, endCol: 20 });
+		expect(readRow(grid as unknown as GridLike, 0).trim()).toBe("");
+	});
+
+	test("left 对齐（仅右边距）：右边框 + 右花纹，左侧不动", () => {
+		const grid = Grid.create(20, 2);
+		// startCol=0, endCol=14 → 右边距 [14,20)
+		paintSideFrame(grid, { startCol: 0, width: 14, endCol: 14 });
+		// endCol 列是边框竖线
+		expect(grid.charAt(0, 14)).toBe("│");
+		// 右花纹区 (14,20) 为花纹字符（░ 或 ▒）
+		for (let c = 15; c < 20; c++) {
+			expect(["░", "▒"]).toContain(grid.charAt(0, c));
+		}
+		// 左侧（输入区）未被写入花纹/边框
+		expect(grid.charAt(0, 0)).not.toBe("│");
+	});
+
+	test("center 对齐（两侧边距）：两侧各有边框 + 花纹", () => {
+		const grid = Grid.create(20, 2);
+		// startCol=5, endCol=15 → 左边距 [0,4)+边框列4，右边框列15+花纹(15,20)
+		paintSideFrame(grid, { startCol: 5, width: 10, endCol: 15 });
+		expect(grid.charAt(0, 4)).toBe("│"); // 左边框列 startCol-1
+		expect(grid.charAt(0, 15)).toBe("│"); // 右边框列 endCol
+		// 左花纹 [0,4)
+		for (let c = 0; c < 4; c++) expect(["░", "▒"]).toContain(grid.charAt(0, c));
+		// 右花纹 (15,20)
+		for (let c = 16; c < 20; c++)
+			expect(["░", "▒"]).toContain(grid.charAt(0, c));
+	});
+
+	test("right 对齐（仅左边距）：左边框 + 左花纹，右侧不动", () => {
+		const grid = Grid.create(20, 2);
+		// startCol=6, endCol=20 → 仅左边距
+		paintSideFrame(grid, { startCol: 6, width: 14, endCol: 20 });
+		expect(grid.charAt(0, 5)).toBe("│"); // 左边框列 startCol-1
+		for (let c = 0; c < 5; c++) expect(["░", "▒"]).toContain(grid.charAt(0, c));
+		// 右侧无边框（endCol==cols）
+		expect(grid.charAt(0, 19)).not.toBe("│");
 	});
 });

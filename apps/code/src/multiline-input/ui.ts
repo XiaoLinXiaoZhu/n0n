@@ -142,6 +142,7 @@ export function paintStatusBar(
 	grid: Grid,
 	ti: TextInput,
 	statusRow: number,
+	startCol = 0,
 ): void {
 	clearRow(grid, statusRow);
 
@@ -153,13 +154,13 @@ export function paintStatusBar(
 	const short = `C:${chars} · ${line}:${col} · Ln:${lines}`;
 	const min = `${line}:${col}`;
 
-	const cols = grid.cols;
+	const cols = grid.cols - startCol;
 	let text: string;
 	if (stringWidth(full) <= cols) text = full;
 	else if (stringWidth(short) <= cols) text = short;
 	else text = min;
 
-	writeStr(grid, statusRow, 0, text, statusStyle);
+	writeStr(grid, statusRow, startCol, text, statusStyle);
 }
 
 // ── 滚动溢出指示 ──
@@ -219,10 +220,11 @@ export function paintAboveIndicator(
 	grid: Grid,
 	row: number,
 	count: number,
+	startCol = 0,
 ): void {
 	if (row < 0 || row >= grid.rows || count <= 0) return;
 	clearRow(grid, row);
-	writeStr(grid, row, 0, `↑${count} 行`, statusStyle);
+	writeStr(grid, row, startCol, `↑${count} 行`, statusStyle);
 }
 
 /** 绘制下方溢出指示行：`↓N 行`，dim 样式 */
@@ -230,10 +232,11 @@ export function paintBelowIndicator(
 	grid: Grid,
 	row: number,
 	count: number,
+	startCol = 0,
 ): void {
 	if (row < 0 || row >= grid.rows || count <= 0) return;
 	clearRow(grid, row);
-	writeStr(grid, row, 0, `↓${count} 行`, statusStyle);
+	writeStr(grid, row, startCol, `↓${count} 行`, statusStyle);
 }
 
 // ── 列布局（align / max-width）──
@@ -267,4 +270,51 @@ export function calcColSpan(
 	else startCol = 0;
 	if (startCol < 0) startCol = 0;
 	return { startCol, width, endCol: startCol + width };
+}
+
+// ── 侧边框 + 花纹填充（输入框受 maxWidth 约束、左右出现空白时）──
+
+/** 边框样式：暗灰竖线 */
+const borderStyle = encodeStyle(-1, -1, DIM);
+/** 花纹样式：暗灰 */
+const patternStyle = encodeStyle(-1, -1, DIM);
+/** 花纹字符，按 (row+col) 交替 */
+const PATTERN_CHARS = ["░", "▒"] as const;
+
+function patternAt(row: number, col: number): string {
+	return PATTERN_CHARS[(row + col) % PATTERN_CHARS.length] as string;
+}
+
+/**
+ * 当输入框因 maxWidth 受限、左右出现空白边距时，在输入区外侧绘制竖边框，
+ * 并用 dim 花纹填充剩余边距。按对齐方式自然生效：
+ *  - left：仅右侧有边距 → 右边框 + 右花纹
+ *  - right：仅左侧有边距 → 左边框 + 左花纹
+ *  - center：两侧都有 → 两边框 + 两花纹
+ * 无边距（占满终端）时此函数不绘制任何内容。
+ *
+ * 覆盖动态区全部行，使边框/花纹在视觉上连续（含输入区、指示行、状态栏行）。
+ */
+export function paintSideFrame(grid: Grid, span: ColSpan): void {
+	const cols = grid.cols;
+	const hasLeft = span.startCol > 0;
+	const hasRight = span.endCol < cols;
+	if (!hasLeft && !hasRight) return;
+
+	for (let r = 0; r < grid.rows; r++) {
+		if (hasLeft) {
+			// 左花纹 [0, startCol-1)，左边框列 startCol-1
+			for (let c = 0; c < span.startCol - 1; c++) {
+				grid.setChar(r, c, patternAt(r, c), patternStyle);
+			}
+			grid.setChar(r, span.startCol - 1, "│", borderStyle);
+		}
+		if (hasRight) {
+			// 右边框列 endCol，右花纹 (endCol, cols)
+			grid.setChar(r, span.endCol, "│", borderStyle);
+			for (let c = span.endCol + 1; c < cols; c++) {
+				grid.setChar(r, c, patternAt(r, c), patternStyle);
+			}
+		}
+	}
 }

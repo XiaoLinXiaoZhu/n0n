@@ -43,6 +43,7 @@ import {
 	INDICATOR_ROWS,
 	paintAboveIndicator,
 	paintBelowIndicator,
+	paintSideFrame,
 	paintStatusBar,
 	STATUS_ROWS,
 } from "./ui.ts";
@@ -342,6 +343,7 @@ export function readMultilineInput(
 					grid,
 					finalLayout.aboveIndicatorRow,
 					overflow.above,
+					colSpan.startCol,
 				);
 			}
 			if (hasBelow) {
@@ -349,10 +351,12 @@ export function readMultilineInput(
 					grid,
 					finalLayout.belowIndicatorRow,
 					overflow.below,
+					colSpan.startCol,
 				);
 			}
 
-			paintStatusBar(grid, ti, finalLayout.statusRow);
+			paintStatusBar(grid, ti, finalLayout.statusRow, colSpan.startCol);
+			paintSideFrame(grid, colSpan);
 			vp.render({ row: ti.cursorRow, col: ti.cursorCol });
 			vp.endSync();
 		}
