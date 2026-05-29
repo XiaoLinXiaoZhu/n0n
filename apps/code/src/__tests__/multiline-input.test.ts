@@ -86,6 +86,17 @@ describe("readMultilineInput", () => {
 		expect(r).toBeNull();
 	});
 
+	test("Ctrl+C 被静默忽略，会话继续", async () => {
+		const { send, result } = startSession();
+		send("x");
+		send("\x03"); // Ctrl+C should be ignored
+		send("y");
+		send("\x04"); // Ctrl+D 提交
+		const r = await result;
+		expect(r?.text).toBe("xy");
+		expect(r?.lineCount).toBe(1);
+	});
+
 	test("backspace 删除宽字符", async () => {
 		const { send, result } = startSession();
 		send("我");
