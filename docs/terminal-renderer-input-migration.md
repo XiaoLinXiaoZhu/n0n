@@ -112,8 +112,36 @@
 4. 阶段二增强：先状态栏（简单、纯展示），后 @补全（涉及 Menu + 交互）
 5. 各步骤独立 commit
 
-## 待确认 / 开放问题
+## 已决策（第二轮对齐）
 
-- 新输入渲染器放 apps/code 还是 cli-ui？倾向 apps/code（应用特化），cli-ui 保持现有，避免影响共享它的 apps/fairy。
-- 状态栏字段最终集合（字符数/光标/行数/总字符——是否还要别的）。
-- @补全的候选来源（文件路径？符号？历史？）——决定 Menu 的数据填充逻辑。
+### 1. 新输入渲染器放在 apps/code 内
+不动 cli-ui（保持共享给 apps/fairy 的现状），新输入渲染器作为 apps/code 的应用特化代码。
+
+### 2. 状态栏字段 + 宽度自适应
+输入区尾部状态栏显示：字符数、当前光标位置（行,列）、总行数、总字符数。
+**宽度不足时动态降级**：终端列宽不够容纳完整状态栏时，按优先级隐藏部分字段，或英文字段改用简写（如 `Lines:` → `L:`、`Chars:` → `C:`）。需在 paint 前根据 `terminalColumns` 计算可用宽度，逐级裁剪。
+
+### 3. @ 提及补全（双框联动，仅行首触发）
+
+**触发条件**：`@` 必须位于**行首**（光标所在逻辑行的第一个字符是 `@`）才触发补全。行中间的 `@` 不触发。
+
+**数据源**：skill 列表，来自 `@n0n/skills` 的 `discoverSkillsMultiDir(getSkillDirs())`，返回 `SkillMeta[]`。
+- 仅取 `activation === "auto"` 或 `"manual"` 的 skill（排除 init）。
+- 每项可用字段：`name`、`alias[]`（别名，参与匹配与显示）、`description`（做什么/何时用，作为提示）、`category`。
+- 注意：apps/code 当前依赖的是 `@n0n/skill`（单数，见 package.json），而 skill 发现 API 在 `@n0n/skills`（复数）。落地时需确认两者关系——可能需要给 apps/code 增加 `@n0n/skills` 依赖，或通过现有 `@n0n/skill` 的 `listSkills` 拿到等价数据（skill-inject.ts 已在用 listSkills，需核对其返回是否含 alias/description/activation）。
+- `getSkillDirs()` 目前在 apps/n0n-skill 的 paths.ts（builtin + user 两个目录），apps/code 需要等价的目录解析逻辑。
+
+**双框联动布局**（参考包 `demo/mention.ts` 的多 owner 范式，扩展为三 owner）：
+- owner `input`：TextInput 输入区
+- owner `menu`：候选列表，锚定在光标下方（用 Menu widget，items 为 `@name [alias]` 形式）
+- owner `desc`：**描述框**，渲染在 menu 的左侧或右侧（视终端剩余宽度决定哪侧），显示当前 `selectedIndex` 对应 skill 的 `description`（自动折行到框宽）
+- 上下键在 menu 中移动 `selectedIndex` 时，desc 框**实时同步**显示该项描述——这是体验关键。
+- 选中（Enter/Tab）插入 `@name`，关闭两个框；Esc 取消。
+- 三个 owner 共享同一 Grid，靠 Ownership 模型互不干扰；Viewport 统一管理整块动态区高度，受边界二硬约束（总高 ≤ 终端可见行数，desc/menu 框高度需据此裁剪）。
+
+**复杂度提示**：desc 框的左右择侧、折行、与 menu 高度对齐，以及 menu/desc 共同受终端高度约束，是这块的主要工程量。先做 menu（对等 mention demo），再叠加 desc 联动。
+
+### 实现子顺序（阶段二内）
+1. 状态栏（纯展示 + 宽度降级）
+2. @ 补全 menu（行首触发 + skill 数据接入 + 插入）
+3. desc 描述框双框联动（择侧 + 实时同步 + 高度约束）
