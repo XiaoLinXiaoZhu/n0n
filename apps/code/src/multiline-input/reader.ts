@@ -11,13 +11,13 @@
  * 状态栏、滚动指示器、@mention 菜单见后续阶段。
  */
 
+import { Grid, parseKey, TextInput, Viewport } from "@xlxz/terminal-renderer";
 import {
-	Grid,
-	parseKey,
-	stringWidth,
-	TextInput,
-	Viewport,
-} from "@xlxz/terminal-renderer";
+	countVisualLines,
+	getLayout,
+	paintStatusBar,
+	STATUS_ROWS,
+} from "./ui.ts";
 
 // ── bracketed paste 控制序列 ──
 const BP_ON = "\x1b[?2004h";
@@ -52,22 +52,6 @@ export interface MultilineInputResult {
 	lineCount: number;
 }
 
-/** 计算文本在给定宽度下占用的视觉行数（含换行 + CJK 折行） */
-function countVisualLines(text: string, cols: number): number {
-	const width = Math.max(1, cols);
-	let lines = 0;
-	let start = 0;
-	for (let i = 0; i <= text.length; i++) {
-		if (i === text.length || text[i] === "\n") {
-			const seg = text.slice(start, i);
-			const w = stringWidth(seg);
-			lines += Math.max(1, Math.ceil(w / width));
-			start = i + 1;
-		}
-	}
-	return Math.max(1, lines);
-}
-
 /** 根据文本和终端尺寸计算输入区所需的 grid 行数 */
 function calcGridRows(
 	text: string,
@@ -78,8 +62,8 @@ function calcGridRows(
 		MIN_INPUT_ROWS,
 		Math.min(MAX_INPUT_ROWS, termRows - TERM_RESERVE),
 	);
-	const needed = countVisualLines(text, termCols);
-	return Math.max(MIN_INPUT_ROWS, Math.min(needed, maxRows));
+	const needed = countVisualLines(text, termCols) + STATUS_ROWS;
+	return Math.max(MIN_INPUT_ROWS + STATUS_ROWS, Math.min(needed, maxRows));
 }
 
 export function readMultilineInput(
@@ -118,7 +102,17 @@ export function readMultilineInput(
 		let disconnectStdin: (() => void) | null = null;
 
 		function setupOwnership(): void {
-			grid.setOwnerAll(OWNER_INPUT);
+			const layout = getLayout(grid.rows);
+			for (let r = 0; r < grid.rows; r++) {
+				for (let c = 0; c < grid.cols; c++) {
+					grid.setOwner(r, c, "");
+				}
+			}
+			for (let r = layout.inputStartRow; r <= layout.inputEndRow; r++) {
+				for (let c = 0; c < grid.cols; c++) {
+					grid.setOwner(r, c, OWNER_INPUT);
+				}
+			}
 		}
 
 		function resizeGridIfNeeded(): void {
@@ -134,6 +128,7 @@ export function readMultilineInput(
 			setupOwnership();
 			ti.ensureCursorVisible(grid, OWNER_INPUT);
 			ti.paint(grid, OWNER_INPUT);
+			paintStatusBar(grid, ti);
 			vp.render({ row: ti.cursorRow, col: ti.cursorCol });
 			vp.endSync();
 		}
