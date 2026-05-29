@@ -61,6 +61,12 @@ const MIN_INPUT_ROWS = 1;
 const MAX_INPUT_ROWS = 20;
 /** 终端底部保留行数（避免动态区贴到终端最底、给 commit 留余量） */
 const TERM_RESERVE = 2;
+/**
+ * resize 防抖延迟。终端 resize 事件本身有约 0.3s 的最小间隔，若 debounce 延迟
+ * 与之接近（如 300ms），连续拖动时事件间隔会 ≥ 延迟，导致每次都触发完整 remount+render。
+ * 取 800ms 使延迟明显大于事件间隔，连续拖动期间的事件被合并，仅在停手后重绘一次。
+ */
+const RESIZE_DEBOUNCE_MS = 800;
 
 const OWNER_INPUT = "input";
 const OWNER_MENU = "menu";
@@ -567,11 +573,12 @@ export function readMultilineInput(
 		// 终端尺寸变化时即使算出的 grid 尺寸相同也必须 remount——清除旧动态区残留并按回流
 		// 高度重新对齐光标（参照 terminal-renderer 的 centered demo）。render 内的
 		// resizeGridIfNeeded(默认 false) 此时尺寸已对齐会 return，不重复 remount。
-		// 拖动调整窗口时高频触发，debounce 300ms 仅在停止后执行一次，避免闪烁。
+		// 延迟取 RESIZE_DEBOUNCE_MS（见常量说明）：须大于终端 resize 事件的最小间隔，
+		// 否则连续拖动时每次都触发完整重绘。
 		const onResize = debounce(() => {
 			resizeGridIfNeeded(true);
 			render();
-		}, 300);
+		}, RESIZE_DEBOUNCE_MS);
 		out.on("resize", onResize);
 		const prevDisconnect = disconnectStdin;
 		disconnectStdin = () => {
