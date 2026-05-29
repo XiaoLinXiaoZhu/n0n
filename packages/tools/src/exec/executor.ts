@@ -168,6 +168,8 @@ export async function* execToolStream(
 		`_n0n_exec_${Date.now()}_${Math.random().toString(36).slice(2, 8)}${ext}`,
 	);
 
+	let cleanupTempFile = true;
+
 	try {
 		const scriptContent =
 			runtime === "cmd" ? `@${call.args.script}\n` : call.args.script;
@@ -375,7 +377,8 @@ export async function* execToolStream(
 				stderrSoFar: tailByTokens(stderrSoFar, TAIL_TOKENS),
 				durationMs,
 			} satisfies ExecToolResult;
-			return; // 不进入 finally 删除临时文件（后台协程负责）
+			cleanupTempFile = false; // 临时文件由后台协程负责清理
+			return;
 		}
 
 		// ── 正常完成路径 ──
@@ -459,11 +462,15 @@ export async function* execToolStream(
 			durationMs: Date.now() - start,
 		} satisfies ExecToolResult;
 	} finally {
-		// 正常路径清理临时文件（超时路径由后台协程负责，已 return）
-		try {
-			unlinkSync(tmpFile);
-		} catch {
-			// ignore cleanup errors
+		// 根据 cleanupTempFile 标志决定是否清理临时文件：
+		// - true：正常完成或出错路径，在此清理
+		// - false：后台协程负责清理，此处跳过
+		if (cleanupTempFile) {
+			try {
+				unlinkSync(tmpFile);
+			} catch {
+				// ignore cleanup errors
+			}
 		}
 	}
 }
