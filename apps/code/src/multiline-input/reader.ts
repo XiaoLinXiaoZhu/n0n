@@ -53,6 +53,8 @@ import {
 // ── bracketed paste 控制序列 ──
 const BP_ON = "\x1b[?2004h";
 const BP_OFF = "\x1b[?2004l";
+const BP_START = "\x1b[200~";
+const BP_END = "\x1b[201~";
 const TAB_SPACES = "  ";
 
 // ── 动态高度配置 ──
@@ -171,6 +173,9 @@ export function readMultilineInput(
 		// bracketed paste 跨 chunk 聚合状态
 		let isPasting = false;
 		let pasteBuffer = "";
+		// 末尾可能是被 chunk 边界截断的 paste 标记前缀（如 "\x1b[" / "\x1b[2"），
+		// hold 到下个 chunk 拼接后再判定，避免标记被拆开导致漏识别、内容残留。
+		let pasteCarry = "";
 
 		const w = (s: string) => out.write(s);
 
@@ -405,10 +410,11 @@ export function readMultilineInput(
 
 		function flushPaste(): void {
 			if (pasteBuffer.length > 0) {
-				ti.insertChar(pasteBuffer);
+				ti.insertChar(normalizePastedText(pasteBuffer));
 				pasteBuffer = "";
 			}
 			isPasting = false;
+			refreshMention();
 			render();
 		}
 
@@ -424,25 +430,9 @@ export function readMultilineInput(
 			render();
 		}
 
-		function onData(data: string): void {
+		function dispatchKey(data: string): void {
 			const buf = Buffer.from(data, "utf8");
 			const key = parseKey(buf);
-
-			// ── bracketed paste 聚合（跨 chunk）──
-			if (key.type === "pasteStart") {
-				isPasting = true;
-				pasteBuffer = "";
-				return;
-			}
-			if (isPasting) {
-				if (key.type === "pasteEnd") {
-					flushPaste();
-					return;
-				}
-				// 粘贴期间所有数据原样累积（包括 char / enter / 多字节）
-				pasteBuffer += data;
-				return;
-			}
 
 			if (menuOpen) {
 				switch (key.type) {
@@ -574,6 +564,56 @@ export function readMultilineInput(
 
 			refreshMention();
 			render();
+		}
+
+		// 返回 s 末尾「可能是 BP_START / BP_END 被 chunk 边界截断的前缀」的起始下标
+		// （-1 表示无）。仅 hold 长度 ≥2 的前缀（如 "\x1b["、"\x1b[2"），不 hold 孤立的
+		// "\x1b"——否则单独的 ESC 键（如 menuOpen 时按 ESC 关菜单）会被延迟一拍。
+		// utf8 解码不会把 ASCII '[' 与前面的 "\x1b" 拆开，故标记拆分实际发生在 "\x1b[" 之后。
+		// 注意：纯逐字节拆分（\x1b 与 [200~ 分到不同 chunk）是终端不会产生的不可达场景，
+		// 不予支持——支持它需 hold 单 \x1b，会导致真实 ESC 键（关菜单）延迟一拍。
+		function trailingPartialMarker(s: string): number {
+			const maxCheck = Math.min(BP_START.length - 1, s.length);
+			for (let len = maxCheck; len >= 2; len--) {
+				const tail = s.slice(s.length - len);
+				if (BP_START.startsWith(tail) || BP_END.startsWith(tail)) {
+					return s.length - len;
+				}
+			}
+			return -1;
+		}
+
+		function onData(data: string): void {
+			let rest = pasteCarry + data;
+			pasteCarry = "";
+			// 末尾若是被截断的标记前缀，hold 到下个 chunk 拼接后再判定
+			const pp = trailingPartialMarker(rest);
+			if (pp !== -1) {
+				pasteCarry = rest.slice(pp);
+				rest = rest.slice(0, pp);
+			}
+			while (rest.length > 0) {
+				if (isPasting) {
+					const ei = rest.indexOf(BP_END);
+					if (ei === -1) {
+						pasteBuffer += rest;
+						return;
+					}
+					pasteBuffer += rest.slice(0, ei);
+					flushPaste();
+					rest = rest.slice(ei + BP_END.length);
+					continue;
+				}
+				const si = rest.indexOf(BP_START);
+				if (si === -1) {
+					dispatchKey(rest);
+					return;
+				}
+				if (si > 0) dispatchKey(rest.slice(0, si));
+				isPasting = true;
+				pasteBuffer = "";
+				rest = rest.slice(si + BP_START.length);
+			}
 		}
 
 		// ── 接管 stdin ──
