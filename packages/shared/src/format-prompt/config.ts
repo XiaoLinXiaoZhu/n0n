@@ -12,6 +12,7 @@ type MessageType = DomainMessage["type"];
  */
 export const AFFECTS_SUBSEQUENT: Record<MessageType, boolean> = {
 	system: true,
+	system_with_skill: true,
 	generic_user_text: true,
 	generic_tool_call: true,
 	generic_tool_result: true,

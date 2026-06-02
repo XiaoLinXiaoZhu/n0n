@@ -36,6 +36,7 @@ import { formatEditResult } from "./format-edit.ts";
 import { formatExecResult } from "./format-exec.ts";
 import { formatIdleNudge } from "./format-idle-nudge.ts";
 import { formatProgressResult } from "./format-progress.ts";
+import { formatSkills } from "./format-skill.ts";
 import { formatToolArgError } from "./format-tool-arg-error.ts";
 import { formatTurnFeedback } from "./format-turn-feedback.ts";
 import { formatWriteResult } from "./format-write.ts";
@@ -77,6 +78,9 @@ function buildUserInputContent(
 		parts.push(tags.wrapTag("context", msg.context));
 	}
 	parts.push(msg.content);
+	if (msg.mentionedSkills.length > 0) {
+		parts.push(formatSkills(msg.mentionedSkills, tags));
+	}
 	if (msg.hint) {
 		parts.push(tags.wrapTag("hint", msg.hint));
 	}
@@ -149,6 +153,16 @@ export function formatPrompt(
 					content: tags.adaptTags(msg.content),
 				});
 				break;
+
+			case "system_with_skill": {
+				const skillsText = formatSkills(msg.skills, tags);
+				const base = tags.adaptTags(msg.content);
+				result.push({
+					role: "system",
+					content: skillsText ? `${base}\n\n${skillsText}` : base,
+				});
+				break;
+			}
 
 			case "generic_user_text":
 				result.push({ role: "user", content: msg.content });
