@@ -26,8 +26,10 @@ export { deriveNameFromPath, generateUid, parseSkillMeta } from "./parser.ts";
 export { findSkillsByNameOrAlias } from "./resolver.ts";
 export { discoverSkills, discoverSkillsMultiDir } from "./scanner.ts";
 export type {
+	Skill,
 	SkillActivation,
 	SkillCategory,
 	SkillContent,
 	SkillMeta,
 } from "./types.ts";
+export { toSkill } from "./types.ts";

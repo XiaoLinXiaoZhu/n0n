@@ -4,15 +4,17 @@
  * 供 apps/code 等消费者直接调用（不走 CLI），确保行为一致。
  */
 
-import type { SkillContent, SkillMeta } from "@n0n/skills";
+import type { Skill, SkillContent, SkillMeta } from "@n0n/skills";
 import {
 	discoverSkillsMultiDir,
 	findSkillsByNameOrAlias,
 	loadSkillContentWithMeta,
+	toSkill,
 } from "@n0n/skills";
 import { getSkillDirs } from "./paths.ts";
 
-export type { SkillContent, SkillMeta };
+export type { Skill, SkillContent, SkillMeta };
+export { toSkill };
 
 /** 获取所有 skill 元数据 */
 export async function listSkills(): Promise<SkillMeta[]> {

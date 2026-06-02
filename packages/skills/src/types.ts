@@ -5,6 +5,8 @@
  * 可在任意上下文中安全引用（包括测试和类型转换）。
  */
 
+import type { Skill } from "@n0n/types";
+
 /** Skill 激活模式 */
 export type SkillActivation = "auto" | "manual" | "init";
 
@@ -51,12 +53,29 @@ export interface SkillMeta {
 	metadata?: Record<string, string>;
 }
 
-/** Skill 完整内容（元数据 + 指令正文） */
-export interface SkillContent extends SkillMeta {
-	/** SKILL.md 的 Markdown 正文（frontmatter 之后的部分） */
-	body: string;
-	/** skill 目录下的脚本文件列表（相对路径） */
-	scripts: string[];
-	/** skill 目录下的额外资源文件列表（绝对路径，不含 SKILL.md） */
-	resources: string[];
+/**
+ * Skill 完整内容 = 发现层元数据（SkillMeta）+ 领域层最小接口（Skill）。
+ *
+ * body / scripts / resources 由顶层 Skill 提供，避免重复定义与转换逻辑：
+ * SkillContent 可直接作为 Skill 使用，无需字段映射。
+ */
+export interface SkillContent extends SkillMeta, Skill {}
+
+/** 重导出 Skill，方便消费者从 @n0n/skills 同时拿到领域接口 */
+export type { Skill };
+
+/**
+ * SkillContent → Skill 投影。
+ *
+ * SkillContent 携带 uid/category/path 等发现层元数据；领域消息
+ * （SystemWithSkillMessage.skills / UserInputMessage.mentionedSkills）会被持久化，
+ * 只应携带最小字段。此函数显式收窄，避免元数据污染对话日志。
+ */
+export function toSkill(s: SkillContent): Skill {
+	return {
+		name: s.name,
+		body: s.body,
+		scripts: s.scripts,
+		resources: s.resources,
+	};
 }
