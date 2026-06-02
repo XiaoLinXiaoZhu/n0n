@@ -16,7 +16,6 @@ import type {
 	DomainMessage,
 	ToolCallRecord,
 	ToolDefinition,
-	WriteArgs,
 	WriteToolCall,
 	WriteToolResult,
 } from "@n0n/types";

@@ -126,10 +126,10 @@ describe("heartbeat integration", () => {
 		async () => {
 			const config = {
 				providerConfig: ProviderConfigSchema.parse({
-					provider: loaded!.LLM_PROVIDER || "openai",
-					api_key: loaded!.LLM_API_KEY,
-					model: loaded!.LLM_MODEL,
-					base_url: loaded!.LLM_BASE_URL,
+					provider: loaded?.LLM_PROVIDER || "openai",
+					api_key: loaded?.LLM_API_KEY,
+					model: loaded?.LLM_MODEL,
+					base_url: loaded?.LLM_BASE_URL,
 				}),
 			};
 			const client = createLLMClient(config);

@@ -94,14 +94,14 @@ describe("exec bg 文件同步验证", () => {
 		const content1 = readFileSync(result.logFile, "utf-8");
 		const match1 = content1.match(/last_updated: (.+)/);
 		expect(match1).not.toBeNull();
-		const time1 = new Date(match1![1]!).getTime();
+		const time1 = new Date(match1?.[1] ?? "").getTime();
 
 		await new Promise((r) => setTimeout(r, 4000));
 
 		const content2 = readFileSync(result.logFile, "utf-8");
 		const match2 = content2.match(/last_updated: (.+)/);
 		expect(match2).not.toBeNull();
-		const time2 = new Date(match2![1]!).getTime();
+		const time2 = new Date(match2?.[1] ?? "").getTime();
 
 		expect(time2 - time1).toBeGreaterThanOrEqual(2000);
 		expect(content2).toContain("status: running");
@@ -136,6 +136,7 @@ describe("exec bg 文件同步验证", () => {
 	test("新输出能被同步到 bg 文件", async () => {
 		const script = [
 			"for (let i = 1; i <= 8; i++) {",
+			// biome-ignore lint/suspicious/noTemplateCurlyInString: literal script content
 			"  console.log(`output_line_${i}`);",
 			"  await Bun.sleep(1000);",
 			"}",
@@ -158,6 +159,7 @@ describe("exec bg 文件同步验证", () => {
 	test("bg 文件 mtime 在进程运行期间持续推进", async () => {
 		const script = [
 			"for (let i = 1; i <= 12; i++) {",
+			// biome-ignore lint/suspicious/noTemplateCurlyInString: literal script content
 			"  console.log(`[t=${i}s] heartbeat`);",
 			"  await Bun.sleep(1000);",
 			"}",
@@ -177,8 +179,8 @@ describe("exec bg 文件同步验证", () => {
 			mtimes.push(stat.lastModified);
 		}
 
-		expect(mtimes[1]!).toBeGreaterThan(mtimes[0]!);
-		expect(mtimes[2]!).toBeGreaterThan(mtimes[1]!);
+		expect(mtimes[1] as number).toBeGreaterThan(mtimes[0] as number);
+		expect(mtimes[2] as number).toBeGreaterThan(mtimes[1] as number);
 
 		await new Promise((r) => setTimeout(r, 4000));
 		const content = readFileSync(result.logFile, "utf-8");

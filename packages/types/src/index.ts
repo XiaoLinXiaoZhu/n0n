@@ -17,11 +17,11 @@ export type {
 } from "./client.ts";
 export { FinishReason, StreamAccumulator } from "./client.ts";
 export type * from "./domain.ts";
-export type { Skill } from "./skill.ts";
 export type { LLMProvider } from "./llm-provider.ts";
 export { isLLMProvider, LLM_PROVIDERS } from "./llm-provider.ts";
 export type * from "./renderer.ts";
 export { findLastUsage } from "./renderer.ts";
+export type { Skill } from "./skill.ts";
 export type {
 	EditArgs,
 	ExecArgs,

@@ -48,7 +48,9 @@ export async function listCommand(rawArgs: string[]): Promise<void> {
 	for (const cat of sortedCats) {
 		const catLabel = c ? c.bold(c.cyan(`[${cat}]`)) : `[${cat}]`;
 		console.log(`\n${catLabel}`);
-		const catSkills = groups[cat]!;
+		const catSkills = groups[cat];
+		if (!catSkills)
+			throw new Error(`unreachable: no group for category ${cat}`);
 		const byActivation = groupBy(catSkills, (s) => s.activation);
 		for (const actType of ["auto", "manual", "init"] as const) {
 			const actSkills = byActivation[actType];
@@ -130,7 +132,8 @@ function groupBy<T>(
 	const groups: Record<string, T[]> = {};
 	for (const item of items) {
 		const key = keyFn(item);
-		(groups[key] ??= []).push(item);
+		groups[key] ??= [];
+		groups[key].push(item);
 	}
 	return groups;
 }

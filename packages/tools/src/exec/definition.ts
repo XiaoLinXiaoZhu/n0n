@@ -11,7 +11,7 @@
  * - act: 默认 120s, 上限 240s — 可能需要长时间等待的变更操作
  */
 
-import type { ExecArgs, ToolDefinition } from "@n0n/types";
+import type { ToolDefinition } from "@n0n/types";
 import { ExecArgsSchema, ExecParamDefs, withDescriptions } from "@n0n/types";
 import { paramsFromDefs } from "../zod-to-parameters.ts";
 

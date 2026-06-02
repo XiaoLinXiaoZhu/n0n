@@ -311,7 +311,7 @@ model = "gpt-4o"
 
 		expect(result.success).toBe(false);
 		if (result.success) throw new Error("expected failure");
-		expect(result.errors[0]!.kind).toBe("env_var_not_found");
+		expect(result.errors[0]?.kind).toBe("env_var_not_found");
 	});
 
 	test("$ 后非大写字母不触发解析", () => {
@@ -465,7 +465,7 @@ model = "gpt-4o"
 
 		expect(result.success).toBe(false);
 		if (result.success) throw new Error("expected failure");
-		expect(result.errors[0]!.kind).toBe("extend_target_not_found");
+		expect(result.errors[0]?.kind).toBe("extend_target_not_found");
 	});
 
 	test("extend 深层合并 nested object", () => {
@@ -620,7 +620,7 @@ describe("错误处理", () => {
 		]);
 		expect(result.success).toBe(false);
 		if (result.success) throw new Error("expected failure");
-		expect(result.errors[0]!.kind).toBe("toml_parse_error");
+		expect(result.errors[0]?.kind).toBe("toml_parse_error");
 	});
 
 	test("schema 验证失败返回 schema_validation_error", () => {
@@ -636,7 +636,7 @@ api_key = "sk-test"
 		]);
 		expect(result.success).toBe(false);
 		if (result.success) throw new Error("expected failure");
-		expect(result.errors[0]!.kind).toBe("schema_validation_error");
+		expect(result.errors[0]?.kind).toBe("schema_validation_error");
 	});
 });
 

@@ -14,13 +14,10 @@
  */
 
 import type {
-	ActToolCall,
 	CanStartFn,
 	DomainMessage,
 	EditToolCall,
-	ObserveToolCall,
 	ProgressToolCall,
-	ReasonToolCall,
 	ToolCallRecord,
 	ToolDefinition,
 	ToolResult,
@@ -233,7 +230,9 @@ export function makeToolkit(
 		"write",
 		"edit",
 	] as const;
-	const tools = TOOL_ORDER.map((name) => registry[name]!.definition);
+	const tools = TOOL_ORDER.map((name) => registry[name]?.definition).filter(
+		(t): t is ToolDefinition => t !== undefined,
+	);
 
 	const activeTools = new Set<string>(TOOL_ORDER);
 	return {

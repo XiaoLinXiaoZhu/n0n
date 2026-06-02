@@ -64,7 +64,7 @@ const backgroundedHintTemplates = [
 /** 格式化截断分块的读取建议（fact 部分：客观分块数据） */
 function formatChunkGuide(
 	chunks: { startLine: number; endLine: number; tokens: number }[],
-	outputFile: string,
+	_outputFile: string,
 ): string {
 	if (chunks.length === 0) return "";
 	if (chunks.length === 1) {

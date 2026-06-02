@@ -23,7 +23,7 @@ export const CATEGORIES: readonly SkillCategory[] = [
 	"task",
 ] as const;
 
-function isCategory(s: string): s is SkillCategory {
+function _isCategory(s: string): s is SkillCategory {
 	return (CATEGORIES as readonly string[]).includes(s);
 }
 

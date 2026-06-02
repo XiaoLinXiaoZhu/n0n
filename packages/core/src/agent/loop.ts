@@ -41,7 +41,7 @@ export interface AgentResult<T = unknown> {
 	tools: ToolDefinition[];
 }
 
-export interface AgentOptions<T = unknown> {
+export interface AgentOptions<_T = unknown> {
 	/** 主 LLM Client 实例 */
 	client: LLMClient;
 	/** 工具集实例 — 由 app 层通过 makeToolkit 构造并注入 */
@@ -168,8 +168,7 @@ export async function agentLoop<T = unknown>(
 		const outcome = classifyRound(result, idleCount, maxIdleRounds);
 
 		const roundUsage = result.accumulator.usage;
-		const roundFinishReason =
-			result.accumulator.finishReason ?? "unknown";
+		const roundFinishReason = result.accumulator.finishReason ?? "unknown";
 
 		if (outcome.action === "exit") {
 			scheduler.seal();

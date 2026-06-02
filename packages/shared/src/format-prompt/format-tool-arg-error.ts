@@ -60,7 +60,7 @@ export function formatToolArgError(
 		}
 		case "invalid_args": {
 			const issues = err.issues
-				.map((i) => `${i.path ? i.path + ": " : ""}${i.message}`)
+				.map((i) => `${i.path ? `${i.path}: ` : ""}${i.message}`)
 				.join("; ");
 			const tpl = pick(invalidArgsVariants, msgIndex);
 			content = tpl(issues);

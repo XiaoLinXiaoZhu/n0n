@@ -228,12 +228,7 @@ describe("formatPrompt 变体端到端", () => {
 		let bpIdx = -1;
 		for (let j = longResult.length - 1; j >= 0; j--) {
 			const m = longResult[j];
-			if (
-				m &&
-				m.cacheBreakpoint &&
-				m.role === "assistant" &&
-				m.toolCalls?.length
-			) {
+			if (m?.cacheBreakpoint && m.role === "assistant" && m.toolCalls?.length) {
 				bpIdx = j;
 				break;
 			}

@@ -4,8 +4,8 @@
  * 验证中文折行、择侧定位、描述框渲染。
  */
 
-import { Grid } from "@xlxz/terminal-renderer";
 import { describe, expect, test } from "bun:test";
+import { Grid } from "@xlxz/terminal-renderer";
 import {
 	calcDescBox,
 	type MenuBox,

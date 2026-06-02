@@ -38,7 +38,7 @@ export function parseDsl(input: string): DslItem[] {
 					detail: currentDetail.join(" ").trim(),
 				});
 			}
-			currentLabel = match[1]!;
+			currentLabel = match[1] ?? "";
 			currentDetail.length = 0;
 		} else if (line && currentLabel) {
 			currentDetail.push(line);

@@ -28,11 +28,11 @@ const recoveredFactTemplates = [
 ];
 
 const recoveredHintTemplates = [
-	(path: string) =>
+	(_path: string) =>
 		`To complete it, choose one strategy:\n1. Write the remaining content to a temp file, then use exec to append it: exec({ script: "${IS_WINDOWS ? "type tmp_rest.txt >> target_file" : "cat tmp_rest.txt >> target_file"}" })\n2. Break the file into smaller, well-structured modules and write each separately.\nDo NOT use edit for large appends — it is intent-driven and not suited for bulk content insertion.`,
 	(path: string) =>
 		`Recovery options:\n1. Write the rest to a temp file and append: exec({ script: "${IS_WINDOWS ? `type remaining.txt >> ${path}` : `cat remaining.txt >> ${path}`}" })\n2. Split into smaller modules and write each one separately.\nAvoid using edit for bulk appends.`,
-	(path: string) =>
+	(_path: string) =>
 		`To finish writing:\n1. Put the remaining content in a temp file and concatenate via exec.\n2. Or restructure into smaller files.\nDo not use edit for large content insertions.`,
 ];
 

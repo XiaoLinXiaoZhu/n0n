@@ -16,10 +16,8 @@
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { isAbsolute, resolve } from "node:path";
 import type {
-	EditArgs,
 	EditToolCall,
 	EditToolResult,
-	PatchOp,
 	ToolDefinition,
 	ToolOutputChunk,
 	ToolStreamEvent,

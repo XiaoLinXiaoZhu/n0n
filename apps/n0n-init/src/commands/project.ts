@@ -6,10 +6,10 @@
 
 import { execSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
-import { readdir, stat } from "node:fs/promises";
-import { join, relative } from "node:path";
+import { readdir } from "node:fs/promises";
+import { join } from "node:path";
 
-const IS_WINDOWS = process.platform === "win32";
+const _IS_WINDOWS = process.platform === "win32";
 
 export async function projectCommand(): Promise<void> {
 	const cwd = process.cwd();

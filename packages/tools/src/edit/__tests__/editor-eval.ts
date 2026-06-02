@@ -12,14 +12,7 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import type {
-	AnthropicProviderConfig,
-	DeepSeekProviderConfig,
-	GoogleProviderConfig,
-	OpenAICompatibleProviderConfig,
-	OpenAIProviderConfig,
-	ProviderConfig,
-} from "@n0n/llm";
+import type { ProviderConfig } from "@n0n/llm";
 import {
 	createLLMClient,
 	createResponsesClient,

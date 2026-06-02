@@ -42,7 +42,7 @@ function resolveVarsWithPaths(
 	if (typeof obj === "string") {
 		const m = obj.match(VAR_RE);
 		if (m) {
-			const varName = m[1]!;
+			const varName = m[1] ?? "";
 			const resolved = envPool[varName];
 			if (resolved === undefined) {
 				const sourceName = trace[prefix]?.source ?? "未知";
@@ -190,10 +190,10 @@ function findExtendNodes(
 	for (const [key, val] of Object.entries(obj)) {
 		const dotPath = prefix ? `${prefix}.${key}` : key;
 		if (isObject(val)) {
-			if (typeof val["extend"] === "string") {
+			if (typeof val.extend === "string") {
 				nodes.push({
 					parent: val,
-					targetPath: val["extend"],
+					targetPath: val.extend,
 					selfPath: dotPath,
 				});
 			}
@@ -226,7 +226,7 @@ function resolveExtends(
 					parentPath: node.selfPath,
 					message: `extend 目标 "${node.targetPath}" 不存在（在 "${node.selfPath}" 中引用）`,
 				});
-				delete node.parent["extend"];
+				delete node.parent.extend;
 				resolved = true;
 				break;
 			}
@@ -238,13 +238,13 @@ function resolveExtends(
 					parentPath: node.selfPath,
 					message: `extend 目标 "${node.targetPath}" 不是 object（在 "${node.selfPath}" 中引用）`,
 				});
-				delete node.parent["extend"];
+				delete node.parent.extend;
 				resolved = true;
 				break;
 			}
 
 			// 检查目标是否还有未解析的 extend
-			if (typeof (target as Record<string, unknown>)["extend"] === "string") {
+			if (typeof (target as Record<string, unknown>).extend === "string") {
 				continue;
 			}
 
@@ -256,14 +256,14 @@ function resolveExtends(
 					chain: [node.selfPath, node.targetPath],
 					message: `检测到循环 extend: ${node.selfPath} → ${node.targetPath}`,
 				});
-				delete node.parent["extend"];
+				delete node.parent.extend;
 				resolved = true;
 				break;
 			}
 			visited.add(chainKey);
 
 			// 执行 deep merge: target 作为 base，own 字段作为 overlay 覆盖
-			delete node.parent["extend"];
+			delete node.parent.extend;
 
 			// 获取 overlay(parent/own) 的来源——从 trace 中任一个子字段读取
 			const parentKeys = Object.keys(node.parent);
@@ -297,7 +297,7 @@ function resolveExtends(
 			// 补全 target-only 字段（不在 overlay 中）的 trace：从 target 路径递归复制
 			function copyTraceSubtree(srcPrefix: string, dstPrefix: string): void {
 				for (const [path, entry] of Object.entries(trace)) {
-					if (path === srcPrefix || path.startsWith(srcPrefix + ".")) {
+					if (path === srcPrefix || path.startsWith(`${srcPrefix}.`)) {
 						const suffix =
 							path === srcPrefix ? "" : path.slice(srcPrefix.length);
 						const dstPath = dstPrefix + suffix;
@@ -320,7 +320,7 @@ function resolveExtends(
 				if (
 					target !== undefined &&
 					isObject(target) &&
-					typeof (target as Record<string, unknown>)["extend"] === "string"
+					typeof (target as Record<string, unknown>).extend === "string"
 				) {
 					errors.push({
 						kind: "circular_extend" as const,

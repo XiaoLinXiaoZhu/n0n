@@ -216,7 +216,10 @@ function runtimesSection(): string {
 			.sort((a, b) => a.def.priority - b.def.priority);
 
 		if (groupResults.length > 0) {
-			preferredByGroup.set(group, groupResults[0]!.def.name);
+			const first = groupResults[0];
+			if (!first)
+				throw new Error("unreachable: empty groupResults despite length > 0");
+			preferredByGroup.set(group, first.def.name);
 		}
 
 		for (const r of groupResults) {
@@ -324,8 +327,13 @@ function normalizeName(entry: string): string | null {
 	if (IS_WINDOWS) {
 		const parts = entry.split(".");
 		if (parts.length > 1) {
-			const ext = parts.pop()!.toLowerCase();
-			if (!EXE_EXTENSIONS!.has(ext)) return null;
+			const rawExt = parts.pop();
+			if (!rawExt)
+				throw new Error(
+					"unreachable: parts.length > 1 guarantees pop returns a value",
+				);
+			const ext = rawExt.toLowerCase();
+			if (!EXE_EXTENSIONS?.has(ext)) return null;
 			return parts.join(".").toLowerCase();
 		}
 		return null;

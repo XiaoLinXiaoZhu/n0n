@@ -450,11 +450,21 @@ const FEWSHOT_TEMPLATE: FewshotEntry[] = [
 	{ _slot: "derived", build: buildCompletedCall },
 	{
 		_slot: "derived",
-		build: (ctx) => buildCompletedResults(ctx)[0]!,
+		build: (ctx) => {
+			const r = buildCompletedResults(ctx);
+			if (!r[0])
+				throw new Error("unreachable: expected first completed result");
+			return r[0];
+		},
 	},
 	{
 		_slot: "derived",
-		build: (ctx) => buildCompletedResults(ctx)[1]!,
+		build: (ctx) => {
+			const r = buildCompletedResults(ctx);
+			if (!r[1])
+				throw new Error("unreachable: expected second completed result");
+			return r[1];
+		},
 	},
 ];
 
@@ -512,7 +522,9 @@ async function renderFewshot(
 	);
 	const resultMap = new Map<string, ToolResult>();
 	for (let i = 0; i < scriptSlots.length; i++) {
-		resultMap.set(scriptSlots[i]!.call.id, execResults[i]!);
+		const r = execResults[i];
+		if (!r) throw new Error(`unreachable: execResults[${i}] is undefined`);
+		resultMap.set((scriptSlots[i] as ScriptSlot).call.id, r);
 	}
 
 	const ctx: RuntimeCtx = { results: resultMap, workspace };
@@ -520,7 +532,11 @@ async function renderFewshot(
 	// Render template
 	return template.map((entry): DomainMessage => {
 		if (!isSlot(entry)) return entry;
-		if (entry._slot === "script") return resultMap.get(entry.call.id)!;
+		if (entry._slot === "script") {
+			const r = resultMap.get(entry.call.id);
+			if (!r) throw new Error(`unreachable: no result for ${entry.call.id}`);
+			return r;
+		}
 		return entry.build(ctx);
 	});
 }

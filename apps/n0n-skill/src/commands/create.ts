@@ -41,7 +41,7 @@ export async function createCommand(input: string | undefined): Promise<void> {
 		process.exit(1);
 	}
 
-	const category = parts[0]!;
+	const category = parts[0] ?? "";
 	const nameParts = parts.slice(1);
 	const dirName = nameParts.join("/");
 

@@ -399,7 +399,7 @@ export class RichRenderer implements Renderer {
 			const start = Math.max(0, total - TAIL_WINDOW);
 			for (let i = start; i < total; i++) {
 				this.toolRegion.writeln(
-					`  ${style.dim("│")} ${style.dim(this.execOutputLines[i]!)}`,
+					`  ${style.dim("│")} ${style.dim(this.execOutputLines[i] ?? "")}`,
 				);
 			}
 			endSyncUpdate();
@@ -427,13 +427,13 @@ export class RichRenderer implements Renderer {
 				}
 			} else {
 				for (let i = 0; i < HEAD_LINES; i++) {
-					writeln(`  ${style.dim("│")} ${style.dim(lines[i]!)}`);
+					writeln(`  ${style.dim("│")} ${style.dim(lines[i] ?? "")}`);
 				}
 				writeln(
 					`  ${style.dim(":")} ${style.gray(`(${lines.length - HEAD_LINES - TAIL_LINES} lines folded)`)}`,
 				);
 				for (let i = lines.length - TAIL_LINES; i < lines.length; i++) {
-					writeln(`  ${style.dim("│")} ${style.dim(lines[i]!)}`);
+					writeln(`  ${style.dim("│")} ${style.dim(lines[i] ?? "")}`);
 				}
 			}
 			this.execOutputLines = [];

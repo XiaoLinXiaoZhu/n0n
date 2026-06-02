@@ -29,10 +29,7 @@ import {
 	resolveBasePaths,
 } from "@n0n/shared";
 import { z } from "zod";
-import {
-	type UserInputConfig,
-	UserInputConfigSchema,
-} from "./multiline-input/config.ts";
+import { UserInputConfigSchema } from "./multiline-input/config.ts";
 import type { NotifyConfig } from "./notify-sound.ts";
 
 // ── 配置 schema ──
@@ -213,16 +210,16 @@ function displayProvider(
 writeln(`${style.cyan("i")} ${style.bold("配置来源:")}`);
 writeln();
 writeln(
-	`  ${style.gray("全局 env:")}  ${style.white(globalEnvPath)}${existsSync(globalEnvPath) ? " " + style.green("✓") : " " + style.dim("(不存在)")}`,
+	`  ${style.gray("全局 env:")}  ${style.white(globalEnvPath)}${existsSync(globalEnvPath) ? ` ${style.green("✓")}` : ` ${style.dim("(不存在)")}`}`,
 );
 writeln(
-	`  ${style.gray("项目 env:")}  ${style.white(projectEnvPath)}${existsSync(projectEnvPath) ? " " + style.green("✓") : " " + style.dim("(不存在)")}`,
+	`  ${style.gray("项目 env:")}  ${style.white(projectEnvPath)}${existsSync(projectEnvPath) ? ` ${style.green("✓")}` : ` ${style.dim("(不存在)")}`}`,
 );
 writeln(
-	`  ${style.gray("全局 TOML:")} ${style.white(globalTomlPath)}${existsSync(globalTomlPath) ? " " + style.green("✓") : " " + style.dim("(不存在)")}`,
+	`  ${style.gray("全局 TOML:")} ${style.white(globalTomlPath)}${existsSync(globalTomlPath) ? ` ${style.green("✓")}` : ` ${style.dim("(不存在)")}`}`,
 );
 writeln(
-	`  ${style.gray("项目 TOML:")} ${style.white(projectTomlPath)}${existsSync(projectTomlPath) ? " " + style.green("✓") : " " + style.dim("(不存在)")}`,
+	`  ${style.gray("项目 TOML:")} ${style.white(projectTomlPath)}${existsSync(projectTomlPath) ? ` ${style.green("✓")}` : ` ${style.dim("(不存在)")}`}`,
 );
 writeln();
 
