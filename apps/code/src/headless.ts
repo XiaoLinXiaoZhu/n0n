@@ -16,8 +16,14 @@ import {
 	type SecurityConfig,
 } from "@n0n/core";
 import type { BaseWorkspacePaths } from "@n0n/shared";
+import { loadInitSkills, toSkill } from "@n0n/skill";
 import { makeToolkit } from "@n0n/tools";
-import type { DomainMessage, LLMClient, ProgressToolResult } from "@n0n/types";
+import type {
+	DomainMessage,
+	LLMClient,
+	ProgressToolResult,
+	Skill,
+} from "@n0n/types";
 import { buildContextFewshot } from "./context-fewshot.ts";
 import { codeProgressConfig } from "./progress-config.ts";
 import { getPrompt } from "./prompts/index.ts";
@@ -99,11 +105,13 @@ export async function runHeadless(
 
 	const startTime = Date.now();
 
-	// 构建 system prompt
-	const systemPrompt = getPrompt(promptVersion);
+	// 构建 system prompt（含 init skills，拼装下沉到 format-prompt）
+	const basePrompt = getPrompt(promptVersion);
 	const effectivePrompt = systemPromptPrefix
-		? `${systemPromptPrefix}\n\n${systemPrompt}`
-		: systemPrompt;
+		? `${systemPromptPrefix}\n\n${basePrompt}`
+		: basePrompt;
+	const initSkills = await loadInitSkills();
+	const systemSkills: Skill[] = initSkills.map(toSkill);
 
 	const renderer = new PlainRenderer();
 	const abortController = new AbortController();
@@ -130,7 +138,11 @@ export async function runHeadless(
 	);
 
 	let history: DomainMessage[] = [
-		{ type: "system", content: effectivePrompt },
+		{
+			type: "system_with_skill",
+			content: effectivePrompt,
+			skills: systemSkills,
+		},
 		{ type: "cache_breakpoint" },
 		...contextFewshot,
 		{
@@ -138,6 +150,7 @@ export async function runHeadless(
 			content: instruction,
 			context: null,
 			hint: buildHeadlessHint(),
+			mentionedSkills: [],
 		},
 	];
 

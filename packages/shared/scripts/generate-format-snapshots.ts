@@ -56,6 +56,7 @@ const scenarios: Scenario[] = [
 				context:
 					"<git_branch>main</git_branch>\n<git_status>M src/auth.ts</git_status>",
 				hint: "Start by reading src/auth.ts",
+				mentionedSkills: [],
 			},
 		],
 	},

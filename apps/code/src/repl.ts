@@ -18,20 +18,25 @@ import {
 	HeartbeatState,
 	PlainRenderer,
 } from "@n0n/core";
-import { readMultilineInput } from "./multiline-input/index.ts";
-import type { UserInputConfig } from "./multiline-input/config.ts";
 import {
 	type BaseWorkspacePaths,
 	loadConversation,
 	parseDsl,
 	saveConversation,
 } from "@n0n/shared";
-import { loadInitSkills } from "@n0n/skill";
+import { loadInitSkills, toSkill } from "@n0n/skill";
 import type { ToolsConfig } from "@n0n/tools";
 import { makeToolkit } from "@n0n/tools";
-import type { DomainMessage, LLMClient, ProgressToolResult } from "@n0n/types";
+import type {
+	DomainMessage,
+	LLMClient,
+	ProgressToolResult,
+	Skill,
+} from "@n0n/types";
 import { CodeRenderer } from "./code-renderer.ts";
 import { buildContextFewshot } from "./context-fewshot.ts";
+import type { UserInputConfig } from "./multiline-input/config.ts";
+import { readMultilineInput } from "./multiline-input/index.ts";
 import { type NotifyConfig, playNotifySound } from "./notify-sound.ts";
 import { codeProgressConfig } from "./progress-config.ts";
 import { formatProgressResult } from "./progress-formatter.ts";
@@ -69,12 +74,17 @@ function injectUserResponse(history: DomainMessage[], response: string): void {
 	}
 }
 
-function makeUserInput(content: string, hint?: string | null): DomainMessage {
+function makeUserInput(
+	content: string,
+	mentionedSkills: Skill[] = [],
+	hint?: string | null,
+): DomainMessage {
 	return {
 		type: "user_input",
 		content,
 		context: null,
 		hint: hint ?? null,
+		mentionedSkills,
 	};
 }
 
@@ -154,14 +164,14 @@ export async function startCodeRepl(
 
 	// 构建 Toolkit — 含 progress config，供 fewshot 和 agentLoop 共用
 	const { client, toolsConfig, agentConfig } = options;
-	// 加载 init skills 拼接进 system prompt
+	// 加载 init skills，作为 system_with_skill 的 skills 携带（拼装下沉到 format-prompt）
 	const initSkills = await loadInitSkills();
-	const initSkillBodies = initSkills
-		.map((s) => `<skill name="${s.name}">\n${s.body}\n</skill>`)
-		.join("\n\n");
-	const systemPrompt = initSkillBodies
-		? `${baseSystemPrompt}\n\n${initSkillBodies}`
-		: baseSystemPrompt;
+	const systemSkills: Skill[] = initSkills.map(toSkill);
+	const systemMessage: DomainMessage = {
+		type: "system_with_skill",
+		content: baseSystemPrompt,
+		skills: systemSkills,
+	};
 	const notifyConfig = options.notifyConfig ?? { enabled: false };
 	const toolkit = makeToolkit(codeProgressConfig, toolsConfig, client.modelId);
 	const contextFewshot = await buildContextFewshot(
@@ -341,18 +351,14 @@ export async function startCodeRepl(
 			writeln();
 			userInput = initialInput ?? (await promptUser());
 			history = [
-				{ type: "system", content: systemPrompt },
+				systemMessage,
 				{ type: "cache_breakpoint" },
 				...contextFewshot,
 			];
 		}
 	} else {
 		userInput = initialInput ?? (await promptUser());
-		history = [
-			{ type: "system", content: systemPrompt },
-			{ type: "cache_breakpoint" },
-			...contextFewshot,
-		];
+		history = [systemMessage, { type: "cache_breakpoint" }, ...contextFewshot];
 	}
 
 	let autoResume = false;
@@ -417,7 +423,7 @@ export async function startCodeRepl(
 				);
 			}
 			const finalText = skillResult.cleanedText || userInput;
-			history.push(makeUserInput(finalText, skillResult.hint));
+			history.push(makeUserInput(finalText, skillResult.mentionedSkills ?? []));
 		}
 
 		// ── Agent 运行阶段：切换到 agent phase ──

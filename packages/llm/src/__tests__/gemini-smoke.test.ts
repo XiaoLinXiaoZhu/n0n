@@ -66,6 +66,7 @@ describe("Gemini Client smoke test", () => {
 					content: "What is 2+2? Answer in one word.",
 					context: null,
 					hint: null,
+					mentionedSkills: [],
 				},
 			];
 
@@ -105,6 +106,7 @@ describe("Gemini Client smoke test", () => {
 					content: "What is 17 * 23?",
 					context: null,
 					hint: null,
+					mentionedSkills: [],
 				},
 			];
 
@@ -151,6 +153,7 @@ describe("Gemini Client smoke test", () => {
 					content: "What is the current weather in Tokyo?",
 					context: null,
 					hint: null,
+					mentionedSkills: [],
 				},
 			];
 
@@ -220,6 +223,7 @@ describe("Gemini Client smoke test", () => {
 					content: "What is 17 * 23?",
 					context: null,
 					hint: null,
+					mentionedSkills: [],
 				},
 			];
 

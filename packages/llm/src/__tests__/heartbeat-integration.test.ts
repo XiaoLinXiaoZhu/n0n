@@ -94,6 +94,7 @@ function makeLargeContext(): DomainMessage[] {
 			content: `Please explain the key design considerations and tradeoffs involved in ${topics[i]}. Include relevant data structures, algorithms, and potential pitfalls to avoid in production.`,
 			context: null,
 			hint: null,
+			mentionedSkills: [],
 		});
 		msgs.push({
 			type: "assistant_text",
@@ -107,6 +108,7 @@ function makeLargeContext(): DomainMessage[] {
 			"Now summarize the common themes across all these distributed systems patterns.",
 		context: null,
 		hint: null,
+		mentionedSkills: [],
 	});
 
 	return msgs;

@@ -25,7 +25,7 @@ import {
 	PlainRenderer,
 } from "@n0n/core";
 import { makeToolkit } from "@n0n/tools";
-import { loadInitSkills } from "@n0n/skill";
+import { loadInitSkills, toSkill } from "@n0n/skill";
 import type {
 	DomainMessage,
 	LLMClient,
@@ -110,12 +110,11 @@ const mockClient: LLMClient = {
 const baseSystemPrompt = getPrompt();
 
 const initSkills = await loadInitSkills();
-const initSkillBodies = initSkills
-	.map((s) => `<skill name="${s.name}">\n${s.body}\n</skill>`)
-	.join("\n\n");
-const systemPrompt = initSkillBodies
-	? `${baseSystemPrompt}\n\n${initSkillBodies}`
-	: baseSystemPrompt;
+const systemMessage: DomainMessage = {
+	type: "system_with_skill",
+	content: baseSystemPrompt,
+	skills: initSkills.map(toSkill),
+};
 
 const tempDir = resolve(workspace, ".temp");
 const toolsConfig = buildToolsConfig(
@@ -133,10 +132,10 @@ const toolkit = makeToolkit(codeProgressConfig, toolsConfig, mockClient.modelId)
 const contextFewshot = await buildContextFewshot(toolkit, workspace, tempDir);
 
 const history: DomainMessage[] = [
-	{ type: "system", content: systemPrompt },
+	systemMessage,
 	{ type: "cache_breakpoint" } as DomainMessage,
 	...contextFewshot,
-	{ type: "user_input", content: userMessage, context: null, hint: null },
+	{ type: "user_input", content: userMessage, context: null, hint: null, mentionedSkills: [] },
 ];
 
 // ── 驱动 agentLoop — mock client 在第一次 stream() 时截获请求 ──
@@ -234,7 +233,8 @@ for (let i = 0; i < msgStats.length; i++) {
 sections.push("");
 
 // Token 预算分解
-const systemChars = systemPrompt.length;
+const systemFormatted = formatPrompt([systemMessage], tags);
+const systemChars = systemFormatted.reduce((n, m) => n + m.content.length, 0);
 const toolDefChars = toolDefs.reduce(
 	(s, t) => s + t.description.length + JSON.stringify(t.parameters).length,
 	0,

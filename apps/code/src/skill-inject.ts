@@ -1,20 +1,23 @@
 /**
- * @name 解析与 skill 内容注入
+ * @name 解析与 skill 引用
  *
  * 识别用户输入中独占一行的 @name 语法，读取对应 skill 内容，
- * 将其作为 hint 注入消息，并从可见文本中移除 @name 行。
+ * 并从可见文本中移除 @name 行。
+ *
+ * 不再将 skill 内容塞进 hint —— 而是作为 mentionedSkills 附在 UserInputMessage 上，
+ * 承载「用户引用了这些 skill」的原本语义，由 adapter（format-prompt）负责拼装提示词。
  *
  * 按名称或别名查找，支持返回多个匹配结果。
  */
 
-import type { SkillContent } from "@n0n/skill";
-import { listSkills, readSkills } from "@n0n/skill";
+import { listSkills, readSkills, toSkill } from "@n0n/skill";
+import type { Skill } from "@n0n/types";
 
 export interface SkillInjectResult {
 	/** 移除了 @name 行后的用户文本 */
 	cleanedText: string;
-	/** 注入的 skill 内容（拼接为 hint 字符串），null 表示无 skill 唤起 */
-	hint: string | null;
+	/** 用户引用的 skill（领域层最小表示），空数组表示无 skill 唤起 */
+	mentionedSkills: Skill[];
 	/** 找不到的 skill 名称列表 */
 	notFound: string[];
 }
@@ -27,7 +30,7 @@ const SKILL_LINE_RE = /^@([a-z0-9](?:[a-z0-9-]*[a-z0-9])?)$/;
  *
  * 每个 @name 按名称或别名查找，可能匹配到多个 skill。
  *
- * @returns 清理后的文本 + hint（skill 正文拼接）+ 未找到列表
+ * @returns 清理后的文本 + 引用的 skill 列表 + 未找到列表
  */
 export async function parseAndInjectSkills(
 	input: string,
@@ -46,28 +49,16 @@ export async function parseAndInjectSkills(
 	}
 
 	if (skillNames.length === 0) {
-		return { cleanedText: input, hint: null, notFound: [] };
+		return { cleanedText: input, mentionedSkills: [], notFound: [] };
 	}
 
 	const { found, notFound } = await readSkills(skillNames);
 
-	const hint = found.length > 0 ? formatSkillHint(found) : null;
-
 	return {
 		cleanedText: cleanedLines.join("\n").trim(),
-		hint,
+		mentionedSkills: found.map(toSkill),
 		notFound,
 	};
-}
-
-function formatSkillHint(skills: SkillContent[]): string {
-	return skills
-		.map((s) => {
-			const header = `<skill name="${s.name}">`;
-			const footer = "</skill>";
-			return `${header}\n${s.body}\n${footer}`;
-		})
-		.join("\n\n");
 }
 
 /**
