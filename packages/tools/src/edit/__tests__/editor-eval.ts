@@ -173,6 +173,16 @@ function buildProviderConfig(
 			};
 			break;
 
+		case "deepseek-test-1":
+			raw = {
+				provider: "deepseek-test-1",
+				api_key: secrets.api_key,
+				model: cfg.EDITOR_LLM_MODEL,
+				...(secrets.base_url ? { base_url: secrets.base_url } : {}),
+				...(cfg.EDITOR_LLM_ENABLE_THINKING ? { enable_thinking: true } : {}),
+			};
+			break;
+
 		default: {
 			const _exhaustive: never = provider;
 			throw new Error(`Unsupported provider: ${_exhaustive}`);

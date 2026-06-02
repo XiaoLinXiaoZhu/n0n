@@ -20,6 +20,7 @@ export type LLMProvider =
 	| "anthropic"
 	| "google"
 	| "deepseek"
+	| "deepseek-test-1"
 	| "openai-compatible";
 
 /** 所有合法 provider 值的运行时数组（与类型同步，satisfies 保证穷尽） */
@@ -28,6 +29,7 @@ export const LLM_PROVIDERS = [
 	"anthropic",
 	"google",
 	"deepseek",
+	"deepseek-test-1",
 	"openai-compatible",
 ] as const satisfies readonly LLMProvider[];
 
