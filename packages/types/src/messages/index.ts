@@ -76,6 +76,7 @@ export type {
 export type {
 	GenericSystemMessage,
 	GenericUserTextMessage,
+	SystemWithSkillMessage,
 	UserImageMessage,
 	UserInputMessage,
 } from "./user.ts";
@@ -99,6 +100,7 @@ import type { ToolResult } from "./tools/index.ts";
 import type {
 	GenericSystemMessage,
 	GenericUserTextMessage,
+	SystemWithSkillMessage,
 	UserImageMessage,
 	UserInputMessage,
 } from "./user.ts";
@@ -107,6 +109,7 @@ import type {
 export type DomainMessage =
 	// 基础交互
 	| GenericSystemMessage
+	| SystemWithSkillMessage
 	| GenericUserTextMessage
 	| UserInputMessage
 	| UserImageMessage
