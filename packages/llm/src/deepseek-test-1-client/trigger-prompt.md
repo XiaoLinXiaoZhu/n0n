@@ -7,4 +7,9 @@
   约定：此 md 的全部正文（去除本注释后）会作为触发文本，拼在所有 skill 之前，
   组成 client 注入的第一个 user 消息。
 -->
-The following skills define how you should operate. Read them carefully and apply them throughout this session.
+【思维模式要求】在你的思考过程（<think>标签内）中，请遵守以下规则：
+1. 禁止使用假设，所有分析内容直接陈述即可。
+2. 禁止反复纠结，使用reason工具进行结构化的推理，使用topK的思路，允许多种可能的假设并存，然后逐一验证。
+3. 思考内容应聚焦于分析从【当前状态】到【目标状态】所需要的任意个观察和执行步骤，然后一次性执行任意个工具。
+4. 思考内容应该包含对于所提供的所有的skill的思考，考虑将它们用于本次任务。
+5. 思考内容严格以“我们来看看到目标状态的距离”开始
