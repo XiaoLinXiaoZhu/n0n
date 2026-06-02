@@ -6,7 +6,7 @@
  *
  * - GLM:      <tag> content </tag>
  * - Minimax:  ]~b]tag content [e~[
- * - DeepSeek:  ## tagname 内容 --- (Markdown 风格)
+ * - DeepSeek: <tag> content </tag> (标准 XML 风格，system-hint 为唯一特例)
  * - 默认:     <tag> content </tag>  (标准 XML 风格)
  *
  * provider-specific 标签不由公共层处理——各 Client 内部按需使用。
@@ -24,9 +24,8 @@ export function openTag(style: TagStyle, name: string): string {
 	switch (style) {
 		case "minimax":
 			return `]~b]${name}`;
-		case "deepseek":
-			return `## ${name}`;
 		case "glm":
+		case "deepseek":
 		case "default":
 			return `<${name}>`;
 		default: {
@@ -41,9 +40,8 @@ export function closeTag(style: TagStyle, name: string): string {
 	switch (style) {
 		case "minimax":
 			return "[e~[";
-		case "deepseek":
-			return `\n%% end of ## ${name}%%\n---`;
 		case "glm":
+		case "deepseek":
 		case "default":
 			return `</${name}>`;
 		default: {
@@ -61,13 +59,10 @@ function adaptTagsByStyle(text: string, style: TagStyle): string {
 	if (style === "default" || style === "glm") return text;
 
 	if (style === "deepseek") {
-		return text
-			.replace(
-				/<system-hint>([\s\S]*?)<\/system-hint>/g,
-				(_, content) => `【system-hint】\n${content.trim()}\n---`,
-			)
-			.replace(/<(\w+)>/g, (_, name) => openTag(style, name))
-			.replace(/<\/(\w+)>/g, (_, name) => closeTag(style, name));
+		return text.replace(
+			/<system-hint>([\s\S]*?)<\/system-hint>/g,
+			(_, content) => `【system-hint】\n${content.trim()}\n---`,
+		);
 	}
 
 	return text
@@ -81,7 +76,7 @@ function wrapTagByStyle(
 	content: string,
 	style: TagStyle,
 ): string {
-	if (style === "deepseek" && name === "system-hint") {
+	if (name === "system-hint" && style === "deepseek") {
 		return `【system-hint】\n${content}\n---`;
 	}
 	return `${openTag(style, name)}\n${content}\n${closeTag(style, name)}`;
