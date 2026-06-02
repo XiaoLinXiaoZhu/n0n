@@ -42,7 +42,7 @@ export function closeTag(style: TagStyle, name: string): string {
 		case "minimax":
 			return "[e~[";
 		case "deepseek":
-			return "---";
+			return `\n%% end of ## ${name}%%\n---`;
 		case "glm":
 		case "default":
 			return `</${name}>`;
