@@ -6,7 +6,7 @@
  *
  * 为什么放在 shared 而非 core：
  * - core 保持纯净，只负责 agent loop
- * - 多个 app（cli、code、fairy）均可复用
+ * - 多个 app（cli、code）均可复用
  * - 逻辑简单且仅依赖 @n0n/types，与 shared 定位一致
  */
 
