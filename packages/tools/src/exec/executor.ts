@@ -23,16 +23,12 @@ import {
 	splitLinesByTokenBudget,
 	tailByTokens,
 } from "@n0n/shared";
-import type {
-	ExecArgs,
-	ExecToolResult,
-	ToolStreamEvent,
-} from "@n0n/types";
+import type { ExecArgs, ExecToolResult, ToolStreamEvent } from "@n0n/types";
 import {
 	buildSpawnCmd,
+	RUNTIME_EXT,
 	type RunProcessBackgrounded,
 	runProcess,
-	RUNTIME_EXT,
 } from "./process-runner.ts";
 import { findBlockedCommand, handleBlockedCommand } from "./security.ts";
 
@@ -72,13 +68,7 @@ async function startBackgroundSync(
 	tempDir: string,
 	tmpFile: string,
 ): Promise<string> {
-	const {
-		pid,
-		stdoutChunks,
-		stderrChunks,
-		streamsDone,
-		proc,
-	} = result;
+	const { pid, stdoutChunks, stderrChunks, streamsDone, proc } = result;
 	const logFile = join(tempDir, `exec_bg_${pid}.log`);
 	const startedAt = new Date(startTime).toISOString();
 
@@ -290,7 +280,12 @@ export async function* execToolStream(
 			case "backgrounded": {
 				// 启动后台协程：定期同步 + 等待结束
 				// await 初始同步写入，确保日志文件在 tool result 返回前已存在
-				const logFile = await startBackgroundSync(result, start, tempDir, tmpFile);
+				const logFile = await startBackgroundSync(
+					result,
+					start,
+					tempDir,
+					tmpFile,
+				);
 
 				yield {
 					type: "tool_result",
@@ -390,7 +385,9 @@ export async function* execToolStream(
 
 			default: {
 				const _exhaustive: never = result;
-				throw new Error(`Unexpected process outcome: ${(result as { outcome: string }).outcome}`);
+				throw new Error(
+					`Unexpected process outcome: ${(result as { outcome: string }).outcome}`,
+				);
 			}
 		}
 	} catch (err) {

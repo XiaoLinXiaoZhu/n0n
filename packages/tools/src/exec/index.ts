@@ -16,10 +16,10 @@ export {
 } from "./definition.ts";
 export type { ExecCall } from "./executor.ts";
 export { execToolStream } from "./executor.ts";
+export type { RunProcessResult } from "./process-runner.ts";
+export { buildSpawnCmd, RUNTIME_EXT } from "./process-runner.ts";
 export {
 	extractCommandNames,
 	findBlockedCommand,
 	handleBlockedCommand,
 } from "./security.ts";
-export { buildSpawnCmd, RUNTIME_EXT } from "./process-runner.ts";
-export type { RunProcessResult } from "./process-runner.ts";

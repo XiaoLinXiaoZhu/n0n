@@ -16,10 +16,7 @@ import { homedir } from "node:os";
 import { dirname, resolve } from "node:path";
 import { style, writeln } from "@n0n/cli-ui";
 import { buildToolsConfig, type EditBackendConfig } from "@n0n/core";
-import {
-	createLLMClient,
-	createResponsesClient,
-} from "@n0n/llm";
+import { createLLMClient, createResponsesClient } from "@n0n/llm";
 import {
 	ensureDirs,
 	type FormatOptions,
@@ -27,11 +24,11 @@ import {
 	resolveBasePaths,
 } from "@n0n/shared";
 import {
-	displayCodeConfig,
 	DEFAULT_TOML,
+	displayCodeConfig,
+	type LoadedConfig,
 	loadCodeConfig,
 	resolveConfigPaths,
-	type LoadedConfig,
 } from "./config-loader.ts";
 import type { NotifyConfig } from "./notify-sound.ts";
 

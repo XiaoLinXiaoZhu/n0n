@@ -150,9 +150,7 @@ function buildEnvPool(paths: ConfigPaths): Record<string, string> {
  * 默认 → 全局 TOML → 项目 TOML 逐层覆盖，.env 变量注入，Zod 验证。
  * 返回判别联合——调用方决定如何处理失败情况。
  */
-export function loadCodeConfig(
-	paths: ConfigPaths,
-): ConfigLoadResult {
+export function loadCodeConfig(paths: ConfigPaths): ConfigLoadResult {
 	// 确保全局配置目录存在
 	if (!existsSync(paths.globalConfigDir)) {
 		mkdirSync(paths.globalConfigDir, { recursive: true });

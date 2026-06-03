@@ -27,7 +27,6 @@ import {
 import { loadInitSkills, toSkill } from "@n0n/skill";
 import type { ToolsConfig } from "@n0n/tools";
 import { makeToolkit } from "@n0n/tools";
-import { createStdinController, type StdinController } from "./stdin-controller.ts";
 import type { DomainMessage, LLMClient, Skill } from "@n0n/types";
 import { CodeRenderer } from "./code-renderer.ts";
 import { buildEnvironmentContext } from "./context-env.ts";
@@ -39,6 +38,7 @@ import { formatProgressResult } from "./progress-formatter.ts";
 import { getPrompt } from "./prompts/index.ts";
 import type { CodeProgressResult } from "./schema.ts";
 import { parseAndInjectSkills } from "./skill-inject.ts";
+import { createStdinController } from "./stdin-controller.ts";
 
 export interface CodeReplOptions {
 	initialInput?: string;
@@ -69,8 +69,6 @@ function makeUserInput(
 		mentionedSkills,
 	};
 }
-
-
 
 export async function startCodeRepl(
 	paths: CodeWorkspacePaths,
@@ -463,9 +461,7 @@ export async function startCodeRepl(
 				writeln(`${style.cyan("⏳")} 进行中: ${ir.content}`);
 				writeln();
 				// working 状态：不等用户输入，直接重新启动 agentLoop
-				history.push(
-					makeUserInput("", [], "继续", null),
-				);
+				history.push(makeUserInput("", [], "继续", null));
 				autoResume = true;
 				continue;
 			}
