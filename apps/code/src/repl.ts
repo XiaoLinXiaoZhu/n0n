@@ -518,7 +518,14 @@ export async function startCodeRepl(
 				writeln(`${style.cyan("⏳")} 进行中: ${ir.content}`);
 				writeln();
 				// working 状态：不等用户输入，直接重新启动 agentLoop
-				history.push(makeUserInput("继续", [], null, null));
+				history.push(
+					makeUserInput(
+						"<system-reminder>继续</system-reminder>",
+						[],
+						null,
+						null,
+					),
+				);
 				autoResume = true;
 				continue;
 			}
