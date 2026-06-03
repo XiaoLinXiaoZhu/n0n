@@ -76,6 +76,12 @@ export const RUNTIME_EXT: Record<string, string> = {
 };
 
 /** runtime → 执行命令构造器 */
+// DESIGN NOTE: buildSpawnCmd 用 switch 硬编码每个 runtime 的执行命令，
+// 而非从某个 RuntimeProvider.spawnCmd() 动态获取。理由同 env.ts 顶部的
+// DESIGN NOTE——runtime 列表稳定，且各 runtime 的 spawn 参数差异大
+//（如 deno 需要 --allow-all，pwsh 需要 -NoProfile -File），
+// 一个 switch 比一套接口 + 10 个实现文件更容易一眼看全。
+// —— Mebius ∞
 export function buildSpawnCmd(runtime: string, tmpFile: string): string[] {
 	switch (runtime) {
 		case "cmd":

@@ -142,6 +142,7 @@ async function startBackgroundSync(
 		const syncToFile = () => {
 			const currentStdout = stdoutChunks.join("");
 			const currentStderr = stderrChunks.join("");
+			// 非阻塞写入（fire-and-forget 在 interval 中）
 			Bun.write(
 				logFile,
 				buildLogContent({
@@ -153,10 +154,21 @@ async function startBackgroundSync(
 		};
 
 		try {
+			// 定期同步：即使没有新输出也更新 last_updated 时间戳
 			syncTimer = setInterval(syncToFile, SYNC_INTERVAL_MS);
 
 			await streamsDone;
 
+			// DESIGN NOTE: why no timeout on proc.exited?
+			// 1. For daemon processes, streamsDone already resolved — data
+			//    is fully collected; setInterval merely refreshes the
+			//    timestamp in the log file, no data is leaked.
+			// 2. A hard timeout would kill intentionally backgrounded
+			//    processes (e.g. a dev server started by observe) that
+			//    the caller expects to keep running.
+			// 3. The model/agent should use ps / taskkill to judge the
+			//    process state and decide whether to wait, terminate, or
+			//    ignore it.
 			const exitCode = await proc.exited;
 			const endedAt = new Date().toISOString();
 			const totalDurationMs = Date.now() - startTime;
@@ -393,6 +405,8 @@ export async function* execToolStream(
 			durationMs: Date.now() - start,
 		} satisfies ExecToolResult;
 	} finally {
+		// true：正常完成或出错路径，在此清理
+		// false：后台协程负责清理，此处跳过
 		if (cleanupTempFile) {
 			try {
 				unlinkSync(tmpFile);
