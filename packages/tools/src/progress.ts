@@ -81,6 +81,5 @@ export function progressTool(call: ProgressToolCall): ProgressToolResult {
 		tool: "progress" as const,
 		call,
 		cleanedResult: call.args,
-		userResponse: undefined,
 	};
 }

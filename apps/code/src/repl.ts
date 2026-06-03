@@ -27,12 +27,7 @@ import {
 import { loadInitSkills, toSkill } from "@n0n/skill";
 import type { ToolsConfig } from "@n0n/tools";
 import { makeToolkit } from "@n0n/tools";
-import type {
-	DomainMessage,
-	LLMClient,
-	ProgressToolResult,
-	Skill,
-} from "@n0n/types";
+import type { DomainMessage, LLMClient, Skill } from "@n0n/types";
 import { CodeRenderer } from "./code-renderer.ts";
 import { buildEnvironmentContext } from "./context-env.ts";
 import type { UserInputConfig } from "./multiline-input/config.ts";
@@ -58,21 +53,6 @@ export interface CodeReplOptions {
 }
 
 type CodeWorkspacePaths = BaseWorkspacePaths;
-
-function injectUserResponse(history: DomainMessage[], response: string): void {
-	for (let i = history.length - 1; i >= 0; i--) {
-		const msg = history[i];
-		if (
-			msg !== undefined &&
-			msg.type === "tool_result" &&
-			"tool" in msg &&
-			msg.tool === "progress"
-		) {
-			(msg as ProgressToolResult).userResponse = response;
-			return;
-		}
-	}
-}
 
 function makeUserInput(
 	content: string,
@@ -532,16 +512,13 @@ export async function startCodeRepl(
 				writeln();
 				playNotifySound(notifyConfig);
 				userInput = await promptUser();
-				if (userInput !== null) {
-					injectUserResponse(history, userInput);
-				}
 				continue;
 			}
 			case "working": {
 				writeln(`${style.cyan("⏳")} 进行中: ${ir.content}`);
 				writeln();
 				// working 状态：不等用户输入，直接重新启动 agentLoop
-				injectUserResponse(history, "继续");
+				history.push(makeUserInput("继续", [], null, null));
 				autoResume = true;
 				continue;
 			}

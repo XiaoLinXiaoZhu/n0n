@@ -15,14 +15,11 @@ const successTemplates = [
 ];
 
 export function formatProgressResult(
-	msg: ProgressToolResult,
+	_msg: ProgressToolResult,
 	tags: TagAdapter,
 	msgIndex: number,
 ): FormattedToolResult {
 	const text = pick(successTemplates, msgIndex);
-	const parts = [tags.wrapTag("result", text)];
-	if (msg.userResponse) {
-		parts.push(tags.wrapTag("user_response", msg.userResponse));
-	}
-	return { fact: parts.join("\n"), hint: null };
+	const textWithTag = tags.wrapTag("result", text);
+	return { fact: textWithTag, hint: null };
 }

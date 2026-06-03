@@ -18,12 +18,7 @@ import {
 import type { BaseWorkspacePaths } from "@n0n/shared";
 import { loadInitSkills, toSkill } from "@n0n/skill";
 import { makeToolkit } from "@n0n/tools";
-import type {
-	DomainMessage,
-	LLMClient,
-	ProgressToolResult,
-	Skill,
-} from "@n0n/types";
+import type { DomainMessage, LLMClient, Skill } from "@n0n/types";
 import { buildEnvironmentContext } from "./context-env.ts";
 import { codeProgressConfig } from "./progress-config.ts";
 import { getPrompt } from "./prompts/index.ts";
@@ -75,20 +70,6 @@ function buildHeadlessHint(): string {
 		"First, use `exec` to understand the codebase, then implement the fix, then verify.",
 		"Call progress with `completed` status when done.",
 	].join("\n");
-}
-
-function injectUserResponse(history: DomainMessage[], response: string): void {
-	for (let i = history.length - 1; i >= 0; i--) {
-		const msg = history[i];
-		if (
-			msg?.type === "tool_result" &&
-			"tool" in msg &&
-			msg.tool === "progress"
-		) {
-			(msg as ProgressToolResult).userResponse = response;
-			return;
-		}
-	}
 }
 
 export async function runHeadless(
@@ -193,7 +174,13 @@ export async function runHeadless(
 
 			if (ir.status === "working") {
 				// working 状态：自动继续
-				injectUserResponse(history, "继续");
+				history.push({
+					type: "user_input",
+					content: "继续",
+					context: null,
+					hint: null,
+					mentionedSkills: [],
+				});
 				continue;
 			}
 
@@ -211,10 +198,14 @@ export async function runHeadless(
 					};
 				}
 				// 自动回复，让 agent 继续
-				injectUserResponse(
-					history,
-					"You are in headless/autonomous mode. There is no human available. Proceed with your best judgment and complete the task.",
-				);
+				history.push({
+					type: "user_input",
+					content:
+						"You are in headless/autonomous mode. There is no human available. Proceed with your best judgment and complete the task.",
+					context: null,
+					hint: null,
+					mentionedSkills: [],
+				});
 			}
 		}
 	} catch (err) {
