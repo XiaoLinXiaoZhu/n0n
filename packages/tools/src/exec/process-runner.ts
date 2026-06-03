@@ -42,8 +42,8 @@ export interface RunProcessBackgrounded {
 	stdoutChunks: string[];
 	/** 持续变化的 stderr 桶 */
 	stderrChunks: string[];
-	/** 已完成流计数（后台协程 polling 等待变为 2）—— 可变引用，确保后台协程看到最新状态 */
-	streamsDoneRef: { value: number };
+	/** resolve 后表示两个流（stdout/stderr）均已读完 */
+	streamsDone: Promise<void>;
 	/** 子进程句柄（后台协程 await proc.exited） */
 	proc: import("bun").Subprocess;
 }
@@ -128,7 +128,11 @@ export async function* runProcess(
 		const decoder = new TextDecoder();
 
 		const pending: ToolOutputChunk[] = [];
-		const streamsDoneRef: { value: number } = { value: 0 };
+		let streamsDoneCount = 0;
+		let resolveStreamsDone: () => void;
+		const streamsDone = new Promise<void>((resolve) => {
+			resolveStreamsDone = resolve;
+		});
 		let notify: (() => void) | null = null;
 
 		const pumpStream = async (
@@ -152,7 +156,8 @@ export async function* runProcess(
 				}
 			} finally {
 				reader.releaseLock();
-				streamsDoneRef.value++;
+				streamsDoneCount++;
+				if (streamsDoneCount === 2) resolveStreamsDone();
 				notify?.();
 			}
 		};
@@ -172,7 +177,7 @@ export async function* runProcess(
 			}, waitforMs);
 		});
 
-		while (streamsDoneRef.value < 2 || pending.length > 0) {
+		while (streamsDoneCount < 2 || pending.length > 0) {
 			if (backgrounded) break;
 			if (pending.length === 0) {
 				const waitForData = new Promise<"data">((r) => {
@@ -198,7 +203,7 @@ export async function* runProcess(
 				durationMs,
 				stdoutChunks,
 				stderrChunks,
-				streamsDoneRef,
+				streamsDone,
 				proc,
 			};
 		}

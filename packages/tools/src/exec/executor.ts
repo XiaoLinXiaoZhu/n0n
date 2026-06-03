@@ -76,7 +76,7 @@ async function startBackgroundSync(
 		pid,
 		stdoutChunks,
 		stderrChunks,
-		streamsDoneRef,
+		streamsDone,
 		proc,
 	} = result;
 	const logFile = join(tempDir, `exec_bg_${pid}.log`);
@@ -155,9 +155,7 @@ async function startBackgroundSync(
 		try {
 			syncTimer = setInterval(syncToFile, SYNC_INTERVAL_MS);
 
-			while (streamsDoneRef.value < 2) {
-				await new Promise<void>((r) => setTimeout(r, 500));
-			}
+			await streamsDone;
 
 			const exitCode = await proc.exited;
 			const endedAt = new Date().toISOString();
