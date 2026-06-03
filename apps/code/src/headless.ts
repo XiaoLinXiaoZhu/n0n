@@ -176,9 +176,9 @@ export async function runHeadless(
 				// working 状态：自动继续
 				history.push({
 					type: "user_input",
-					content: "<system-reminder>继续</system-reminder>",
+					content: "",
 					context: null,
-					hint: null,
+					hint: "继续",
 					mentionedSkills: [],
 				});
 				continue;
@@ -200,10 +200,9 @@ export async function runHeadless(
 				// 自动回复，让 agent 继续
 				history.push({
 					type: "user_input",
-					content:
-						"<system-reminder>You are in headless/autonomous mode. There is no human available. Proceed with your best judgment and complete the task.</system-reminder>",
+					content: "",
 					context: null,
-					hint: null,
+					hint: "You are in headless/autonomous mode. There is no human available. Proceed with your best judgment and complete the task.",
 					mentionedSkills: [],
 				});
 			}

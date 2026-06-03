@@ -519,12 +519,7 @@ export async function startCodeRepl(
 				writeln();
 				// working 状态：不等用户输入，直接重新启动 agentLoop
 				history.push(
-					makeUserInput(
-						"<system-reminder>继续</system-reminder>",
-						[],
-						null,
-						null,
-					),
+					makeUserInput("", [], "继续", null),
 				);
 				autoResume = true;
 				continue;

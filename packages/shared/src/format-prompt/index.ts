@@ -82,7 +82,7 @@ function buildUserInputContent(
 		parts.push(formatSkills(msg.mentionedSkills, tags));
 	}
 	if (msg.hint) {
-		parts.push(tags.wrapTag("hint", msg.hint));
+		parts.push(tags.wrapTag("system-hint", msg.hint));
 	}
 	return parts.join("\n\n");
 }
