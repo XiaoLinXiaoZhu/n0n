@@ -33,7 +33,7 @@ import type {
 } from "@n0n/types";
 
 import { getPrompt } from "../src/prompts/index.ts";
-import { buildContextFewshot } from "../src/context-fewshot.ts";
+import { buildEnvironmentContext } from "../src/context-env.ts";
 import { codeProgressConfig } from "../src/progress-config.ts";
 
 // ── CLI 参数 ──
@@ -120,13 +120,12 @@ const toolsConfig = buildToolsConfig(
 
 const toolkit = makeToolkit(codeProgressConfig, toolsConfig, mockClient.modelId);
 
-const contextFewshot = await buildContextFewshot(toolkit, workspace, tempDir);
+const envContext = buildEnvironmentContext(workspace);
 
 const history: DomainMessage[] = [
 	systemMessage,
 	{ type: "cache_breakpoint" } as DomainMessage,
-	...contextFewshot,
-	{ type: "user_input", content: userMessage, context: null, hint: null, mentionedSkills: [] },
+	{ type: "user_input", content: userMessage, context: envContext || null, hint: null, mentionedSkills: [] },
 ];
 
 // ── 驱动 agentLoop ──

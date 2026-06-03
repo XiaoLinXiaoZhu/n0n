@@ -24,7 +24,7 @@ import type {
 	ProgressToolResult,
 	Skill,
 } from "@n0n/types";
-import { buildContextFewshot } from "./context-fewshot.ts";
+import { buildEnvironmentContext } from "./context-env.ts";
 import { codeProgressConfig } from "./progress-config.ts";
 import { getPrompt } from "./prompts/index.ts";
 import type { CodeProgressResult } from "./schema.ts";
@@ -131,11 +131,7 @@ export async function runHeadless(
 	);
 	const client = options.client;
 	const toolkit = makeToolkit(codeProgressConfig, toolsConfig, client.modelId);
-	const contextFewshot = await buildContextFewshot(
-		toolkit,
-		paths.workspace,
-		paths.temp,
-	);
+	const envContext = buildEnvironmentContext(paths.workspace);
 
 	let history: DomainMessage[] = [
 		{
@@ -144,11 +140,10 @@ export async function runHeadless(
 			skills: systemSkills,
 		},
 		{ type: "cache_breakpoint" },
-		...contextFewshot,
 		{
 			type: "user_input",
 			content: instruction,
-			context: null,
+			context: envContext || null,
 			hint: buildHeadlessHint(),
 			mentionedSkills: [],
 		},

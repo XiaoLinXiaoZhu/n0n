@@ -1,12 +1,12 @@
 /**
  * preview-prompt.ts — 端到端预览 Code Agent 的系统提示词和 fewshot 对话
  *
- * 通过注入 mock LLMClient 驱动真实的初始化流程（loadInitSkills + buildContextFewshot）
+ * 通过注入 mock LLMClient 驱动真实的初始化流程（loadInitSkills + buildEnvironmentContext）
  * 和 agentLoop，在 mock client 的 stream() 中截获完整请求（DomainMessage[] + tools），
  * 格式化为可读 markdown，输出到 git 跟踪的固定位置。
  *
  * 与直接拼装不同，这里经过了和生产环境完全一致的代码路径：
- *   getPrompt → loadInitSkills → makeToolkit → buildContextFewshot → agentLoop → client.stream()
+ *   getPrompt → loadInitSkills → makeToolkit → buildEnvironmentContext → agentLoop → client.stream()
  *
  * 用法：
  *   bun run apps/code/scripts/preview-prompt.ts
@@ -37,7 +37,7 @@ import type {
 } from "@n0n/types";
 
 import { getPrompt } from "../src/prompts/index.ts";
-import { buildContextFewshot } from "../src/context-fewshot.ts";
+import { buildEnvironmentContext } from "../src/context-env.ts";
 import { codeProgressConfig } from "../src/progress-config.ts";
 
 // ── CLI 参数 ──
@@ -129,13 +129,12 @@ const toolsConfig = buildToolsConfig(
 
 const toolkit = makeToolkit(codeProgressConfig, toolsConfig, mockClient.modelId);
 
-const contextFewshot = await buildContextFewshot(toolkit, workspace, tempDir);
+const envContext = buildEnvironmentContext(workspace);
 
 const history: DomainMessage[] = [
 	systemMessage,
 	{ type: "cache_breakpoint" } as DomainMessage,
-	...contextFewshot,
-	{ type: "user_input", content: userMessage, context: null, hint: null, mentionedSkills: [] },
+	{ type: "user_input", content: userMessage, context: envContext || null, hint: null, mentionedSkills: [] },
 ];
 
 // ── 驱动 agentLoop — mock client 在第一次 stream() 时截获请求 ──
@@ -239,13 +238,7 @@ const toolDefChars = toolDefs.reduce(
 	(s, t) => s + t.description.length + JSON.stringify(t.parameters).length,
 	0,
 );
-const fewshotFormatted = formatPrompt(contextFewshot, tags);
-const fewshotChars = fewshotFormatted.reduce((s, m) => {
-	let c = m.content.length;
-	if (m.role === "assistant" && "toolCalls" in m && m.toolCalls)
-		c += JSON.stringify(m.toolCalls).length;
-	return s + c;
-}, 0);
+const envContextChars = envContext?.length ?? 0;
 
 sections.push("## Token Budget Breakdown");
 sections.push("");
@@ -258,7 +251,7 @@ sections.push(
 	`| Tool definitions | ~${Math.round(toolDefChars / 4).toLocaleString()} | ${toolDefChars.toLocaleString()} (${toolDefs.length} tools) |`,
 );
 sections.push(
-	`| Fewshot examples | ~${Math.round(fewshotChars / 4).toLocaleString()} | ${fewshotChars.toLocaleString()} (${contextFewshot.length} DomainMsg → ${fewshotFormatted.length} PromptMsg) |`,
+	`| Environment context | ~${Math.round(envContextChars / 4)} | ${envContextChars.toLocaleString()} |`,
 );
 sections.push(
 	`| User input | ~${Math.round(userMessage.length / 4)} | ${userMessage.length} |`,
@@ -342,7 +335,7 @@ console.log(
 	`  Tool definitions: ~${Math.round(toolDefChars / 4).toLocaleString()} tokens (${toolDefs.length} tools)`,
 );
 console.log(
-	`  Fewshot examples: ~${Math.round(fewshotChars / 4).toLocaleString()} tokens (${contextFewshot.length} messages → ${fewshotFormatted.length} prompt messages)`,
+	`  Environment context: ~${Math.round(envContextChars / 4)} tokens (${envContextChars.toLocaleString()} chars)`,
 );
 console.log(
 	`  User input:       ~${Math.round(userMessage.length / 4)} tokens`,

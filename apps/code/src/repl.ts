@@ -34,7 +34,7 @@ import type {
 	Skill,
 } from "@n0n/types";
 import { CodeRenderer } from "./code-renderer.ts";
-import { buildContextFewshot } from "./context-fewshot.ts";
+import { buildEnvironmentContext } from "./context-env.ts";
 import type { UserInputConfig } from "./multiline-input/config.ts";
 import { readMultilineInput } from "./multiline-input/index.ts";
 import { type NotifyConfig, playNotifySound } from "./notify-sound.ts";
@@ -78,11 +78,12 @@ function makeUserInput(
 	content: string,
 	mentionedSkills: Skill[] = [],
 	hint?: string | null,
+	context?: string | null,
 ): DomainMessage {
 	return {
 		type: "user_input",
 		content,
-		context: null,
+		context: context ?? null,
 		hint: hint ?? null,
 		mentionedSkills,
 	};
@@ -174,11 +175,7 @@ export async function startCodeRepl(
 	};
 	const notifyConfig = options.notifyConfig ?? { enabled: false };
 	const toolkit = makeToolkit(codeProgressConfig, toolsConfig, client.modelId);
-	const contextFewshot = await buildContextFewshot(
-		toolkit,
-		paths.workspace,
-		paths.temp,
-	);
+
 	// progress 结果文件编号（进程级，不随 renderer 生命周期绑定）
 	const nextSessionId = (() => {
 		try {
@@ -330,6 +327,8 @@ export async function startCodeRepl(
 	// ── 初始化 history ──
 	let history: DomainMessage[];
 	let userInput: string | null;
+	let isFirstInput: boolean;
+	let envContext: string | null = null;
 
 	if (resumeFile) {
 		try {
@@ -342,6 +341,7 @@ export async function startCodeRepl(
 					),
 			);
 			writeln();
+			isFirstInput = false;
 			userInput = await promptUser();
 		} catch (err) {
 			const message =
@@ -349,16 +349,16 @@ export async function startCodeRepl(
 			writeln(`${style.red("✗")} 恢复对话失败: ${message}`);
 			writeln(style.gray("  将以全新对话启动。"));
 			writeln();
+			isFirstInput = true;
+			envContext = buildEnvironmentContext(paths.workspace);
+			history = [systemMessage, { type: "cache_breakpoint" }];
 			userInput = initialInput ?? (await promptUser());
-			history = [
-				systemMessage,
-				{ type: "cache_breakpoint" },
-				...contextFewshot,
-			];
 		}
 	} else {
+		isFirstInput = true;
+		envContext = buildEnvironmentContext(paths.workspace);
+		history = [systemMessage, { type: "cache_breakpoint" }];
 		userInput = initialInput ?? (await promptUser());
-		history = [systemMessage, { type: "cache_breakpoint" }, ...contextFewshot];
 	}
 
 	let autoResume = false;
@@ -423,7 +423,16 @@ export async function startCodeRepl(
 				);
 			}
 			const finalText = skillResult.cleanedText || userInput;
-			history.push(makeUserInput(finalText, skillResult.mentionedSkills ?? []));
+			const context = isFirstInput ? envContext : null;
+			isFirstInput = false;
+			history.push(
+				makeUserInput(
+					finalText,
+					skillResult.mentionedSkills ?? [],
+					null,
+					context,
+				),
+			);
 		}
 
 		// ── Agent 运行阶段：切换到 agent phase ──

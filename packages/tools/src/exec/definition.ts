@@ -4,7 +4,7 @@
  * 三个工具共享 ExecParamDefs（参数结构）和执行后端（execToolStream），
  * 区分仅靠工具名和 description。
  * 工具描述和参数定义均为静态常量，不依赖任何环境探测结果。
- * 环境信息（可用 runtimes、CLI 工具）由 agent 初始化 fewshot 提供。
+ * 环境信息（可用 runtimes、CLI 工具）由首个 user_input 的 context 字段提供。
  *
  * waitfor 默认值和上限在不同工具间有差异：
  * - observe / reason: 默认 60s, 上限 120s — 轻量、无副作用的读操作
