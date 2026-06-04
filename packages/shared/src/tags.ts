@@ -61,13 +61,7 @@ function adaptTagsByStyle(text: string, style: TagStyle): string {
 	if (style === "deepseek") {
 		return text.replace(
 			/<system-hint>([\s\S]*?)<\/system-hint>/g,
-			(_, content) => `【system-hint】\n${content.trim()}\n---
-【思维模式要求】在你的思考过程（<think>标签内）中，请遵守以下规则：
-1. 禁止使用假设，所有分析内容直接陈述即可。
-2. 禁止反复纠结，使用reason工具进行结构化的推理，使用topK的思路，允许多种可能的假设并存，然后逐一验证。
-3. 思考内容应聚焦于分析从【当前状态】到【目标状态】所需要的任意个观察和执行步骤，然后一次性执行任意个工具。
-4. 思考内容应该包含对于所提供的所有的skill的思考，考虑将它们用于本次任务。
-5. 思考内容严格以“我们来看看到目标状态的距离”开始`,
+			(_, content) => `【system-hint】\n${content.trim()}\n---`,
 		);
 	}
 
