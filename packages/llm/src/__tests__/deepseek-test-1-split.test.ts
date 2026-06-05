@@ -11,9 +11,9 @@ import { describe, expect, test } from "bun:test";
 import { createTagAdapter } from "@n0n/shared";
 import type { DomainMessage, Skill } from "@n0n/types";
 import { splitSkillsToUser } from "../deepseek-test-1-client/index.ts";
+import triggerPromptContent from "../deepseek-test-1-client/trigger-prompt.md";
 
 const tags = createTagAdapter("deepseek");
-const TRIGGER = "TRIGGER-PROMPT";
 
 function mkSkill(name: string, body: string): Skill {
 	return { name, body, scripts: [], resources: [] };
@@ -28,13 +28,13 @@ describe("splitSkillsToUser", () => {
 				skills: [mkSkill("workflow", "read then verify")],
 			},
 		];
-		const out = splitSkillsToUser(msgs, tags, TRIGGER);
+		const out = splitSkillsToUser(msgs, tags);
 
 		expect(out).toHaveLength(2);
 		expect(out[0]).toEqual({ type: "system", content: "BASE SYSTEM" });
 		expect(out[1]?.type).toBe("generic_user_text");
 		const userContent = (out[1] as { content: string }).content;
-		expect(userContent.startsWith(TRIGGER)).toBe(true);
+		expect(userContent.startsWith(triggerPromptContent)).toBe(true);
 		expect(userContent).toContain("read then verify");
 		// skill 正文不应残留在 system 中
 		expect((out[0] as { content: string }).content).not.toContain(
@@ -46,7 +46,7 @@ describe("splitSkillsToUser", () => {
 		const msgs: DomainMessage[] = [
 			{ type: "system_with_skill", content: "ONLY SYSTEM", skills: [] },
 		];
-		const out = splitSkillsToUser(msgs, tags, TRIGGER);
+		const out = splitSkillsToUser(msgs, tags);
 		expect(out).toHaveLength(1);
 		expect(out[0]).toEqual({ type: "system", content: "ONLY SYSTEM" });
 	});
@@ -62,7 +62,7 @@ describe("splitSkillsToUser", () => {
 				mentionedSkills: [],
 			},
 		];
-		const out = splitSkillsToUser(msgs, tags, TRIGGER);
+		const out = splitSkillsToUser(msgs, tags);
 		expect(out).toEqual(msgs);
 	});
 
@@ -74,7 +74,7 @@ describe("splitSkillsToUser", () => {
 				skills: [mkSkill("a", "AAA"), mkSkill("b", "BBB")],
 			},
 		];
-		const out = splitSkillsToUser(msgs, tags, TRIGGER);
+		const out = splitSkillsToUser(msgs, tags);
 		const userContent = (out[1] as { content: string }).content;
 		expect(userContent).toContain("AAA");
 		expect(userContent).toContain("BBB");

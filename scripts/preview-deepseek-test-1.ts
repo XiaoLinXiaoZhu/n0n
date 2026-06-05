@@ -20,7 +20,6 @@ import {
 import { loadInitSkills, toSkill } from "@n0n/skill";
 import type { DomainMessage, PromptMessage, ToolCallPart, TagAdapter } from "@n0n/types";
 import { splitSkillsToUser } from "../packages/llm/src/deepseek-test-1-client/index.ts";
-import { loadTriggerPrompt } from "../packages/llm/src/deepseek-test-1-client/trigger-prompt.ts";
 import { getPrompt } from "../apps/code/src/prompts/index.ts";
 
 // ── 输出路径 ──
@@ -59,10 +58,8 @@ const history: DomainMessage[] = [
 // ── deepseek-test-1 管道 ──
 
 const tags: TagAdapter = createTagAdapter("deepseek");
-const triggerPrompt = loadTriggerPrompt();
-
 // Step 1: splitSkillsToUser — 把 system_with_skill 拆为 system + user
-const preprocessed = splitSkillsToUser(history, tags, triggerPrompt);
+const preprocessed = splitSkillsToUser(history, tags);
 
 // Step 2: formatPrompt — DomainMessage[] → PromptMessage[]
 const promptMessages = formatPrompt(preprocessed, tags);

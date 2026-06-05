@@ -17,7 +17,6 @@ import { AnthropicClient } from "./anthropic-client.ts";
 import type { LLMConfig } from "./config.ts";
 import { DeepSeekClient } from "./deepseek-client/index.ts";
 import { DeepSeekTest1Client } from "./deepseek-test-1-client/index.ts";
-import { loadTriggerPrompt } from "./deepseek-test-1-client/trigger-prompt.ts";
 import { GeminiClient } from "./gemini-client.ts";
 import { OpenAIClient } from "./openai-client.ts";
 import { OpenAICompatibleClient } from "./openai-compatible-client.ts";
@@ -57,8 +56,7 @@ export function createLLMClient(
 			return new DeepSeekClient(pc, format, systemFormat);
 		}
 		case "deepseek-test-1": {
-			const triggerPrompt = loadTriggerPrompt();
-			return new DeepSeekTest1Client(pc, format, tags, triggerPrompt);
+			return new DeepSeekTest1Client(pc, format, tags, pc.strip_reasoning);
 		}
 		default: {
 			const _exhaustive: never = pc;

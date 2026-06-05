@@ -117,6 +117,7 @@ export const DeepSeekTest1ProviderConfigSchema = z.object({
 		.enum(["deepseek", "glm", "minimax", "default"])
 		.default("deepseek"),
 	enable_thinking: z.boolean().default(false),
+	strip_reasoning: z.boolean().default(false),
 	reasoning_effort: z.enum(["high", "max"]).optional(),
 	edit_backend: z
 		.enum(["str-replace", "freeform-patch"])

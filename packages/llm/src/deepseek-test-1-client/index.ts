@@ -14,6 +14,7 @@
  */
 
 import { formatSkills } from "@n0n/shared";
+import triggerPromptContent from "./trigger-prompt.md";
 import type {
 	CompleteRequest,
 	CompleteResponse,
@@ -80,7 +81,6 @@ interface DSRequest {
 export function splitSkillsToUser(
 	messages: DomainMessage[],
 	tags: TagAdapter,
-	triggerPrompt: string,
 ): DomainMessage[] {
 	const out: DomainMessage[] = [];
 	for (const msg of messages) {
@@ -88,8 +88,8 @@ export function splitSkillsToUser(
 			out.push({ type: "system", content: msg.content });
 			if (msg.skills.length > 0) {
 				const skillsText = formatSkills(msg.skills, tags);
-				const body = triggerPrompt
-					? `${triggerPrompt}\n\n${skillsText}`
+				const body = triggerPromptContent
+					? `${triggerPromptContent}\n\n${skillsText}`
 					: skillsText;
 				out.push({ type: "generic_user_text", content: body });
 			}
@@ -98,6 +98,43 @@ export function splitSkillsToUser(
 		}
 	}
 	return out;
+}
+
+// ── 去掉 progress tool 之前（含）的 assistant 消息的 reasoning ──
+
+/**
+ * 找到最后一个 toolName==="progress" 的消息索引，清空该索引之前（含）
+ * 所有 assistant 消息的 reasoning 字段。
+ *
+ * @returns `{ messages, lastProgressIdx }` — `lastProgressIdx` 为最后一个
+ * progress 的索引（-1 表示未找到），`messages` 为处理后的消息列表。
+ */
+export function stripReasoningFromPromptMessages(
+	promptMessages: PromptMessage[],
+): { messages: PromptMessage[]; lastProgressIdx: number } {
+	let lastProgressIdx = -1;
+	for (let i = 0; i < promptMessages.length; i++) {
+		const msg = promptMessages[i];
+		if (!msg) continue;
+		if (
+			msg.role === "tool" &&
+			"toolName" in msg &&
+			(msg as any).toolName === "progress"
+		) {
+			lastProgressIdx = i;
+		}
+	}
+	if (lastProgressIdx === -1) return { messages: promptMessages, lastProgressIdx: -1 };
+
+	return {
+		messages: promptMessages.map((msg, idx) => {
+			if (idx <= lastProgressIdx && msg.role === "assistant" && msg.reasoning) {
+				return { ...msg, reasoning: undefined };
+			}
+			return msg;
+		}),
+		lastProgressIdx,
+	};
 }
 
 // ── PromptMessage → API Message（跳过 system 由调用方处理） ──
@@ -162,19 +199,19 @@ export class DeepSeekTest1Client implements LLMClient {
 	private readonly apiUrl: string;
 	private readonly format: FormatFn;
 	private readonly tags: TagAdapter;
-	private readonly triggerPrompt: string;
+	private readonly stripReasoning: boolean;
 
 	constructor(
 		pc: DeepSeekTest1ProviderConfig,
 		format: FormatFn,
 		tags: TagAdapter,
-		triggerPrompt: string,
+		stripReasoning: boolean,
 	) {
 		this.pc = pc;
 		this.modelId = pc.model;
 		this.format = format;
 		this.tags = tags;
-		this.triggerPrompt = triggerPrompt;
+		this.stripReasoning = stripReasoning;
 
 		const base = this.pc.base_url;
 		if (base.includes("/chat/completions")) {
@@ -193,10 +230,31 @@ export class DeepSeekTest1Client implements LLMClient {
 		const preprocessed = splitSkillsToUser(
 			request.messages,
 			this.tags,
-			this.triggerPrompt,
 		);
 
-		const promptMessages = this.format(preprocessed);
+		let promptMessages = this.format(preprocessed);
+
+		// 在 format 后、toApiMessages 前应用 strip_reasoning
+		let lastProgressIdx = -1;
+		if (this.stripReasoning) {
+			const result = stripReasoningFromPromptMessages(promptMessages);
+			promptMessages = result.messages;
+			lastProgressIdx = result.lastProgressIdx;
+		}
+
+		// 在 PromptMessage 层面插入 trigger prompt（如果存在 progress tool_result）
+		if (lastProgressIdx >= 0) {
+			const triggerUserMsg: PromptMessage = {
+				role: "user",
+				content: triggerPromptContent,
+			};
+			promptMessages = [
+				...promptMessages.slice(0, lastProgressIdx + 1),
+				triggerUserMsg,
+				...promptMessages.slice(lastProgressIdx + 1),
+			];
+		}
+
 		const apiMessages = toApiMessages(promptMessages, this.pc.enable_thinking);
 
 		const filteredMessages = apiMessages.filter((msg) => {
