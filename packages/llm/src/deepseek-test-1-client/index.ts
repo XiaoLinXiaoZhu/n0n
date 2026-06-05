@@ -14,7 +14,8 @@
  */
 
 import { formatSkills } from "@n0n/shared";
-import triggerPromptContent from "./trigger-prompt.md";
+import triggerPromptRaw from "./trigger-prompt.md" with { type: "text" };
+const triggerPromptContent = triggerPromptRaw.replace(/<!--[\s\S]*?-->/g, "").trim();
 import type {
 	CompleteRequest,
 	CompleteResponse,
