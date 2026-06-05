@@ -18,6 +18,7 @@
 
 import { existsSync, mkdirSync, unlinkSync } from "node:fs";
 import { isAbsolute, join, resolve } from "node:path";
+import type { ExecRole } from "./role.ts";
 import {
 	estimateTokens,
 	splitLinesByTokenBudget,
@@ -38,7 +39,7 @@ import { findBlockedCommand, handleBlockedCommand } from "./security.ts";
  */
 export interface ExecCall {
 	id: string;
-	tool: "observe" | "reason" | "act";
+	tool: ExecRole;
 	args: ExecArgs;
 }
 

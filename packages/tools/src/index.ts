@@ -35,11 +35,11 @@ import {
 } from "./edit/index.ts";
 import {
 	ExecArgsSchema,
+	EXEC_ROLES,
 	execToolStream,
-	makeActToolDefinition,
-	makeObserveToolDefinition,
-	makeReasonToolDefinition,
+	makeExecToolDefinition,
 } from "./exec/index.ts";
+import type { ExecRole } from "./exec/index.ts";
 import {
 	makeProgressTool,
 	type ProgressStatusConfig,
@@ -113,7 +113,6 @@ const pathExclusiveCanStart: CanStartFn = (self, active) => {
 function buildBaseRegistry(
 	toolsConfig: ToolsConfig,
 ): Record<string, ToolEntry> {
-	const resolvedWorkspace = toolsConfig.workspace;
 	const execConfig = {
 		workspace: toolsConfig.workspace,
 		tempDir: toolsConfig.tempDir,
@@ -122,16 +121,15 @@ function buildBaseRegistry(
 		default_exec_waitfor: toolsConfig.agent.default_exec_waitfor,
 	};
 
-	// observe / reason / act 共享同一个执行后端 execToolStream，
-	// call.tool 透传实际工具名（"observe" / "reason" / "act"），
-	// executor 将其写入 result.tool，供 formatter 和 renderer 作为围栏信号。
-	const makeExecEntry = (definition: ToolDefinition): ToolEntry => ({
-		definition,
+	// 动态注册 observe / reason / act — 通过 EXEC_ROLES 迭代生成，
+	// 每个工具使用统一的 execToolStream 后端，透传实际工具名作为执行角色。
+	const makeExecEntry = (role: ExecRole): ToolEntry => ({
+		definition: makeExecToolDefinition(toolsConfig.platform, role),
 		stream: true,
 		execute: (tc, confirmFn) => {
 			const call = {
 				id: tc.id,
-				tool: tc.tool as "observe" | "reason" | "act",
+				tool: role,
 				args: ExecArgsSchema.parse(tc.args),
 			};
 			return execToolStream(call, confirmFn, execConfig);
@@ -144,9 +142,9 @@ function buildBaseRegistry(
 			: new StrReplaceBackend(toolsConfig.editorClient);
 
 	return {
-		observe: makeExecEntry(makeObserveToolDefinition(toolsConfig.platform)),
-		reason: makeExecEntry(makeReasonToolDefinition(toolsConfig.platform)),
-		act: makeExecEntry(makeActToolDefinition(toolsConfig.platform)),
+		...Object.fromEntries(
+			EXEC_ROLES.map((role) => [role, makeExecEntry(role)]),
+		),
 		write: {
 			definition: WRITE_TOOL_DEFINITION,
 			stream: false,
@@ -157,9 +155,9 @@ function buildBaseRegistry(
 					tool: "write" as const,
 					args: WriteArgsSchema.parse(tc.args),
 				};
-				return writeTool(call, resolvedWorkspace);
+				return writeTool(call, toolsConfig.workspace);
 			},
-			recoverAndExecute: makeWriteRecover(resolvedWorkspace),
+			recoverAndExecute: makeWriteRecover(toolsConfig.workspace),
 		},
 		edit: {
 			definition: EDIT_TOOL_DEFINITION,
@@ -171,7 +169,7 @@ function buildBaseRegistry(
 					tool: "edit" as const,
 					args: EditArgsSchema.parse(tc.args),
 				};
-				return editToolStream(call, resolvedWorkspace, editBackend);
+				return editToolStream(call, toolsConfig.workspace, editBackend);
 			},
 		},
 	};
@@ -245,5 +243,7 @@ export function makeToolkit(
 
 export type { CanStartFn } from "@n0n/types";
 export type { ResponsesClient, ToolsConfig } from "./config.ts";
+
+export type { ExecRole } from "./exec/index.ts";
 
 export type { ProgressStatusConfig } from "./progress.ts";
