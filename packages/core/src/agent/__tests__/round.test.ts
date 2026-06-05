@@ -12,7 +12,7 @@
 
 import { describe, expect, it } from "bun:test";
 import type { DomainMessage, ToolCallRecord } from "@n0n/types";
-import { StreamAccumulator } from "@n0n/types";
+import { StreamAccumulator } from "@n0n/shared";
 import {
 	buildToolCallMessage,
 	collectJobMessages,

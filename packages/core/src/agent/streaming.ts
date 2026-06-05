@@ -8,7 +8,8 @@
  */
 
 import type { StreamEvent, ToolCallRecord } from "@n0n/types";
-import { FinishReason, StreamAccumulator } from "@n0n/types";
+import { FinishReason } from "@n0n/types";
+import { StreamAccumulator } from "@n0n/shared";
 import { parseToolCalls } from "./tool.ts";
 
 // ── 输出事件（判别联合） ──

@@ -7,10 +7,7 @@
  * - Context 注入项目结构和 git 状态，而非 workflow 列表
  */
 
-import { existsSync, mkdirSync, readdirSync, writeFileSync } from "node:fs";
-import { resolve } from "node:path";
-import { createInterface } from "node:readline";
-import { isTTY, label, style, writeln } from "@n0n/cli-ui";
+import { isTTY, style, writeln } from "@n0n/cli-ui";
 import {
 	type AgentConfig,
 	agentLoop,
@@ -31,14 +28,14 @@ import type { DomainMessage, LLMClient, Skill } from "@n0n/types";
 import { CodeRenderer } from "./code-renderer.ts";
 import { buildEnvironmentContext } from "./context-env.ts";
 import type { UserInputConfig } from "./multiline-input/config.ts";
-import { readMultilineInput } from "./multiline-input/index.ts";
 import { type NotifyConfig, playNotifySound } from "./notify-sound.ts";
 import { codeProgressConfig } from "./progress-config.ts";
-import { formatProgressResult } from "./progress-formatter.ts";
-import { getPrompt } from "./prompts/index.ts";
-import type { CodeProgressResult } from "./schema.ts";
+import { type CodeProgressResult } from "./schema.ts";
 import { parseAndInjectSkills } from "./skill-inject.ts";
 import { createStdinController } from "./stdin-controller.ts";
+import { ProgressWriter } from "./progress-writer.ts";
+import { UserPrompter } from "./user-prompter.ts";
+import { getPrompt } from "./prompts/index.ts";
 
 export interface CodeReplOptions {
 	initialInput?: string;
@@ -83,12 +80,11 @@ export async function startCodeRepl(
 		userInputConfig,
 	} = options;
 
-	// 基础系统提示词（稳定前缀，不含 agents.md 和环境信息）
-	const baseSystemPrompt = getPrompt(promptVersion);
+	// ── 依赖组装 ──
 
-	// 构建 Toolkit — 含 progress config，供 fewshot 和 agentLoop 共用
+	const baseSystemPrompt = getPrompt(promptVersion);
 	const { client, toolsConfig, agentConfig } = options;
-	// 加载 init skills，作为 system_with_skill 的 skills 携带（拼装下沉到 format-prompt）
+
 	const initSkills = await loadInitSkills();
 	const systemSkills: Skill[] = initSkills.map(toSkill);
 	const systemMessage: DomainMessage = {
@@ -99,33 +95,17 @@ export async function startCodeRepl(
 	const notifyConfig = options.notifyConfig ?? { enabled: false };
 	const toolkit = makeToolkit(codeProgressConfig, toolsConfig, client.modelId);
 
-	// progress 结果文件编号（进程级，不随 renderer 生命周期绑定）
-	const nextSessionId = (() => {
-		try {
-			const existing = readdirSync(paths.temp)
-				.filter((d) => d.startsWith("session-"))
-				.map((d) => Number.parseInt(d.slice("session-".length), 10))
-				.filter((n) => !Number.isNaN(n));
-			return existing.length > 0 ? Math.max(...existing) + 1 : 1;
-		} catch {
-			return 1;
-		}
-	})();
-	const sessionDir = resolve(
-		paths.temp,
-		`session-${String(nextSessionId).padStart(4, "0")}`,
-	);
-	let progressSeq = 0;
-	// renderer 选择也基于 canInteract：管道环境用 PlainRenderer（无光标控制）
 	const canInteract = typeof process.stdin.setRawMode === "function";
 	const renderer = canInteract
 		? new CodeRenderer(paths, { expandExec })
 		: new PlainRenderer();
 
-	// ── stdin 控制器（仅 TTY 模式） ──
 	const stdin = canInteract ? createStdinController() : null;
+	const prompter = new UserPrompter(stdin, userInputConfig);
+	const progressWriter = new ProgressWriter(paths.temp);
 
-	// ── 心跳保活（仅 Anthropic 等支持 prompt caching 的 provider） ──
+	// ── 心跳保活 ──
+
 	const keeper = client.heartbeat
 		? new HeartbeatKeeper({
 				sendHeartbeat: async (request) => {
@@ -159,95 +139,8 @@ export async function startCodeRepl(
 		};
 	}
 
-	// ── promptUser ──
-	async function promptUser(): Promise<string | null> {
-		if (!stdin) {
-			return new Promise<string | null>((resolve) => {
-				const rl = createInterface({
-					input: process.stdin,
-					output: process.stderr,
-				});
-				rl.question("", (answer) => {
-					rl.close();
-					resolve(answer || null);
-				});
-				rl.once("close", () => resolve(null));
-			});
-		}
-
-		const result = await readMultilineInput({
-			prompt: `${label.user()}`,
-			hint: style.gray("(Alt+Enter 提交)"),
-			editor: userInputConfig,
-			connectStdin: (handler) => {
-				stdin.dataHandler = handler;
-				stdin.phase = "input";
-				return () => {
-					stdin.dataHandler = null;
-					stdin.phase = "idle";
-				};
-			},
-		});
-		return result?.text ?? null;
-	}
-
-	// ── confirmFn: 在 raw mode 下直接实现行编辑，不用 readline ──
-	// 避免 readline 的 emitKeypressEvents 在 stdin 上累积永久 listener
-	function confirmFn(question: string): Promise<string> {
-		if (!stdin) {
-			return new Promise<string>((resolve) => {
-				const rl = createInterface({
-					input: process.stdin,
-					output: process.stderr,
-				});
-				rl.question(question, (answer) => {
-					rl.close();
-					resolve(answer);
-				});
-				rl.once("close", () => resolve("n"));
-			});
-		}
-
-		return new Promise<string>((resolve) => {
-			process.stderr.write(question);
-			let line = "";
-
-			stdin.dataHandler = (data: string) => {
-				for (let i = 0; i < data.length; i++) {
-					const code = data.charCodeAt(i);
-					if (code === 17) {
-						process.stderr.write("\n");
-						stdin.dataHandler = null;
-						stdin.phase = "agent";
-						stdin.abortController.abort();
-						resolve("n");
-						return;
-					}
-					if (code === 13) {
-						process.stderr.write("\n");
-						stdin.dataHandler = null;
-						stdin.phase = "agent";
-						resolve(line);
-						return;
-					}
-					if (code === 127 || code === 8) {
-						if (line.length > 0) {
-							line = line.slice(0, -1);
-							process.stderr.write("\b \b");
-						}
-						continue;
-					}
-					if (code >= 32) {
-						line += data[i];
-						process.stderr.write(data[i] as string);
-					}
-				}
-			};
-			stdin.phase = "input";
-		});
-	}
-
 	// ── 初始化 history ──
+
 	let history: DomainMessage[];
 	let userInput: string | null;
 	let isFirstInput: boolean;
@@ -265,7 +158,7 @@ export async function startCodeRepl(
 			);
 			writeln();
 			isFirstInput = false;
-			userInput = await promptUser();
+			userInput = await prompter.prompt();
 		} catch (err) {
 			const message =
 				err instanceof Error ? err.message : String(err ?? "未知错误");
@@ -275,30 +168,28 @@ export async function startCodeRepl(
 			isFirstInput = true;
 			envContext = buildEnvironmentContext(paths.workspace);
 			history = [systemMessage, { type: "cache_breakpoint" }];
-			userInput = initialInput ?? (await promptUser());
+			userInput = initialInput ?? (await prompter.prompt());
 		}
 	} else {
 		isFirstInput = true;
 		envContext = buildEnvironmentContext(paths.workspace);
 		history = [systemMessage, { type: "cache_breakpoint" }];
-		userInput = initialInput ?? (await promptUser());
+		userInput = initialInput ?? (await prompter.prompt());
 	}
 
 	let autoResume = false;
 
+	// ── 主循环 ──
+
 	while (true) {
-		if (userInput === null) {
-			break;
-		}
-		if (userInput.trim().toLowerCase() === "exit") {
-			break;
-		}
+		if (userInput === null) break;
+		if (userInput.trim().toLowerCase() === "exit") break;
 		if (userInput.trim() === "") {
-			userInput = await promptUser();
+			userInput = await prompter.prompt();
 			continue;
 		}
 
-		// ── `log` 命令 ──
+		// `log` 命令
 		if (userInput.trim().toLowerCase() === "log") {
 			try {
 				const filePath = saveConversation(
@@ -313,11 +204,11 @@ export async function startCodeRepl(
 				writeln(`${style.red("✗")} 保存对话失败: ${message}`);
 			}
 			writeln();
-			userInput = await promptUser();
+			userInput = await prompter.prompt();
 			continue;
 		}
 
-		// ── `pause` 命令：停止心跳保活 ──
+		// `pause` 命令
 		if (userInput.trim().toLowerCase() === "pause") {
 			if (keeper && keeper.state === HeartbeatState.TICKING) {
 				keeper.stop();
@@ -326,17 +217,16 @@ export async function startCodeRepl(
 				writeln(style.gray("当前没有活跃的缓存保活。"));
 			}
 			writeln();
-			userInput = await promptUser();
+			userInput = await prompter.prompt();
 			continue;
 		}
 
-		// ── working 自动继续：跳过推入用户输入 ──
+		// ── 推入用户输入 ──
+
 		if (autoResume) {
 			autoResume = false;
 			keeper?.stop();
 		} else {
-			// ── 将用户输入推入 history ──
-			// ── 停止心跳（agent 执行期间由 stream 自行刷新缓存） ──
 			keeper?.stop();
 			const skillResult = await parseAndInjectSkills(userInput);
 			if (skillResult.notFound.length > 0) {
@@ -358,7 +248,8 @@ export async function startCodeRepl(
 			);
 		}
 
-		// ── Agent 运行阶段：切换到 agent phase ──
+		// ── Agent 运行 ──
+
 		if (stdin) {
 			stdin.abortController = new AbortController();
 			stdin.phase = "agent";
@@ -372,7 +263,7 @@ export async function startCodeRepl(
 				max_iterations: agentConfig.max_iterations,
 				max_idle_rounds: agentConfig.max_idle_rounds,
 				renderer,
-				confirmFn,
+				confirmFn: (question) => prompter.confirm(question),
 				signal: stdin?.abortController.signal,
 			});
 		} catch (err) {
@@ -382,20 +273,19 @@ export async function startCodeRepl(
 				err instanceof Error ? err.message : String(err ?? "未知错误");
 			writeln(style.gray(`  ${message}`));
 			writeln();
-			userInput = await promptUser();
+			userInput = await prompter.prompt();
 			continue;
 		} finally {
 			if (stdin) stdin.phase = "idle";
 		}
+
 		history = agentResult.history;
-		// agent 结束，启动心跳保活（使用相同的 messages + tools 确保缓存前缀一致）
 		keeper?.start({
 			messages: history,
 			tools: agentResult.tools,
 			toolChoice: "auto",
 		});
 
-		// ── --save-every-loop ──
 		if (saveEveryLoop) {
 			try {
 				saveConversation(
@@ -409,10 +299,9 @@ export async function startCodeRepl(
 			}
 		}
 
-		// ── 被用户中断 ──
 		if (stdin?.abortController.signal.aborted) {
 			writeln();
-			userInput = await promptUser();
+			userInput = await prompter.prompt();
 			continue;
 		}
 
@@ -423,23 +312,11 @@ export async function startCodeRepl(
 			writeln(`${style.red("✗")} Agent 异常终止`);
 			if (agentResult.report) writeln(style.gray(`  ${agentResult.report}`));
 			writeln();
-			userInput = await promptUser();
+			userInput = await prompter.prompt();
 			continue;
 		}
 
-		// 将 progress 结果写入 session 目录：编号文件 + current-progress.md
-		progressSeq++;
-		const progressFilename = `${String(progressSeq).padStart(4, "0")}-${ir.status}.md`;
-		const formatted = formatProgressResult(ir);
-		try {
-			if (!existsSync(sessionDir)) mkdirSync(sessionDir, { recursive: true });
-			writeFileSync(resolve(sessionDir, progressFilename), formatted, "utf-8");
-			writeFileSync(
-				resolve(sessionDir, "current-progress.md"),
-				formatted,
-				"utf-8",
-			);
-		} catch {}
+		progressWriter.write(ir);
 
 		switch (ir.status) {
 			case "blocked": {
@@ -454,13 +331,12 @@ export async function startCodeRepl(
 				}
 				writeln();
 				playNotifySound(notifyConfig);
-				userInput = await promptUser();
+				userInput = await prompter.prompt();
 				continue;
 			}
 			case "working": {
 				writeln(`${style.cyan("⏳")} 进行中: ${ir.content}`);
 				writeln();
-				// working 状态：不等用户输入，直接重新启动 agentLoop
 				history.push(makeUserInput("", [], "继续", null));
 				autoResume = true;
 				continue;
@@ -472,7 +348,7 @@ export async function startCodeRepl(
 				}
 				writeln();
 				playNotifySound(notifyConfig);
-				userInput = await promptUser();
+				userInput = await prompter.prompt();
 				break;
 			}
 			default: {

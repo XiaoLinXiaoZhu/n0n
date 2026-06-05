@@ -9,9 +9,9 @@ import type {
 	AssistantToolCallMessage,
 	DomainMessage,
 	PartialToolCallRecord,
-	StreamAccumulator,
 	ToolCallRecord,
 } from "@n0n/types";
+import type { StreamAccumulator } from "@n0n/shared";
 import type { PipelineJob } from "./scheduler.ts";
 import type { StreamingResult } from "./streaming.ts";
 import {

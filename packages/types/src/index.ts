@@ -15,7 +15,7 @@ export type {
 	ToolCallPart,
 	ToolDefinition,
 } from "./client.ts";
-export { FinishReason, StreamAccumulator } from "./client.ts";
+export { FinishReason } from "./client.ts";
 export type * from "./domain.ts";
 export type { LLMProvider } from "./llm-provider.ts";
 export { isLLMProvider, LLM_PROVIDERS } from "./llm-provider.ts";

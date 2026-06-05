@@ -10,8 +10,8 @@
  */
 
 import { describe, expect, test } from "bun:test";
-import type { StreamEvent } from "../client.ts";
-import { StreamAccumulator } from "../client.ts";
+import type { StreamEvent } from "@n0n/types";
+import { StreamAccumulator } from "../stream-accumulator.ts";
 
 describe("StreamAccumulator", () => {
 	test("累积 content 事件", () => {
