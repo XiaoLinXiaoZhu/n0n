@@ -57,14 +57,6 @@ export function closeTag(style: TagStyle, name: string): string {
  */
 function adaptTagsByStyle(text: string, style: TagStyle): string {
 	if (style === "default" || style === "glm") return text;
-
-	if (style === "deepseek") {
-		return text.replace(
-			/<system-hint>([\s\S]*?)<\/system-hint>/g,
-			(_, content) => `【system-hint】\n${content.trim()}\n---`,
-		);
-	}
-
 	return text
 		.replace(/<(\w+)>/g, (_, name) => openTag(style, name))
 		.replace(/<\/(\w+)>/g, (_, name) => closeTag(style, name));
@@ -76,9 +68,6 @@ function wrapTagByStyle(
 	content: string,
 	style: TagStyle,
 ): string {
-	if (name === "system-hint" && style === "deepseek") {
-		return `【system-hint】\n${content}\n---`;
-	}
 	return `${openTag(style, name)}\n${content}\n${closeTag(style, name)}`;
 }
 
