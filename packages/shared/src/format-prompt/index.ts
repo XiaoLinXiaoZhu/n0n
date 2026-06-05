@@ -72,6 +72,7 @@ function toolResultToStructured(
 function buildUserInputContent(
 	msg: Extract<DomainMessage, { type: "user_input" }>,
 	tags: TagAdapter,
+	includeHint: boolean,
 ): string {
 	const parts: string[] = [];
 	if (msg.context) {
@@ -81,7 +82,7 @@ function buildUserInputContent(
 	if (msg.mentionedSkills.length > 0) {
 		parts.push(formatSkills(msg.mentionedSkills, tags));
 	}
-	if (msg.hint) {
+	if (includeHint && msg.hint) {
 		parts.push(tags.wrapTag("system-hint", msg.hint));
 	}
 	return parts.join("\n\n");
@@ -231,12 +232,14 @@ export function formatPrompt(
 				});
 				break;
 
-			case "user_input":
+			case "user_input": {
+				const isLatestRound = originalIndex > lastAtcIndex;
 				result.push({
 					role: "user",
-					content: buildUserInputContent(msg, tags),
+					content: buildUserInputContent(msg, tags, !stripHintEnabled || isLatestRound),
 				});
 				break;
+			}
 
 			case "turn_feedback":
 				result.push({
