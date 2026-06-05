@@ -18,6 +18,7 @@ interface ToolsConfigBase {
 	platform: "win32" | "darwin" | "linux";
 	workspace: string;
 	tempDir: string;
+	bgSyncIntervalMs?: number;
 }
 
 interface StrReplaceToolsConfig extends ToolsConfigBase {

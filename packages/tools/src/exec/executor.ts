@@ -68,6 +68,7 @@ async function startBackgroundSync(
 	startTime: number,
 	tempDir: string,
 	tmpFile: string,
+	syncIntervalMs?: number,
 ): Promise<string> {
 	const { pid, stdoutChunks, stderrChunks, streamsDone, proc } = result;
 	const logFile = join(tempDir, `exec_bg_${pid}.log`);
@@ -127,7 +128,7 @@ async function startBackgroundSync(
 
 	// 后台协程：定期同步 + 等待结束写最终结果
 	(async () => {
-		const SYNC_INTERVAL_MS = 3000;
+		const SYNC_INTERVAL_MS = syncIntervalMs ?? 3000;
 		let syncTimer: ReturnType<typeof setInterval> | null = null;
 
 		const syncToFile = () => {
@@ -209,6 +210,7 @@ export async function* execToolStream(
 		blocked_commands: string[];
 		default_exec_waitfor: number;
 		platform: "win32" | "darwin" | "linux";
+		bgSyncIntervalMs?: number;
 	},
 ): AsyncGenerator<ToolStreamEvent> {
 	const defaultRuntime = toolsConfig.platform === "win32" ? "cmd" : "sh";
@@ -286,6 +288,7 @@ export async function* execToolStream(
 					start,
 					tempDir,
 					tmpFile,
+					toolsConfig.bgSyncIntervalMs,
 				);
 
 				yield {

@@ -118,6 +118,7 @@ function buildBaseRegistry(
 		tempDir: toolsConfig.tempDir,
 		platform: toolsConfig.platform,
 		blocked_commands: toolsConfig.security.blocked_commands,
+		bgSyncIntervalMs: toolsConfig.bgSyncIntervalMs,
 		default_exec_waitfor: toolsConfig.agent.default_exec_waitfor,
 	};
 

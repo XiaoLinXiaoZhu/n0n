@@ -68,7 +68,7 @@ function spawnN0n(
 describe("非 TTY 环境启动", () => {
 	test("不因 setRawMode 崩溃", async () => {
 		const result = await spawnN0n(["请你使用submit提交下面的答案：1+1=？"], {
-			timeoutMs: 15_000,
+			timeoutMs: 8_000,
 		});
 
 		// 核心断言：不应该出现 setRawMode 错误

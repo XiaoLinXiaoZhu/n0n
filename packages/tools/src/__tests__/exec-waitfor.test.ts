@@ -73,9 +73,9 @@ describe("exec waitfor 行为验证", () => {
 
 	test("阻塞脚本超过 waitfor — 应返回 backgrounded 结果而非卡死", async () => {
 		const outcome = await collectWithHardTimeout(
-			"await Bun.sleep(30000);",
+			"await Bun.sleep(5000);",
 			2,
-			8000,
+			5000,
 			"bun",
 		);
 
@@ -94,10 +94,10 @@ describe("exec waitfor 行为验证", () => {
 
 	test("shell fork 子进程场景 — 应返回 backgrounded 结果而非卡死", async () => {
 		const script = [
-			'const proc = Bun.spawn(["bun", "-e", "await Bun.sleep(30000)"], { stdout: "inherit" });',
+			'const proc = Bun.spawn(["bun", "-e", "await Bun.sleep(5000)"], { stdout: "inherit" });',
 			"await proc.exited;",
 		].join("\n");
-		const outcome = await collectWithHardTimeout(script, 2, 8000, "bun");
+		const outcome = await collectWithHardTimeout(script, 2, 5000, "bun");
 
 		expect(outcome.status).toBe("completed");
 		if (outcome.status === "completed") {
@@ -117,7 +117,7 @@ describe("exec waitfor 行为验证", () => {
 			"  await Bun.sleep(500);",
 			"}",
 		].join("\n");
-		const outcome = await collectWithHardTimeout(script, 2, 8000, "bun");
+		const outcome = await collectWithHardTimeout(script, 2, 5000, "bun");
 
 		expect(outcome.status).toBe("completed");
 		if (outcome.status === "completed") {
