@@ -243,17 +243,13 @@ export class DeepSeekTest1Client implements LLMClient {
 			lastProgressIdx = result.lastProgressIdx;
 		}
 
-		// 在 PromptMessage 层面插入 trigger prompt（如果存在 progress tool_result）
+		// 在消息数组末尾插入 trigger prompt（如果存在 progress tool_result）
 		if (lastProgressIdx >= 0) {
 			const triggerUserMsg: PromptMessage = {
 				role: "user",
 				content: triggerPromptContent,
 			};
-			promptMessages = [
-				...promptMessages.slice(0, lastProgressIdx + 1),
-				triggerUserMsg,
-				...promptMessages.slice(lastProgressIdx + 1),
-			];
+			promptMessages = [...promptMessages, triggerUserMsg];
 		}
 
 		const apiMessages = toApiMessages(promptMessages, this.pc.enable_thinking);
