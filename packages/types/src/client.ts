@@ -221,5 +221,3 @@ export interface AssistantMessage {
 	reasoningSignature: string | undefined;
 	toolCalls: AssistantToolCallPart[];
 }
-
-

@@ -5,6 +5,7 @@
  * 不管理循环状态，不修改外部状态。
  */
 
+import { StreamAccumulator } from "@n0n/shared";
 import type {
 	DomainMessage,
 	LLMClient,
@@ -12,7 +13,6 @@ import type {
 	StreamEvent,
 	TokenUsage,
 } from "@n0n/types";
-import { StreamAccumulator } from "@n0n/shared";
 import prompt from "./prompt.md" with { type: "text" };
 import { EDITOR_TOOLS } from "./tools.ts";
 

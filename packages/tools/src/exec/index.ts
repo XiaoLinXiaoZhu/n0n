@@ -9,8 +9,6 @@
  * - process-runner: 子进程命令构建与执行
  */
 
-export type { ExecRole } from "./role.ts";
-export { EXEC_ROLES } from "./role.ts";
 export {
 	ExecArgsSchema,
 	makeExecToolDefinition,
@@ -19,6 +17,8 @@ export type { ExecCall } from "./executor.ts";
 export { execToolStream } from "./executor.ts";
 export type { RunProcessResult } from "./process-runner.ts";
 export { buildSpawnCmd, RUNTIME_EXT } from "./process-runner.ts";
+export type { ExecRole } from "./role.ts";
+export { EXEC_ROLES } from "./role.ts";
 export {
 	extractCommandNames,
 	findBlockedCommand,

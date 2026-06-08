@@ -17,8 +17,6 @@ export {
 	loadConversation,
 	saveConversation,
 } from "./conversation-log/index.ts";
-// StreamAccumulator
-export { StreamAccumulator } from "./stream-accumulator.ts";
 // Deep parse JSON strings
 export { deepParseJsonStrings } from "./deep-parse-json-strings.ts";
 export { formatSkills } from "./format-prompt/format-skill.ts";
@@ -34,6 +32,8 @@ export {
 } from "./frontmatter.ts";
 // DSL Parser
 export { parseDsl } from "./parse-dsl.ts";
+// StreamAccumulator
+export { StreamAccumulator } from "./stream-accumulator.ts";
 // Tags
 export {
 	closeTag,

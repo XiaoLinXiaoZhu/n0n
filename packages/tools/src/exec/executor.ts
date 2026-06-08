@@ -18,7 +18,6 @@
 
 import { existsSync, mkdirSync, unlinkSync } from "node:fs";
 import { isAbsolute, join, resolve } from "node:path";
-import type { ExecRole } from "./role.ts";
 import {
 	estimateTokens,
 	splitLinesByTokenBudget,
@@ -31,6 +30,7 @@ import {
 	type RunProcessBackgrounded,
 	runProcess,
 } from "./process-runner.ts";
+import type { ExecRole } from "./role.ts";
 import { findBlockedCommand, handleBlockedCommand } from "./security.ts";
 
 /**

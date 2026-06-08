@@ -12,8 +12,8 @@
 
 import type { ToolDefinition } from "@n0n/types";
 import { ExecArgsSchema, ExecParamDefs, withDescriptions } from "@n0n/types";
-import type { ExecRole } from "./role.ts";
 import { paramsFromDefs } from "../zod-to-parameters.ts";
+import type { ExecRole } from "./role.ts";
 
 export { ExecArgsSchema };
 

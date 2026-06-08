@@ -30,12 +30,12 @@ import { buildEnvironmentContext } from "./context-env.ts";
 import type { UserInputConfig } from "./multiline-input/config.ts";
 import { type NotifyConfig, playNotifySound } from "./notify-sound.ts";
 import { codeProgressConfig } from "./progress-config.ts";
-import { type CodeProgressResult } from "./schema.ts";
+import { ProgressWriter } from "./progress-writer.ts";
+import { getPrompt } from "./prompts/index.ts";
+import type { CodeProgressResult } from "./schema.ts";
 import { parseAndInjectSkills } from "./skill-inject.ts";
 import { createStdinController } from "./stdin-controller.ts";
-import { ProgressWriter } from "./progress-writer.ts";
 import { UserPrompter } from "./user-prompter.ts";
-import { getPrompt } from "./prompts/index.ts";
 
 export interface CodeReplOptions {
 	initialInput?: string;

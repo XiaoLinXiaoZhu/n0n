@@ -236,7 +236,11 @@ export function formatPrompt(
 				const isLatestRound = originalIndex > lastAtcIndex;
 				result.push({
 					role: "user",
-					content: buildUserInputContent(msg, tags, !stripHintEnabled || isLatestRound),
+					content: buildUserInputContent(
+						msg,
+						tags,
+						!stripHintEnabled || isLatestRound,
+					),
 				});
 				break;
 			}

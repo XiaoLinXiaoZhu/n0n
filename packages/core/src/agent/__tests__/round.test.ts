@@ -11,8 +11,8 @@
  */
 
 import { describe, expect, it } from "bun:test";
-import type { DomainMessage, ToolCallRecord } from "@n0n/types";
 import { StreamAccumulator } from "@n0n/shared";
+import type { DomainMessage, ToolCallRecord } from "@n0n/types";
 import {
 	buildToolCallMessage,
 	collectJobMessages,
