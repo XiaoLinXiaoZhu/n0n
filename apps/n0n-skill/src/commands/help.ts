@@ -13,8 +13,15 @@ export async function helpCommand(): Promise<void> {
 	const skills = await discoverSkillsMultiDir(getSkillDirs());
 	const autoSkills = skills.filter((s) => s.activation === "auto");
 
-	if (autoSkills.length === 0) {
+	if (skills.length === 0) {
 		console.log("没有可用的 skill。运行 `n0n-skill init` 安装内置 skill。");
+		return;
+	}
+
+	if (autoSkills.length === 0) {
+		console.log(
+			"没有 auto 激活的 skill。运行 `n0n-skill list --all` 查看所有可用 skill。",
+		);
 		return;
 	}
 
