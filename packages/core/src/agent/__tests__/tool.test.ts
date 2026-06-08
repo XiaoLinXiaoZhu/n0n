@@ -1,4 +1,4 @@
-// biome-ignore-all lint/style/noNonNullAssertion: test assertions on known-shape results
+// biome-ignore-all lint/style/noNonNullAssertion lint/suspicious/noExplicitAny: test assertions on known-shape results
 /**
  * executeToolStream 单元测试
  *

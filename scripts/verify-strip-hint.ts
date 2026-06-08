@@ -169,7 +169,7 @@ for (let callIdx = 0; callIdx < atcIndices.length; callIdx++) {
 
   // 打印最终的消息角色序列
   const roleSeq = promptMessages.map(pm => {
-    let r = pm.role;
+    let r: string = pm.role;
     if (pm.role === "tool" && "toolName" in pm) r = `tool(${(pm as any).toolName})`;
     if (pm.role === "user" && pm.content === triggerPromptContent) r = "user(TRIGGER)";
     return r;

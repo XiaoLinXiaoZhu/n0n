@@ -15,7 +15,11 @@
 
 import { formatSkills } from "@n0n/shared";
 import triggerPromptRaw from "./trigger-prompt.md" with { type: "text" };
-const triggerPromptContent = triggerPromptRaw.replace(/<!--[\s\S]*?-->/g, "").trim();
+
+const triggerPromptContent = triggerPromptRaw
+	.replace(/<!--[\s\S]*?-->/g, "")
+	.trim();
+
 import type {
 	CompleteRequest,
 	CompleteResponse,
@@ -120,12 +124,13 @@ export function stripReasoningFromPromptMessages(
 		if (
 			msg.role === "tool" &&
 			"toolName" in msg &&
-			(msg as any).toolName === "progress"
+			msg.toolName === "progress"
 		) {
 			lastProgressIdx = i;
 		}
 	}
-	if (lastProgressIdx === -1) return { messages: promptMessages, lastProgressIdx: -1 };
+	if (lastProgressIdx === -1)
+		return { messages: promptMessages, lastProgressIdx: -1 };
 
 	return {
 		messages: promptMessages.map((msg, idx) => {
@@ -228,10 +233,7 @@ export class DeepSeekTest1Client implements LLMClient {
 		signal?: AbortSignal,
 	): AsyncGenerator<StreamEvent> {
 		// 预处理：把 system_with_skill 的 skill 拆到第一个 user 消息
-		const preprocessed = splitSkillsToUser(
-			request.messages,
-			this.tags,
-		);
+		const preprocessed = splitSkillsToUser(request.messages, this.tags);
 
 		let promptMessages = this.format(preprocessed);
 

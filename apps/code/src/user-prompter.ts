@@ -40,16 +40,17 @@ export class UserPrompter {
 			});
 		}
 
+		const s = this.stdin;
 		const result = await readMultilineInput({
 			prompt: `${label.user()}`,
 			hint: style.gray("(Alt+Enter 提交)"),
 			editor: this.userInputConfig,
 			connectStdin: (handler) => {
-				this.stdin!.dataHandler = handler;
-				this.stdin!.phase = "input";
+				s.dataHandler = handler;
+				s.phase = "input";
 				return () => {
-					this.stdin!.dataHandler = null;
-					this.stdin!.phase = "idle";
+					s.dataHandler = null;
+					s.phase = "idle";
 				};
 			},
 		});
@@ -79,27 +80,28 @@ export class UserPrompter {
 			});
 		}
 
+		const s = this.stdin;
 		return new Promise<string>((resolve) => {
 			process.stderr.write(question);
 			let line = "";
 
-			this.stdin!.dataHandler = (data: string) => {
+			s.dataHandler = (data: string) => {
 				for (let i = 0; i < data.length; i++) {
 					const code = data.charCodeAt(i);
 					if (code === 17) {
 						// Ctrl+Q → abort
 						process.stderr.write("\n");
-						this.stdin!.dataHandler = null;
-						this.stdin!.phase = "agent";
-						this.stdin!.abortController.abort();
+						s.dataHandler = null;
+						s.phase = "agent";
+						s.abortController.abort();
 						resolve("n");
 						return;
 					}
 					if (code === 13) {
 						// Enter
 						process.stderr.write("\n");
-						this.stdin!.dataHandler = null;
-						this.stdin!.phase = "agent";
+						s.dataHandler = null;
+						s.phase = "agent";
 						resolve(line);
 						return;
 					}
@@ -117,7 +119,7 @@ export class UserPrompter {
 					}
 				}
 			};
-			this.stdin!.phase = "input";
+			s.phase = "input";
 		});
 	}
 }

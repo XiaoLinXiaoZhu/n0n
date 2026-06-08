@@ -70,6 +70,10 @@ export function deriveNameFromPath(
 	skillPath: string,
 	categoryDir: string,
 ): string {
+	// 跨平台兼容：将反斜杠统一替换为正斜杠
+	skillPath = skillPath.replace(/\\/g, "/");
+	categoryDir = categoryDir.replace(/\\/g, "/");
+
 	const skillDir = resolve(skillPath, "..");
 	const rel = relative(categoryDir, skillDir);
 	return rel.split(sep).join("-").replace(/\\/g, "-");

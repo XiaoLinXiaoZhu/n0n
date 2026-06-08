@@ -5,19 +5,16 @@
  * 每次 agent loop 完成后，将 progress 结果写入 session 目录。
  */
 
-import { existsSync, mkdirSync, writeFileSync } from "node:fs";
-import { readdirSync } from "node:fs";
+import { existsSync, mkdirSync, readdirSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
-import type { CodeProgressResult } from "./schema.ts";
 import { formatProgressResult } from "./progress-formatter.ts";
+import type { CodeProgressResult } from "./schema.ts";
 
 export class ProgressWriter {
-	private readonly tempDir: string;
 	private readonly sessionDir: string;
 	private seq = 0;
 
 	constructor(tempDir: string) {
-		this.tempDir = tempDir;
 		this.sessionDir = this.createSessionDir(tempDir);
 	}
 

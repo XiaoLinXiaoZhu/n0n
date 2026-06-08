@@ -100,7 +100,7 @@ console.log("\n=== 最终发送给 API 的消息序列 ===");
 for (let i = 0; i < promptMessages.length; i++) {
   const pm = promptMessages[i];
   if (!pm) continue;
-  let label = pm.role;
+  let label: string = pm.role;
   if (pm.role === "tool") label = `tool(${(pm as any).toolName})`;
   if (pm.role === "user" && pm.content === triggerPromptContent) label = "TRIGGER";
   if (pm.role === "assistant") {
