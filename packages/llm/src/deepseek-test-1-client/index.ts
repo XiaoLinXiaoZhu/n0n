@@ -148,6 +148,7 @@ export function stripReasoningFromPromptMessages(
 function toApiMessages(
 	promptMessages: PromptMessage[],
 	enableThinking?: boolean,
+	memoryTag?: boolean,
 ): DSMessage[] {
 	const result: DSMessage[] = [];
 	for (const msg of promptMessages) {
@@ -159,9 +160,12 @@ function toApiMessages(
 				result.push({ role: "user", content: msg.content });
 				break;
 			case "assistant": {
+				const content = memoryTag && msg.content
+					? `<memory>\n${msg.content}\n</memory>`
+					: msg.content ?? null;
 				const base: DSMessage = {
 					role: "assistant",
-					content: msg.content || null,
+					content,
 					...(enableThinking ? { reasoning_content: msg.reasoning ?? "" } : {}),
 				};
 				if (msg.toolCalls?.length) {
@@ -206,18 +210,21 @@ export class DeepSeekTest1Client implements LLMClient {
 	private readonly format: FormatFn;
 	private readonly tags: TagAdapter;
 	private readonly stripReasoning: boolean;
+	private readonly memoryTag: boolean;
 
 	constructor(
 		pc: DeepSeekTest1ProviderConfig,
 		format: FormatFn,
 		tags: TagAdapter,
 		stripReasoning: boolean,
+		memoryTag: boolean,
 	) {
 		this.pc = pc;
 		this.modelId = pc.model;
 		this.format = format;
 		this.tags = tags;
 		this.stripReasoning = stripReasoning;
+		this.memoryTag = memoryTag;
 
 		const base = this.pc.base_url;
 		if (base.includes("/chat/completions")) {
@@ -254,7 +261,7 @@ export class DeepSeekTest1Client implements LLMClient {
 			promptMessages = [...promptMessages, triggerUserMsg];
 		}
 
-		const apiMessages = toApiMessages(promptMessages, this.pc.enable_thinking);
+		const apiMessages = toApiMessages(promptMessages, this.pc.enable_thinking, this.memoryTag);
 
 		const filteredMessages = apiMessages.filter((msg) => {
 			if (msg.role === "user" && !(msg.content ?? "").trim()) return false;
