@@ -163,10 +163,13 @@ function toApiMessages(
 				const content = memoryTag && msg.content
 					? `<memory>\n${msg.content}\n</memory>`
 					: msg.content ?? null;
+				const reasoningContent = memoryTag && msg.reasoning
+					? `<memory>\n${msg.reasoning}\n</memory>`
+					: (enableThinking ? (msg.reasoning ?? "") : undefined);
 				const base: DSMessage = {
 					role: "assistant",
 					content,
-					...(enableThinking ? { reasoning_content: msg.reasoning ?? "" } : {}),
+					...(reasoningContent !== undefined ? { reasoning_content: reasoningContent } : {}),
 				};
 				if (msg.toolCalls?.length) {
 					base.tool_calls = msg.toolCalls.map((tc) => ({
