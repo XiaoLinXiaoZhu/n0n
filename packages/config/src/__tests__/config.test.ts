@@ -23,7 +23,6 @@ const providerSchema = z.discriminatedUnion("provider", [
 		tag_style: z
 			.enum(["deepseek", "glm", "minimax", "default"])
 			.default("default"),
-		
 	}),
 	z.object({
 		provider: z.literal("anthropic"),
@@ -39,7 +38,6 @@ const providerSchema = z.discriminatedUnion("provider", [
 				budget_tokens: z.number(),
 			})
 			.optional(),
-		
 	}),
 	z.object({
 		provider: z.literal("google"),
@@ -50,7 +48,6 @@ const providerSchema = z.discriminatedUnion("provider", [
 			.enum(["deepseek", "glm", "minimax", "default"])
 			.default("default"),
 		reasoning_effort: z.enum(["low", "medium", "high"]).default("high"),
-		
 	}),
 	z.object({
 		provider: z.literal("openai-compatible"),
@@ -64,7 +61,6 @@ const providerSchema = z.discriminatedUnion("provider", [
 			.enum(["anthropic", "google", "openai"])
 			.default("openai"),
 		enable_thinking: z.boolean().default(false),
-		
 	}),
 	z.object({
 		provider: z.literal("deepseek"),
@@ -76,7 +72,6 @@ const providerSchema = z.discriminatedUnion("provider", [
 			.default("deepseek"),
 		enable_thinking: z.boolean().default(false),
 		reasoning_effort: z.enum(["high", "max"]).optional(),
-		
 	}),
 ]);
 

@@ -160,16 +160,22 @@ function toApiMessages(
 				result.push({ role: "user", content: msg.content });
 				break;
 			case "assistant": {
-				const content = memoryTag && msg.content
-					? `<memory>\n${msg.content}\n</memory>`
-					: msg.content ?? null;
-				const reasoningContent = memoryTag && msg.reasoning
-					? `<memory>\n${msg.reasoning}\n</memory>`
-					: (enableThinking ? (msg.reasoning ?? "") : undefined);
+				const content =
+					memoryTag && msg.content
+						? `<memory>\n${msg.content}\n</memory>`
+						: (msg.content ?? null);
+				const reasoningContent =
+					memoryTag && msg.reasoning
+						? `<memory>\n${msg.reasoning}\n</memory>`
+						: enableThinking
+							? (msg.reasoning ?? "")
+							: undefined;
 				const base: DSMessage = {
 					role: "assistant",
 					content,
-					...(reasoningContent !== undefined ? { reasoning_content: reasoningContent } : {}),
+					...(reasoningContent !== undefined
+						? { reasoning_content: reasoningContent }
+						: {}),
 				};
 				if (msg.toolCalls?.length) {
 					base.tool_calls = msg.toolCalls.map((tc) => ({
@@ -264,7 +270,11 @@ export class DeepSeekTest1Client implements LLMClient {
 			promptMessages = [...promptMessages, triggerUserMsg];
 		}
 
-		const apiMessages = toApiMessages(promptMessages, this.pc.enable_thinking, this.memoryTag);
+		const apiMessages = toApiMessages(
+			promptMessages,
+			this.pc.enable_thinking,
+			this.memoryTag,
+		);
 
 		const filteredMessages = apiMessages.filter((msg) => {
 			if (msg.role === "user" && !(msg.content ?? "").trim()) return false;

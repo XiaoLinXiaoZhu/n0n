@@ -153,7 +153,7 @@ export interface CompleteResponse {
  */
 export interface LLMClient {
 	/**
-	 * 流式调用 — agent loop / editor-loop 使用
+	 * 流式调用 — agent loop 使用
 	 *
 	 * 接受 DomainMessage[]（领域消息），内部完成：
 	 * 1. 提示词组织（DomainMessage → PromptMessage，via format-prompt）

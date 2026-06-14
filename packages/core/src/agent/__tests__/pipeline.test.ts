@@ -12,8 +12,8 @@ import { describe, expect, it } from "bun:test";
 import type { CanStartFn, ToolCallRecord, ToolStreamEvent } from "@n0n/types";
 import { ExecutionScheduler, type SchedulerEvents } from "../scheduler.ts";
 import {
-	mockPathExclusiveTC,
 	mockExecTC,
+	mockPathExclusiveTC,
 	mockProgressTC,
 	mockResult,
 	mockWriteTC,

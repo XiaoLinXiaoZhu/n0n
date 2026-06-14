@@ -56,7 +56,13 @@ export function createLLMClient(
 			return new DeepSeekClient(pc, format, systemFormat);
 		}
 		case "deepseek-test-1": {
-			return new DeepSeekTest1Client(pc, format, tags, pc.strip_reasoning, pc.memory_tag);
+			return new DeepSeekTest1Client(
+				pc,
+				format,
+				tags,
+				pc.strip_reasoning,
+				pc.memory_tag,
+			);
 		}
 		default: {
 			const _exhaustive: never = pc;
