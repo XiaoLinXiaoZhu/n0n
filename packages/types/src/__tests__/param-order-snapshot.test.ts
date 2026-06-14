@@ -11,7 +11,6 @@
 
 import { describe, expect, it } from "bun:test";
 import {
-	EditArgsSchema,
 	ExecArgsSchema,
 	ProgressArgsSchema,
 	WriteArgsSchema,
@@ -29,10 +28,6 @@ describe("schema shape 参数顺序", () => {
 
 	it("WriteArgsSchema 顺序: path, content", () => {
 		expect(Object.keys(WriteArgsSchema.shape)).toEqual(["path", "content"]);
-	});
-
-	it("EditArgsSchema 顺序: path, intent", () => {
-		expect(Object.keys(EditArgsSchema.shape)).toEqual(["path", "intent"]);
 	});
 
 	it("ProgressArgsSchema 顺序: status, content", () => {

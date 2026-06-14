@@ -39,8 +39,6 @@ export type { CanStartFn } from "./scheduling.ts";
 // ── Tool 侧 ──
 export type {
 	ActToolCall,
-	EditToolCall,
-	EditToolResult,
 	// Exec
 	ExecToolResult,
 	MakeCall,
@@ -48,8 +46,6 @@ export type {
 	MakeResultBase,
 	ObserveToolCall,
 	PartialToolCallRecord,
-	// Edit
-	PatchOp,
 	ProgressToolCall,
 	// Progress
 	ProgressToolResult,

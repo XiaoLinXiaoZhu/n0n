@@ -2,9 +2,6 @@
  * 工具类型聚合模块
  */
 
-// Edit
-export type { EditToolResult, PatchOp } from "./edit.ts";
-
 // Exec (shared by observe / reason / act)
 export type {
 	ExecBackgrounded,
@@ -18,7 +15,6 @@ export type { ProgressToolResult } from "./progress.ts";
 // 注册表核心
 export type {
 	ActToolCall,
-	EditToolCall,
 	MakeCall,
 	MakeResult,
 	MakeResultBase,
@@ -43,16 +39,11 @@ export type {
 
 // ── 聚合 ToolResult 联合 ──
 
-import type { EditToolResult } from "./edit.ts";
 import type { ExecToolResult } from "./exec.ts";
 import type { ProgressToolResult } from "./progress.ts";
 import type { WriteToolResult } from "./write.ts";
 
-export type ToolResult =
-	| ExecToolResult
-	| WriteToolResult
-	| EditToolResult
-	| ProgressToolResult;
+export type ToolResult = ExecToolResult | WriteToolResult | ProgressToolResult;
 
 // ── 工具执行结局 ──
 

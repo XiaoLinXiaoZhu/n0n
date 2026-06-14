@@ -87,18 +87,6 @@ export const WriteArgsSchema = buildSchema(WriteParamDefs);
 export type WriteArgs = z.infer<typeof WriteArgsSchema>;
 
 // ═══════════════════════════════════════════════════════════════
-// edit (shadow edit — 意图驱动)
-// ═══════════════════════════════════════════════════════════════
-
-export const EditParamDefs = [
-	{ name: "path", schema: z.string() },
-	{ name: "intent", schema: z.string() },
-] as const satisfies readonly ParamDef[];
-
-export const EditArgsSchema = buildSchema(EditParamDefs);
-export type EditArgs = z.infer<typeof EditArgsSchema>;
-
-// ═══════════════════════════════════════════════════════════════
 // progress
 // ═══════════════════════════════════════════════════════════════
 
