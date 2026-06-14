@@ -32,7 +32,6 @@ import type {
 	ToolResult,
 } from "@n0n/types";
 import { affectsSubsequent } from "./config.ts";
-import { formatEditResult } from "./format-edit.ts";
 import { formatExecResult } from "./format-exec.ts";
 import { formatIdleNudge } from "./format-idle-nudge.ts";
 import { formatProgressResult } from "./format-progress.ts";
@@ -56,8 +55,6 @@ function toolResultToStructured(
 			return formatExecResult(msg, tags, msgIndex);
 		case "write":
 			return formatWriteResult(msg, tags, msgIndex);
-		case "edit":
-			return formatEditResult(msg, tags, msgIndex);
 		case "progress":
 			return formatProgressResult(msg, tags, msgIndex);
 		default: {

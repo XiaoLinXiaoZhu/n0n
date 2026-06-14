@@ -217,32 +217,6 @@ const scenarios: Scenario[] = [
 			},
 		],
 	},
-	{
-		file: "edit-result",
-		title: "edit tool_result",
-		messages: [
-			{
-				type: "tool_result",
-				tool: "edit",
-				call: {
-					id: "tc_6",
-					tool: "edit",
-					args: { path: "src/auth.ts", intent: "fix the null check" },
-				},
-				success: true,
-				patches: [
-					{
-						oldText: "  const user = getUser();\n  return user.name;",
-						newText: "  const user = getUser();\n  if (!user) return null;\n  return user.name;",
-					},
-				],
-				error: null,
-				feedback: null,
-				rounds: 1,
-				durationMs: 2500,
-			},
-		],
-	},
 	// ── special messages ──
 	{
 		file: "idle-nudge",

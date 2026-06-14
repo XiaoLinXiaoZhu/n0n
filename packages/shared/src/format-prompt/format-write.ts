@@ -29,11 +29,11 @@ const recoveredFactTemplates = [
 
 const recoveredHintTemplates = [
 	(_path: string) =>
-		`To complete it, choose one strategy:\n1. Write the remaining content to a temp file, then use exec to append it: exec({ script: "${IS_WINDOWS ? "type tmp_rest.txt >> target_file" : "cat tmp_rest.txt >> target_file"}" })\n2. Break the file into smaller, well-structured modules and write each separately.\nDo NOT use edit for large appends — it is intent-driven and not suited for bulk content insertion.`,
+		`To complete it, choose one strategy:\n1. Write the remaining content to a temp file, then use exec to append it: exec({ script: "${IS_WINDOWS ? "type tmp_rest.txt >> target_file" : "cat tmp_rest.txt >> target_file"}" })\n2. Break the file into smaller, well-structured modules and write each separately.\nDo NOT attempt to write the entire content again — break it into smaller modules instead.`,
 	(path: string) =>
-		`Recovery options:\n1. Write the rest to a temp file and append: exec({ script: "${IS_WINDOWS ? `type remaining.txt >> ${path}` : `cat remaining.txt >> ${path}`}" })\n2. Split into smaller modules and write each one separately.\nAvoid using edit for bulk appends.`,
+		`Recovery options:\n1. Write the rest to a temp file and append: exec({ script: "${IS_WINDOWS ? `type remaining.txt >> ${path}` : `cat remaining.txt >> ${path}`}" })\n2. Split into smaller modules and write each one separately.\nBreak large files into smaller, well-structured modules.`,
 	(_path: string) =>
-		`To finish writing:\n1. Put the remaining content in a temp file and concatenate via exec.\n2. Or restructure into smaller files.\nDo not use edit for large content insertions.`,
+		`To finish writing:\n1. Put the remaining content in a temp file and concatenate via exec.\n2. Or restructure into smaller files.\nBreak large files into well-structured modules.`,
 ];
 
 // ── 格式化函数 ──
