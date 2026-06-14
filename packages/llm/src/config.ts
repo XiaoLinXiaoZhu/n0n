@@ -26,9 +26,6 @@ export const OpenAIProviderConfigSchema = z.object({
 	tag_style: z
 		.enum(["deepseek", "glm", "minimax", "default"])
 		.default("default"),
-	edit_backend: z
-		.enum(["str-replace", "freeform-patch"])
-		.default("str-replace"),
 });
 export type OpenAIProviderConfig = z.infer<typeof OpenAIProviderConfigSchema>;
 
@@ -46,9 +43,6 @@ export const AnthropicProviderConfigSchema = z.object({
 			budget_tokens: z.number(),
 		})
 		.optional(),
-	edit_backend: z
-		.enum(["str-replace", "freeform-patch"])
-		.default("str-replace"),
 });
 export type AnthropicProviderConfig = z.infer<
 	typeof AnthropicProviderConfigSchema
@@ -63,9 +57,6 @@ export const GoogleProviderConfigSchema = z.object({
 		.enum(["deepseek", "glm", "minimax", "default"])
 		.default("default"),
 	reasoning_effort: z.enum(["low", "medium", "high"]).default("high"),
-	edit_backend: z
-		.enum(["str-replace", "freeform-patch"])
-		.default("str-replace"),
 });
 export type GoogleProviderConfig = z.infer<typeof GoogleProviderConfigSchema>;
 
@@ -79,9 +70,6 @@ export const OpenAICompatibleProviderConfigSchema = z.object({
 		.default("default"),
 	backend_provider: z.enum(["anthropic", "google", "openai"]).default("openai"),
 	enable_thinking: z.boolean().default(false),
-	edit_backend: z
-		.enum(["str-replace", "freeform-patch"])
-		.default("str-replace"),
 });
 export type OpenAICompatibleProviderConfig = z.infer<
 	typeof OpenAICompatibleProviderConfigSchema
@@ -100,9 +88,6 @@ export const DeepSeekProviderConfigSchema = z.object({
 		.default("deepseek"),
 	enable_thinking: z.boolean().default(false),
 	reasoning_effort: z.enum(["high", "max"]).optional(),
-	edit_backend: z
-		.enum(["str-replace", "freeform-patch"])
-		.default("str-replace"),
 });
 export type DeepSeekProviderConfig = z.infer<
 	typeof DeepSeekProviderConfigSchema
@@ -120,9 +105,6 @@ export const DeepSeekTest1ProviderConfigSchema = z.object({
 	strip_reasoning: z.boolean().default(false),
 	memory_tag: z.boolean().default(false),
 	reasoning_effort: z.enum(["high", "max"]).optional(),
-	edit_backend: z
-		.enum(["str-replace", "freeform-patch"])
-		.default("str-replace"),
 });
 export type DeepSeekTest1ProviderConfig = z.infer<
 	typeof DeepSeekTest1ProviderConfigSchema

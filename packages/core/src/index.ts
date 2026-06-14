@@ -20,11 +20,7 @@ export {
 	realClock,
 } from "./heartbeat/index.ts";
 // 配置构建辅助
-export type {
-	AgentConfig,
-	EditBackendConfig,
-	SecurityConfig,
-} from "./runtime.ts";
+export type { AgentConfig, SecurityConfig } from "./runtime.ts";
 export { buildToolsConfig } from "./runtime.ts";
 // PlainRenderer（供需要默认渲染器的场景）
 export { PlainRenderer } from "./ui/renderer.ts";

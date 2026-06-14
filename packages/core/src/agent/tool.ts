@@ -9,12 +9,7 @@ import type {
 	ToolCallRecord,
 	ToolStreamEvent,
 } from "@n0n/types";
-import {
-	EditArgsSchema,
-	ExecArgsSchema,
-	ProgressArgsSchema,
-	WriteArgsSchema,
-} from "@n0n/types";
+import { ExecArgsSchema, ProgressArgsSchema, WriteArgsSchema } from "@n0n/types";
 import { ZodError } from "zod";
 
 /** 工具查找函数类型 — 由 Toolkit 提供 */
@@ -29,7 +24,6 @@ const PARAM_ORDER_MAP: Record<string, string[]> = {
 	reason: Object.keys(ExecArgsSchema.shape),
 	act: Object.keys(ExecArgsSchema.shape),
 	write: Object.keys(WriteArgsSchema.shape),
-	edit: Object.keys(EditArgsSchema.shape),
 	progress: Object.keys(ProgressArgsSchema.shape),
 };
 
