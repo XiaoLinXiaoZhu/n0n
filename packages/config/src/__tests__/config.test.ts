@@ -23,9 +23,7 @@ const providerSchema = z.discriminatedUnion("provider", [
 		tag_style: z
 			.enum(["deepseek", "glm", "minimax", "default"])
 			.default("default"),
-		edit_backend: z
-			.enum(["str-replace", "freeform-patch"])
-			.default("str-replace"),
+		
 	}),
 	z.object({
 		provider: z.literal("anthropic"),
@@ -41,9 +39,7 @@ const providerSchema = z.discriminatedUnion("provider", [
 				budget_tokens: z.number(),
 			})
 			.optional(),
-		edit_backend: z
-			.enum(["str-replace", "freeform-patch"])
-			.default("str-replace"),
+		
 	}),
 	z.object({
 		provider: z.literal("google"),
@@ -54,9 +50,7 @@ const providerSchema = z.discriminatedUnion("provider", [
 			.enum(["deepseek", "glm", "minimax", "default"])
 			.default("default"),
 		reasoning_effort: z.enum(["low", "medium", "high"]).default("high"),
-		edit_backend: z
-			.enum(["str-replace", "freeform-patch"])
-			.default("str-replace"),
+		
 	}),
 	z.object({
 		provider: z.literal("openai-compatible"),
@@ -70,9 +64,7 @@ const providerSchema = z.discriminatedUnion("provider", [
 			.enum(["anthropic", "google", "openai"])
 			.default("openai"),
 		enable_thinking: z.boolean().default(false),
-		edit_backend: z
-			.enum(["str-replace", "freeform-patch"])
-			.default("str-replace"),
+		
 	}),
 	z.object({
 		provider: z.literal("deepseek"),
@@ -84,9 +76,7 @@ const providerSchema = z.discriminatedUnion("provider", [
 			.default("deepseek"),
 		enable_thinking: z.boolean().default(false),
 		reasoning_effort: z.enum(["high", "max"]).optional(),
-		edit_backend: z
-			.enum(["str-replace", "freeform-patch"])
-			.default("str-replace"),
+		
 	}),
 ]);
 
@@ -154,7 +144,6 @@ model = "gpt-4o"
 		expect(llm.api_key).toBe("sk-test");
 		expect(llm.model).toBe("claude-opus-4-6");
 		expect(llm.base_url).toBe("https://api.anthropic.com");
-		expect(llm.edit_backend).toBe("str-replace");
 
 		const editor = result.data.settings.editor;
 		expect(editor.provider).toBe("openai");
@@ -209,7 +198,6 @@ model = "gpt-4o"
 		expect(llm.base_url).toBe("https://api.deepseek.com");
 		expect(llm.tag_style).toBe("deepseek");
 		expect(llm.enable_thinking).toBe(false);
-		expect(llm.edit_backend).toBe("str-replace");
 		// reasoning_effort 是 optional — 不设则不出现在类型上
 		expect(llm.reasoning_effort).toBeUndefined();
 	});
@@ -657,7 +645,6 @@ describe("集成场景", () => {
 provider = "anthropic"
 api_key = "$ANTHROPIC_KEY"
 model = "claude-opus-4-6"
-edit_backend = "str-replace"
 
 [providers.anthropic.thinking]
 type = "enabled"

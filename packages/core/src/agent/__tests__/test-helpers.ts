@@ -21,8 +21,12 @@ export function mockWriteTC(id: string, path: string): ToolCallRecord {
 	} as ToolCallRecord;
 }
 
-export function mockEditTC(id: string, path: string): ToolCallRecord {
-	return { id, tool: "edit", args: { path, intent: "test" } } as ToolCallRecord;
+export function mockPathExclusiveTC(id: string, path: string): ToolCallRecord {
+	return {
+		id,
+		tool: "write",
+		args: { path, content: "test" },
+	} as ToolCallRecord;
 }
 
 export function mockProgressTC(id: string): ToolCallRecord {

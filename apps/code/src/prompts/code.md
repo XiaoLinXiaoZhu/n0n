@@ -10,7 +10,7 @@ If an AGENTS.md file exists in the workspace root, its project-specific instruct
 
 # Tools
 
-You have these tools: `observe` (read/search, no side effects), `reason` (think concretely, no side effects), `act` (change state), `progress` (report to user), `write` (create file), `edit` (modify file).
+You have these tools: `observe` (read/search, no side effects), `reason` (think concretely, no side effects), `act` (change state), `progress` (report to user), `write` (create/overwrite file).
 
 # Skills
 

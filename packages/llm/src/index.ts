@@ -34,5 +34,3 @@ export { LLMConfigSchema, ProviderConfigSchema } from "./config.ts";
 export { LLMError } from "./errors.ts";
 // Client 工厂
 export { createLLMClient } from "./factory.ts";
-// Responses API client
-export { createResponsesClient } from "./responses-client.ts";

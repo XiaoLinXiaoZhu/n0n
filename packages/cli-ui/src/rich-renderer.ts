@@ -482,32 +482,6 @@ export class RichRenderer implements Renderer {
 				}
 				return `${style.dim("◂")} ${style.cyan("write")} ${result.call.args.path}`;
 			}
-			case "edit": {
-				const path = result.call.args.path;
-				const duration = style.gray(
-					`${(result.durationMs / 1000).toFixed(1)}s`,
-				);
-				const rounds = style.gray(`${result.rounds}r`);
-				if (!result.success) {
-					return `${style.dim("◂")} ${style.cyan("edit")} ${path} ${duration} ${rounds} ${style.red(result.error ?? "failed")}`;
-				}
-				const added = result.patches.reduce(
-					(s, p) => s + (p.newText === "" ? 0 : p.newText.split("\n").length),
-					0,
-				);
-				const removed = result.patches.reduce(
-					(s, p) => s + (p.oldText === "" ? 0 : p.oldText.split("\n").length),
-					0,
-				);
-				const lineStats =
-					[
-						added > 0 ? style.green(`+${added}`) : null,
-						removed > 0 ? style.red(`-${removed}`) : null,
-					]
-						.filter(Boolean)
-						.join(" ") || style.gray("(no changes)");
-				return `${style.dim("◂")} ${style.cyan("edit")} ${path} ${duration} ${rounds} ${lineStats} ${style.green("✓")}`;
-			}
 			case "progress": {
 				return `${style.dim("◂")} ${style.cyan("progress")} ${style.gray(`[${result.call.args.status}]`)}`;
 			}

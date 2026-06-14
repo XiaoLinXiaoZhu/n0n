@@ -10,7 +10,7 @@
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { makeToolkit } from "../src/index.ts";
-import { createTagAdapter, resolvePlatform } from "@n0n/shared";
+import { resolvePlatform } from "@n0n/shared";
 import { CodeResultSchema } from "../../../apps/code/src/schema.ts";
 
 const MODEL = "claude-sonnet-4-20250514";
@@ -22,17 +22,8 @@ const toolkit = makeToolkit(CodeResultSchema, {
 	workspace: process.cwd(),
 	tempDir: join(process.cwd(), ".temp"),
 	platform: resolvePlatform(),
-	security: { blockedCommands: [] },
-	agent: { defaultExecWaitfor: 120 },
-	editBackendType: "str-replace" as const,
-	editorClient: {
-		modelId: "",
-		tagStyle: "default" as const,
-		tags: createTagAdapter("default"),
-		async *stream() { throw new Error("unused"); },
-		async complete() { throw new Error("unused"); },
-		async ping() { return { ok: true as const }; },
-	},
+	security: { blocked_commands: [] },
+	agent: { default_exec_waitfor: 120 },
 }, MODEL);
 
 let count = 0;

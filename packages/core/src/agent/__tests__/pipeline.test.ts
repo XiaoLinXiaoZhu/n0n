@@ -12,7 +12,7 @@ import { describe, expect, it } from "bun:test";
 import type { CanStartFn, ToolCallRecord, ToolStreamEvent } from "@n0n/types";
 import { ExecutionScheduler, type SchedulerEvents } from "../scheduler.ts";
 import {
-	mockEditTC,
+	mockPathExclusiveTC,
 	mockExecTC,
 	mockProgressTC,
 	mockResult,
@@ -144,8 +144,8 @@ describe("ExecutionScheduler", () => {
 			const { executor, log, resolve } = createControllableExecutor();
 			const scheduler = new ExecutionScheduler(executor);
 
-			scheduler.enqueue(mockEditTC("e1", "a.ts"), pathExclusive);
-			scheduler.enqueue(mockEditTC("e2", "b.ts"), pathExclusive);
+			scheduler.enqueue(mockPathExclusiveTC("e1", "a.ts"), pathExclusive);
+			scheduler.enqueue(mockPathExclusiveTC("e2", "b.ts"), pathExclusive);
 			scheduler.enqueue(mockWriteTC("w1", "c.ts"), pathExclusive);
 			scheduler.seal();
 
@@ -171,7 +171,7 @@ describe("ExecutionScheduler", () => {
 			const scheduler = new ExecutionScheduler(executor);
 
 			scheduler.enqueue(mockWriteTC("w1", "a.ts"), pathExclusive);
-			scheduler.enqueue(mockEditTC("e1", "a.ts"), pathExclusive);
+			scheduler.enqueue(mockPathExclusiveTC("e1", "a.ts"), pathExclusive);
 			scheduler.seal();
 
 			const runPromise = scheduler.run();
@@ -194,7 +194,7 @@ describe("ExecutionScheduler", () => {
 			const { executor, log, resolve } = createControllableExecutor();
 			const scheduler = new ExecutionScheduler(executor);
 
-			scheduler.enqueue(mockEditTC("e1", "a.ts"), pathExclusive);
+			scheduler.enqueue(mockPathExclusiveTC("e1", "a.ts"), pathExclusive);
 			scheduler.enqueue(mockExecTC("x1"));
 			scheduler.seal();
 
@@ -217,7 +217,7 @@ describe("ExecutionScheduler", () => {
 			const scheduler = new ExecutionScheduler(executor);
 
 			scheduler.enqueue(mockExecTC("x1"));
-			scheduler.enqueue(mockEditTC("e1", "a.ts"), pathExclusive);
+			scheduler.enqueue(mockPathExclusiveTC("e1", "a.ts"), pathExclusive);
 			scheduler.seal();
 
 			const runPromise = scheduler.run();
@@ -240,7 +240,7 @@ describe("ExecutionScheduler", () => {
 
 			scheduler.enqueue(mockExecTC("x1"));
 			scheduler.enqueue(mockWriteTC("w1", "a.ts"), pathExclusive);
-			scheduler.enqueue(mockEditTC("e1", "b.ts"), pathExclusive);
+			scheduler.enqueue(mockPathExclusiveTC("e1", "b.ts"), pathExclusive);
 			scheduler.seal();
 
 			const runPromise = scheduler.run();
@@ -265,7 +265,7 @@ describe("ExecutionScheduler", () => {
 			const { executor, log, resolve } = createControllableExecutor();
 			const scheduler = new ExecutionScheduler(executor);
 
-			scheduler.enqueue(mockEditTC("e1", "a.ts"), pathExclusive);
+			scheduler.enqueue(mockPathExclusiveTC("e1", "a.ts"), pathExclusive);
 			scheduler.enqueue(mockProgressTC("r1"), always);
 			scheduler.seal();
 
@@ -288,11 +288,11 @@ describe("ExecutionScheduler", () => {
 
 			const runPromise = scheduler.run();
 
-			scheduler.enqueue(mockEditTC("e1", "a.ts"), pathExclusive);
+			scheduler.enqueue(mockPathExclusiveTC("e1", "a.ts"), pathExclusive);
 			await new Promise((r) => setTimeout(r, 10));
 			expect(log).toContain("start:e1");
 
-			scheduler.enqueue(mockEditTC("e2", "b.ts"), pathExclusive);
+			scheduler.enqueue(mockPathExclusiveTC("e2", "b.ts"), pathExclusive);
 			await new Promise((r) => setTimeout(r, 10));
 			expect(log).toContain("start:e2");
 
@@ -309,8 +309,8 @@ describe("ExecutionScheduler", () => {
 			const { events, log: eventLog } = createEventLog();
 			const scheduler = new ExecutionScheduler(executor, events);
 
-			scheduler.enqueue(mockEditTC("e1", "a.ts"), pathExclusive);
-			scheduler.enqueue(mockEditTC("e2", "b.ts"), pathExclusive);
+			scheduler.enqueue(mockPathExclusiveTC("e1", "a.ts"), pathExclusive);
+			scheduler.enqueue(mockPathExclusiveTC("e2", "b.ts"), pathExclusive);
 			scheduler.seal();
 
 			const runPromise = scheduler.run();
@@ -337,7 +337,7 @@ describe("ExecutionScheduler", () => {
 			const scheduler = new ExecutionScheduler(executor, events);
 
 			setChunks("e1", ["hello", "world"]);
-			scheduler.enqueue(mockEditTC("e1", "a.ts"), pathExclusive);
+			scheduler.enqueue(mockPathExclusiveTC("e1", "a.ts"), pathExclusive);
 			scheduler.seal();
 
 			const runPromise = scheduler.run();
@@ -355,8 +355,8 @@ describe("ExecutionScheduler", () => {
 			const { events, log: eventLog } = createEventLog();
 			const scheduler = new ExecutionScheduler(executor, events);
 
-			scheduler.enqueue(mockEditTC("e1", "a.ts"), pathExclusive);
-			scheduler.enqueue(mockEditTC("e2", "b.ts"), pathExclusive);
+			scheduler.enqueue(mockPathExclusiveTC("e1", "a.ts"), pathExclusive);
+			scheduler.enqueue(mockPathExclusiveTC("e2", "b.ts"), pathExclusive);
 			scheduler.enqueue(mockWriteTC("w1", "c.ts"), pathExclusive);
 			scheduler.seal();
 
