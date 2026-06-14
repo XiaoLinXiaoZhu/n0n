@@ -15,8 +15,8 @@ import { existsSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, resolve } from "node:path";
 import { style, writeln } from "@n0n/cli-ui";
-import { buildToolsConfig, type EditBackendConfig } from "@n0n/core";
-import { createLLMClient, createResponsesClient } from "@n0n/llm";
+import { buildToolsConfig } from "@n0n/core";
+import { createLLMClient } from "@n0n/llm";
 import {
 	ensureDirs,
 	type FormatOptions,
@@ -59,7 +59,7 @@ if (!configResult.success) {
 
 const config: LoadedConfig = configResult.config;
 const { settings } = config;
-const { llm, editor } = settings;
+const { llm } = settings;
 
 // ── 配置摘要 ──
 
@@ -100,34 +100,13 @@ const formatOptions: FormatOptions = {
 	strip_hint: settings.strip_hint,
 };
 
-const editBackendType = editor.edit_backend;
-
-const editBackend: EditBackendConfig =
-	editBackendType === "freeform-patch"
-		? {
-				type: "freeform-patch",
-				responsesClient: createResponsesClient(editor),
-			}
-		: {
-				type: "str-replace",
-				editorClient: createLLMClient(
-					{ providerConfig: editor },
-					formatOptions,
-				),
-			};
-
 const securityConfig = settings.security;
 
 const client = createLLMClient(llmConfig, formatOptions);
-const toolsConfig = buildToolsConfig(
-	editBackend,
-	settings.agent,
-	securityConfig,
-	{
-		workspace: paths.workspace,
-		tempDir: paths.temp,
-	},
-);
+const toolsConfig = buildToolsConfig(settings.agent, securityConfig, {
+	workspace: paths.workspace,
+	tempDir: paths.temp,
+});
 
 const notifyConfig: NotifyConfig = {
 	enabled: settings.notify_sound,

@@ -35,7 +35,6 @@ export const codeConfigSchema = z.object({
 			blocked_commands: z.array(z.string()).default([]),
 		}),
 		llm: ProviderConfigSchema,
-		editor: ProviderConfigSchema,
 		user_input: UserInputConfigSchema,
 	}),
 });
@@ -238,7 +237,7 @@ function displayProvider(
  */
 export function displayCodeConfig(config: LoadedConfig): void {
 	const { settings, trace, paths } = config;
-	const { llm, editor } = settings;
+	const { llm } = settings;
 
 	// 配置来源
 	writeln(`${style.cyan("i")} ${style.bold("配置来源:")}`);
@@ -257,7 +256,7 @@ export function displayCodeConfig(config: LoadedConfig): void {
 	);
 	writeln();
 
-	// LLM & Editor
+	// LLM
 	writeln(`${style.cyan("i")} ${style.bold("当前配置:")}`);
 	writeln();
 	displayProvider(
@@ -265,13 +264,6 @@ export function displayCodeConfig(config: LoadedConfig): void {
 		"LLM",
 		llm as unknown as Record<string, unknown>,
 		"settings.llm",
-	);
-	writeln();
-	displayProvider(
-		trace,
-		"Editor",
-		editor as unknown as Record<string, unknown>,
-		"settings.editor",
 	);
 
 	// 通用设置

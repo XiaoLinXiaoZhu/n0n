@@ -11,7 +11,6 @@ import {
 	type AgentConfig,
 	agentLoop,
 	buildToolsConfig,
-	type EditBackendConfig,
 	PlainRenderer,
 	type SecurityConfig,
 } from "@n0n/core";
@@ -39,8 +38,6 @@ export interface HeadlessOptions {
 	promptVersion?: string;
 	/** LLM Client 实例 */
 	client: LLMClient;
-	/** 编辑后端配置 */
-	editBackend: EditBackendConfig;
 	/** Agent 配置 */
 	agentConfig: AgentConfig;
 	/** 安全配置 */
@@ -100,9 +97,8 @@ export async function runHeadless(
 	// 超时控制
 	const timer = setTimeout(() => abortController.abort(), timeoutMs);
 
-	// 构建 Toolkit — 含 progress config，供 fewshot 和 agentLoop 共用
+	// 构建 Toolkit
 	const toolsConfig = buildToolsConfig(
-		options.editBackend,
 		options.agentConfig,
 		options.securityConfig,
 		{
