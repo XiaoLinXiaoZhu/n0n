@@ -19,8 +19,8 @@ import {
 } from "@n0n/shared";
 import { loadInitSkills, toSkill } from "@n0n/skill";
 import type { DomainMessage, PromptMessage, ToolCallPart, TagAdapter } from "@n0n/types";
-import { splitSkillsToUser } from "../packages/llm/src/deepseek-test-1-client/index.ts";
-import { getPrompt } from "../apps/code/src/prompts/index.ts";
+import { splitSkillsToUser } from "../packages/llm/src/deepseek-test-1-client";
+import { getPrompt } from "../apps/code/src/prompts";
 
 // ── 输出路径 ──
 

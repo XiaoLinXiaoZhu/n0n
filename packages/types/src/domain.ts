@@ -13,4 +13,4 @@
  * 4. 可持久化/可重放 — 纯数据结构天然支持序列化、存储和测试回放。
  */
 
-export type * from "./messages/index.ts";
+export type * from "./messages";

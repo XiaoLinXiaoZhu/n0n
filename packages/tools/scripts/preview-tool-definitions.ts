@@ -9,7 +9,7 @@
 
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
-import { makeToolkit } from "../src/index.ts";
+import { makeToolkit } from "../src";
 import { resolvePlatform } from "@n0n/shared";
 import { CodeResultSchema } from "../../../apps/code/src/schema.ts";
 

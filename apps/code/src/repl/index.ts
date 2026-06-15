@@ -7,35 +7,35 @@
  * - Context 注入项目结构和 git 状态，而非 workflow 列表
  */
 
-import { isTTY, style, writeln } from "@n0n/cli-ui";
+import { style, writeln } from "@n0n/cli-ui";
 import {
 	type AgentConfig,
 	agentLoop,
-	HeartbeatKeeper,
 	HeartbeatState,
 	PlainRenderer,
 } from "@n0n/core";
 import {
 	type BaseWorkspacePaths,
 	loadConversation,
-	parseDsl,
 	saveConversation,
 } from "@n0n/shared";
 import { loadInitSkills, toSkill } from "@n0n/skill";
 import type { ToolsConfig } from "@n0n/tools";
 import { makeToolkit } from "@n0n/tools";
 import type { DomainMessage, LLMClient, Skill } from "@n0n/types";
-import { CodeRenderer } from "./code-renderer.ts";
-import { buildEnvironmentContext } from "./context-env.ts";
-import type { UserInputConfig } from "./multiline-input/config.ts";
-import { type NotifyConfig, playNotifySound } from "./notify-sound.ts";
-import { codeProgressConfig } from "./progress-config.ts";
-import { ProgressWriter } from "./progress-writer.ts";
-import { getPrompt } from "./prompts/index.ts";
-import type { CodeProgressResult } from "./schema.ts";
-import { parseAndInjectSkills } from "./skill-inject.ts";
-import { createStdinController } from "./stdin-controller.ts";
-import { UserPrompter } from "./user-prompter.ts";
+import { CodeRenderer } from "../code-renderer.ts";
+import { buildEnvironmentContext } from "../context-env.ts";
+import type { UserInputConfig } from "../multiline-input/config.ts";
+import type { NotifyConfig } from "../notify-sound.ts";
+import { codeProgressConfig } from "../progress-config.ts";
+import { ProgressWriter } from "../progress-writer.ts";
+import { getPrompt } from "../prompts/index.ts";
+import type { CodeProgressResult } from "../schema.ts";
+import { parseAndInjectSkills } from "../skill-inject.ts";
+import { createStdinController } from "../stdin-controller.ts";
+import { UserPrompter } from "../user-prompter.ts";
+import { handleProgressResult } from "./handle-result.ts";
+import { createHeartbeatKeeper } from "./heartbeat.ts";
 
 export interface CodeReplOptions {
 	initialInput?: string;
@@ -106,30 +106,8 @@ export async function startCodeRepl(
 
 	// ── 心跳保活 ──
 
-	const keeper = client.heartbeat
-		? new HeartbeatKeeper({
-				sendHeartbeat: async (request) => {
-					const usage = (await client.heartbeat?.(request)) ?? null;
-					return usage !== null;
-				},
-				onTick: (count, maxCount) => {
-					if (isTTY) {
-						writeln(style.gray(`  ⏳ 缓存保活 (${count}/${maxCount})`));
-					}
-				},
-				onExpired: (reason) => {
-					if (isTTY) {
-						const msg =
-							reason === "max_count"
-								? "达到上限"
-								: reason === "error"
-									? "请求失败"
-									: "缓存已过期";
-						writeln(style.gray(`  ⏸ 缓存保活已停止（${msg}）`));
-					}
-				},
-			})
-		: null;
+	const keeper = createHeartbeatKeeper(client);
+	// stdin Ctrl+P 暂停心跳
 	if (stdin && keeper) {
 		stdin.onPause = () => {
 			if (keeper.state === HeartbeatState.TICKING) {
@@ -316,45 +294,22 @@ export async function startCodeRepl(
 			continue;
 		}
 
-		progressWriter.write(ir);
-
-		switch (ir.status) {
-			case "blocked": {
-				writeln(`${style.yellow("?")} ${ir.content}`);
-				writeln();
-				const blockItems = parseDsl(ir.content);
-				for (const [i, item] of blockItems.entries()) {
-					writeln(`  ${style.cyan(`${i + 1})`)} ${item.label}`);
-					if (item.detail) {
-						writeln(`     ${style.gray(item.detail)}`);
-					}
-				}
-				writeln();
-				playNotifySound(notifyConfig);
+		const outcome = handleProgressResult(
+			ir,
+			history,
+			progressWriter,
+			notifyConfig,
+		);
+		switch (outcome.action) {
+			case "prompt":
 				userInput = await prompter.prompt();
-				continue;
-			}
-			case "working": {
-				writeln(`${style.cyan("⏳")} 进行中: ${ir.content}`);
-				writeln();
-				history.push(makeUserInput("", [], "系统收到了你的汇报，请你继续保持当前节奏完成工作。当前消息未发送给用户，若遇到问题时用 progress(blocked) 主动提问。", null));
+				break;
+			case "auto_resume":
 				autoResume = true;
 				continue;
-			}
-			case "completed": {
-				writeln(`${style.green("✓")} 完成: ${ir.content}`);
-				if (agentResult.report) {
-					writeln(style.gray(`  ${agentResult.report}`));
-				}
-				writeln();
-				playNotifySound(notifyConfig);
+			case "continue":
 				userInput = await prompter.prompt();
 				break;
-			}
-			default: {
-				const _exhaustive: never = ir.status;
-				break;
-			}
 		}
 	}
 

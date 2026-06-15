@@ -2,7 +2,7 @@
  * 助手侧消息类型
  */
 
-import type { PartialToolCallRecord, ToolCallRecord } from "./tools/index.ts";
+import type { PartialToolCallRecord, ToolCallRecord } from "./tools";
 
 /** 模型推理结果 — 可辨联合，区分"模型输出推理"与"未启用思考" */
 export type ReasoningResult = { ok: true; value: string } | { ok: false };

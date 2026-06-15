@@ -10,7 +10,7 @@
 
 import { describe, expect, test } from "bun:test";
 import { resolvePlatform } from "@n0n/shared";
-import { ExecArgsSchema, execToolStream } from "../exec/index.ts";
+import { ExecArgsSchema, execToolStream } from "../exec";
 
 /** 内部调用类型 — 与 ExecCall 对齐，用于测试 */
 interface TestCall {

@@ -4,7 +4,7 @@
  * CanStartFn 是调度器用的行为约束函数签名，不属于 DomainMessage 数据层。
  */
 
-import type { ToolCallRecord } from "./tools/index.ts";
+import type { ToolCallRecord } from "./tools";
 
 /**
  * 工具并行条件判断函数。

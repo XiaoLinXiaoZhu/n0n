@@ -13,7 +13,7 @@
 
 import { describe, expect, it } from "bun:test";
 import type { DomainMessage } from "@n0n/types";
-import { formatPrompt } from "../format-prompt/index.ts";
+import { formatPrompt } from "../format-prompt";
 import { pick } from "../format-prompt/seed.ts";
 import { createTagAdapter } from "../tags.ts";
 

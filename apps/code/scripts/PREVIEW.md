@@ -9,22 +9,22 @@
 - **act**(runtime, cwd, waitfor, script): Execute actions that change environment state: run tests, build, commit, install dependencies, etc. Actions may be irrev...
 - **write**(path, content): Create or overwrite a file with the given content. Directories are created automatically.  This tool is deterministic an...
 
-## Message Sequence (2 messages, ~5332 tokens)
+## Message Sequence (2 messages, ~5187 tokens)
 
 | # | Role | Approx Tokens | Chars |
 |---|------|--------------|-------|
-| 1 | system | ~4922 | 19,686 |
-| 2 | user | ~411 | 1,643 |
+| 1 | system | ~4607 | 18,426 |
+| 2 | user | ~581 | 2,323 |
 
 ## Token Budget Breakdown
 
 | Component | Approx Tokens | Chars |
 |-----------|--------------|-------|
-| System prompt | ~4,922 | 19,686 |
-| Tool definitions | ~1,242 | 4,969 (5 tools) |
-| Environment context | ~394 | 1,574 |
+| System prompt | ~4,607 | 18,426 |
+| Tool definitions | ~1,243 | 4,972 (5 tools) |
+| Environment context | ~564 | 2,254 |
 | User input | ~12 | 46 |
-| **Total prefix** | **~5,332** | **21,329** |
+| **Total prefix** | **~5,187** | **20,749** |
 
 ## Init Skills
 
@@ -73,55 +73,16 @@ Some of your behavior rules are loaded from init skills below. You can also load
 <skills>
 %% This is a skill %%
 
-# Skill 系统
+形如
+```
+<tag>
+%% 这是一个 skill %%
+</tag>
+```
 
-你是 n0n Agent。你拥有一套可扩展的 **Skill（技能）** 系统，按需加载额外的指令集来应对不同任务。
+的内容为一个skill，你需要严格遵守所有skill的指导、规范、流程。
 
-## Skill 是什么
-
-Skill 是一个包含 `SKILL.md` 的文件夹，承载可按需激活的指令集。它是对 system prompt 的扩展——system prompt 定义了你是什么，skill 定义了你**额外会什么**。
-
-## 四种类型
-
-| 类型 | 用途 | 类比 |
-|------|------|------|
-| **Standard** | 底层规则和规范，常驻约束（不管什么任务都遵守） | 厨房卫生规范 |
-| **Task** | 具体任务的标准化流程（SOP），有步骤、有退出条件 | 一道菜的食谱 |
-| **Directive** | 改变你的交互行为模式（汇报频率、推理呈现、输出风格） | 语气/节奏的调节器 |
-| **Capability** | 教你使用特定工具、API 或外部系统 | 给厨师一把新刀 |
-
-## 三种激活方式
-
-| 方式 | 含义 |
-|------|------|
-| `init` | 启动时自动加载，拼接进 system prompt。你**已经拥有**这些 skill |
-| `auto` | 你可自主发现并加载。当你觉得某个任务匹配某个 skill 的描述时，主动加载 |
-| `manual` | 需用户显式 `@name` 唤起，你不会自动加载 |
-
-## 如何发现和加载 Skill
-
-- 系统在每次对话开始时自动运行 `n0n-skill`，会告知你**当前可用的 skill**（auto 激活的）。这份清单位于 system prompt 末尾的 context 信息中
-- 当前会话中尚无可用 skill 时，系统提示为"没有 auto 激活的 skill。运行 `n0n-skill list --all` 查看所有可用 skill。"
-- 要加载一个 skill，使用 `n0n-skill read <name>`（通过 exec/act 工具调用）
-- 要查看所有已安装的 skill，使用 `n0n-skill list --all`
-
-## 何时加载 Skill
-
-遇到以下情况时，应主动加载对应的 skill：
-
-- 任务匹配某个 skill 的描述（description），且你没有把握仅凭当前 knowledge 完成
-- 遇到特定领域的重复性任务（如修 bug、重构、代码审查、wiki 维护）
-- 用户要求你改变交互风格（如 step-by-step、research 模式）
-- 需要操作特定外部系统（如飞书、网页搜索）
-
-不确定是否需要时，先加载——skill 的成本远低于犯错。
-
-## 注意事项
-
-- `data/skills/` 是 skill 源文件目录。`~/.n0n/builtin-skills/` 是实际加载的缓存副本
-- 如果 skill 内容看起来过时，可能是缓存未同步——运行 `n0n-skill init` 刷新
-- 多个 skill 可以同时生效（堆叠），但多个 task 通常不堆叠
-- Standard skill（order 最低的几个）是你当前的常驻约束——它们是你行为的一部分，不要违反
+类似指差确认（或者叫做手指口呼），总是在思考的时候引用skill的名称或者内容，不应该跳过任何一个skill的要求。
 </skills>
 
 <system-hint>
@@ -821,7 +782,7 @@ progress 是用户能看到的**唯一输出通道**。你的内部推理对用�
 工作流程：**读 → 分析规划 → 实现 → 验证 → 迭代**。
 
 1. 先使用 `obverse` 读相关代码，理解上下文。
-2. 用 `reason` 充分推理和分析，不要错过任何一个可能出现问题的点。使用 `手指口呼` 的方式完成校验，避免出现问题。
+2. 用 `reason` 充分推理和分析，不要错过任何一个可能出现问题的点。使用 `指差确认` 的方式完成校验，避免出现问题。
 3. 用 `write` 实现。
 4. 用 `act` 验证——跑测试、类型检查、查看输出。
 5. 验证不通过就诊断、修复，再验证。只有验证通过后才提交。
@@ -906,32 +867,32 @@ reason 默认为 bash 作为执行环境。一般需要指定 runtime 为 bun �
 执行 n0n-init global 的结果为：
 ```
 [OS]
-Darwin 27.0.0 arm64
-Shell: /bin/zsh
+Microsoft Windows [Version 10.0.26300.8687]
 
 [Exec Runtimes] (use as `runtime` param in exec tool)
-sh: available (preferred)  →  sh <tmpfile.sh>
-bash: 3.2.57  →  bash <tmpfile.sh>
-bun: 1.3.14 (preferred)  →  bun run <tmpfile.ts>
-python3: 3.9.6 (preferred)  →  python3 <tmpfile.py>
-uv: 0.11.16  →  uv run <tmpfile.py>
-(default runtime: sh)
+cmd: 10.0.26300.8687 (preferred)  →  cmd /c <tmpfile.cmd>
+bash: 5.3.9  →  bash <tmpfile.sh>
+pwsh: 7.6.2  →  pwsh -NoProfile -File <tmpfile.ps1>
+bun: 1.3.6 (preferred)  →  bun run <tmpfile.ts>
+node: 24.8.0  →  node <tmpfile.mjs>
+uv: 0.8.14 (preferred)  →  uv run <tmpfile.py>
+(default runtime: cmd)
 To run inline code (TS/Python/PowerShell), use the runtime param directly — do NOT invoke interpreters through the default shell (e.g. don't write script="bun -e '...'" or script="python -c '...'"). Instead: exec(runtime="bun", script="<your TS code>") or exec(runtime="uv", script="<your Python code>").
 
 [PATH Tools]
-bun, curl, docker, gcc, git, jq, kubectl, make, node, openssl, python3, rg, rsync, sqlite3, ssh, tar, unzip, uv, zip
+adb, bun, cargo, choco, cmake, curl, dotnet, fastboot, ffmpeg, ffplay, ffprobe, gcc, gh, git, go, jq, markitdown, node, npm, nvim, openssl, pandoc, pnpm, ppt2md, pwsh, python, python3, rg, rustc, sqlite3, ssh, tar, tig, uv, xmake, zstd
 (not exhaustive — use `n0n-init global --detail` for blacklist-filtered full list)
 ```
 
 执行 n0n-init project 的结果为：
 ```
 [Workspace]
-/Users/xlxz/projects/n0n
+E:\_Project\n0n
 
 [Git]
 Branch: mvp
 Status: 1 changed file
-  ?? data/skills/standard/skills/
+  M  apps/code/scripts/PREVIEW.md
 
 [AGENTS.md]
 ## report 格式
@@ -951,15 +912,21 @@ Status: 1 changed file
 - 依赖管理：`bun add` / `bun remove`
 
 [Codebase]
-Structure: docs, scripts, packages, data, apps
+Structure: apps, data, docs, packages, scripts
 Source files: 183
 Total lines: ~26800
-Type: node/bun, monorepo
+Type: node/bun, monorepo, .venv present
 ```
 
 执行 n0n-skill 的结果为：
 ```
-没有 auto 激活的 skill。运行 `n0n-skill list --all` 查看所有可用 skill。
+可用 Skills：
+
+  ppio-web-search — Search the web for pages, images, and videos via PPIO Web Search API. Use when the user needs to find information online, get current news, or look up URLs. Returns structured results with titles, URLs, snippets, and optional summaries.
+  cnki-parse-results — Parse current CNKI search results page into structured paper data (title, authors, journal, date, citations). Use after a search has been performed and you need to extract the results.
+
+---
+在响应用户请求前，检查是否有合适的 skill 可以加载。使用 `n0n-skill read <name>` 获取完整方法论。
 ```
 </context>
 

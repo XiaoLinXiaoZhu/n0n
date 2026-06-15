@@ -20,7 +20,7 @@ import { makeToolkit } from "@n0n/tools";
 import type { DomainMessage, LLMClient, Skill } from "@n0n/types";
 import { buildEnvironmentContext } from "./context-env.ts";
 import { codeProgressConfig } from "./progress-config.ts";
-import { getPrompt } from "./prompts/index.ts";
+import { getPrompt } from "./prompts";
 import type { CodeProgressResult } from "./schema.ts";
 
 export interface HeadlessOptions {

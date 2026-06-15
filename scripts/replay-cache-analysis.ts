@@ -9,7 +9,7 @@ import { createTagAdapter, formatPrompt } from "@n0n/shared";
 import {
   splitSkillsToUser,
   stripReasoningFromPromptMessages,
-} from "../packages/llm/src/deepseek-test-1-client/index.ts";
+} from "../packages/llm/src/deepseek-test-1-client";
 import type { DomainMessage, PromptMessage } from "@n0n/types";
 
 // ── DSMessage ──

@@ -36,7 +36,7 @@ import type {
 	TagAdapter,
 } from "@n0n/types";
 
-import { getPrompt } from "../src/prompts/index.ts";
+import { getPrompt } from "../src/prompts";
 import { buildEnvironmentContext } from "../src/context-env.ts";
 import { codeProgressConfig } from "../src/progress-config.ts";
 

@@ -20,7 +20,7 @@ import { mkdirSync, existsSync, chmodSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import JavaScriptObfuscator from "javascript-obfuscator";
 
-const ENTRY = "apps/code/src/index.ts";
+const ENTRY = "apps/code/src";
 const OUT_DIR = resolve("dist");
 const BIN_NAME = "n0n-code";
 

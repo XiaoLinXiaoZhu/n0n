@@ -10,7 +10,7 @@
 import { describe, expect, test } from "bun:test";
 import { createTagAdapter } from "@n0n/shared";
 import type { DomainMessage, Skill } from "@n0n/types";
-import { splitSkillsToUser } from "../deepseek-test-1-client/index.ts";
+import { splitSkillsToUser } from "../deepseek-test-1-client";
 import triggerPromptRaw from "../deepseek-test-1-client/trigger-prompt.md" with {
 	type: "text",
 };

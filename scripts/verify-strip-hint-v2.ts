@@ -12,7 +12,7 @@ const history = log.history;
 
 import { createTagAdapter, formatPrompt } from "@n0n/shared";
 import type { DomainMessage, PromptMessage } from "@n0n/types";
-import { splitSkillsToUser, stripReasoningFromPromptMessages } from "../packages/llm/src/deepseek-test-1-client/index.ts";
+import { splitSkillsToUser, stripReasoningFromPromptMessages } from "../packages/llm/src/deepseek-test-1-client";
 import triggerPromptRaw from "../packages/llm/src/deepseek-test-1-client/trigger-prompt.md" with { type: "text" };
 const triggerPromptContent = triggerPromptRaw.replace(/<!--[\s\S]*?-->/g, "").trim();
 

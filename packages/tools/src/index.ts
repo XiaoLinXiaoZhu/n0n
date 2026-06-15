@@ -23,13 +23,13 @@ import type {
 	WriteToolCall,
 } from "@n0n/types";
 import type { ToolsConfig } from "./config.ts";
-import type { ExecRole } from "./exec/index.ts";
+import type { ExecRole } from "./exec";
 import {
 	EXEC_ROLES,
 	ExecArgsSchema,
 	execToolStream,
 	makeExecToolDefinition,
-} from "./exec/index.ts";
+} from "./exec";
 import {
 	makeProgressTool,
 	type ProgressStatusConfig,
@@ -208,6 +208,6 @@ export function makeToolkit(
 export type { CanStartFn } from "@n0n/types";
 export type { ToolsConfig } from "./config.ts";
 
-export type { ExecRole } from "./exec/index.ts";
+export type { ExecRole } from "./exec";
 
 export type { ProgressStatusConfig } from "./progress.ts";

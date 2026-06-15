@@ -15,6 +15,14 @@
 import { z } from "zod";
 
 // ═══════════════════════════════════════════════════════════
+// 公共字段
+// ═══════════════════════════════════════════════════════════
+
+const tagStyleField = z
+	.enum(["deepseek", "glm", "minimax", "default"])
+	.default("default");
+
+// ═══════════════════════════════════════════════════════════
 // ProviderConfig — discriminated union on `provider`
 // ═══════════════════════════════════════════════════════════
 
@@ -23,9 +31,7 @@ export const OpenAIProviderConfigSchema = z.object({
 	api_key: z.string(),
 	model: z.string(),
 	base_url: z.string().default("https://api.openai.com"),
-	tag_style: z
-		.enum(["deepseek", "glm", "minimax", "default"])
-		.default("default"),
+	tag_style: tagStyleField,
 });
 export type OpenAIProviderConfig = z.infer<typeof OpenAIProviderConfigSchema>;
 
@@ -34,9 +40,7 @@ export const AnthropicProviderConfigSchema = z.object({
 	api_key: z.string(),
 	model: z.string(),
 	base_url: z.string().default("https://api.anthropic.com"),
-	tag_style: z
-		.enum(["deepseek", "glm", "minimax", "default"])
-		.default("default"),
+	tag_style: tagStyleField,
 	thinking: z
 		.object({
 			type: z.literal("enabled"),
@@ -53,9 +57,7 @@ export const GoogleProviderConfigSchema = z.object({
 	api_key: z.string(),
 	model: z.string(),
 	base_url: z.string().default("https://generativelanguage.googleapis.com"),
-	tag_style: z
-		.enum(["deepseek", "glm", "minimax", "default"])
-		.default("default"),
+	tag_style: tagStyleField,
 	reasoning_effort: z.enum(["low", "medium", "high"]).default("high"),
 });
 export type GoogleProviderConfig = z.infer<typeof GoogleProviderConfigSchema>;
@@ -65,9 +67,7 @@ export const OpenAICompatibleProviderConfigSchema = z.object({
 	api_key: z.string(),
 	model: z.string(),
 	base_url: z.string(),
-	tag_style: z
-		.enum(["deepseek", "glm", "minimax", "default"])
-		.default("default"),
+	tag_style: tagStyleField,
 	backend_provider: z.enum(["anthropic", "google", "openai"]).default("openai"),
 	enable_thinking: z.boolean().default(false),
 });

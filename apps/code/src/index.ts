@@ -29,7 +29,7 @@ import {
 	type LoadedConfig,
 	loadCodeConfig,
 	resolveConfigPaths,
-} from "./config-loader.ts";
+} from "./config-loader/index.ts";
 import type { NotifyConfig } from "./notify-sound.ts";
 
 // ── 加载配置 ──
@@ -113,7 +113,7 @@ const notifyConfig: NotifyConfig = {
 	soundPath: settings.notify_sound_path || undefined,
 };
 
-const { startCodeRepl } = await import("./repl.ts");
+const { startCodeRepl } = await import("./repl/index.ts");
 
 const initialInput =
 	remainingArgs.length > 0 ? remainingArgs.join(" ") : undefined;

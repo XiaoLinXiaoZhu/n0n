@@ -67,7 +67,7 @@ export type {
 	WriteRecoverFailed,
 	WriteToolCall,
 	WriteToolResult,
-} from "./tools/index.ts";
+} from "./tools";
 // ── User 侧 ──
 export type {
 	GenericSystemMessage,
@@ -92,7 +92,7 @@ import type {
 	TurnFeedbackMessage,
 } from "./base.ts";
 import type { ToolArgErrorMessage } from "./errors.ts";
-import type { ToolResult } from "./tools/index.ts";
+import type { ToolResult } from "./tools";
 import type {
 	GenericSystemMessage,
 	GenericUserTextMessage,

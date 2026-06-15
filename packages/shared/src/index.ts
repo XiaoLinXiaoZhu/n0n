@@ -11,18 +11,18 @@ export { formatAgentsMdPrompt, loadAgentsMd } from "./agents-md.ts";
 export type {
 	ConversationLog,
 	HumanReadableInfo,
-} from "./conversation-log/index.ts";
+} from "./conversation-log";
 export {
 	generateLogFileName,
 	loadConversation,
 	saveConversation,
-} from "./conversation-log/index.ts";
+} from "./conversation-log";
 // Deep parse JSON strings
 export { deepParseJsonStrings } from "./deep-parse-json-strings.ts";
-export { formatSkills } from "./format-prompt/format-skill.ts";
 // Format Prompt
-export type { FormatOptions } from "./format-prompt/index.ts";
-export { formatPrompt } from "./format-prompt/index.ts";
+export type { FormatOptions } from "./format-prompt";
+export { formatPrompt } from "./format-prompt";
+export { formatSkills } from "./format-prompt/format-skill.ts";
 // Frontmatter
 export type { RawFrontmatter, TypedFrontmatter } from "./frontmatter.ts";
 export {

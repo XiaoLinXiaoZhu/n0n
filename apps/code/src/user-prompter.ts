@@ -8,8 +8,8 @@
 
 import { createInterface } from "node:readline";
 import { label, style } from "@n0n/cli-ui";
+import { readMultilineInput } from "./multiline-input";
 import type { UserInputConfig } from "./multiline-input/config.ts";
-import { readMultilineInput } from "./multiline-input/index.ts";
 import type { StdinController } from "./stdin-controller.ts";
 
 export class UserPrompter {

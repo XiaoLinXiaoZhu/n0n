@@ -17,7 +17,7 @@ import { describe, expect, test } from "bun:test";
 import { existsSync } from "node:fs";
 import { resolvePlatform } from "@n0n/shared";
 import type { ExecToolResult } from "@n0n/types";
-import { ExecArgsSchema, execToolStream } from "../exec/index.ts";
+import { ExecArgsSchema, execToolStream } from "../exec";
 
 /** 内部调用类型 — 与 ExecCall 对齐 */
 interface TestCall {

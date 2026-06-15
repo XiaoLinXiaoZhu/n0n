@@ -13,13 +13,13 @@ import {
 	formatPrompt,
 } from "@n0n/shared";
 import type { DomainMessage, LLMClient, PromptMessage } from "@n0n/types";
-import { AnthropicClient } from "./anthropic-client.ts";
+import { AnthropicClient } from "./anthropic-client";
 import type { LLMConfig } from "./config.ts";
-import { DeepSeekClient } from "./deepseek-client/index.ts";
-import { DeepSeekTest1Client } from "./deepseek-test-1-client/index.ts";
-import { GeminiClient } from "./gemini-client.ts";
-import { OpenAIClient } from "./openai-client.ts";
-import { OpenAICompatibleClient } from "./openai-compatible-client.ts";
+import { DeepSeekClient } from "./deepseek-client";
+import { DeepSeekTest1Client } from "./deepseek-test-1-client";
+import { GeminiClient } from "./gemini-client";
+import { OpenAIClient } from "./openai-client";
+import { OpenAICompatibleClient } from "./openai-compatible-client";
 
 /** 格式化函数类型 — DomainMessage[] → PromptMessage[] */
 export type FormatFn = (messages: DomainMessage[]) => PromptMessage[];

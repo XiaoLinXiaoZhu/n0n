@@ -22,7 +22,7 @@ console.log("=".repeat(70));
 
 import { createTagAdapter, formatPrompt, formatSkills } from "@n0n/shared";
 import type { DomainMessage, PromptMessage, TagAdapter } from "@n0n/types";
-import { splitSkillsToUser, stripReasoningFromPromptMessages } from "../packages/llm/src/deepseek-test-1-client/index.ts";
+import { splitSkillsToUser, stripReasoningFromPromptMessages } from "../packages/llm/src/deepseek-test-1-client";
 import triggerPromptRaw from "../packages/llm/src/deepseek-test-1-client/trigger-prompt.md" with { type: "text" };
 const triggerPromptContent = triggerPromptRaw.replace(/<!--[\s\S]*?-->/g, "").trim();
 

@@ -13,12 +13,12 @@ export type {
 	Clock,
 	HeartbeatCallbacks,
 	HeartbeatConfig,
-} from "./heartbeat/index.ts";
+} from "./heartbeat";
 export {
 	HeartbeatKeeper,
 	HeartbeatState,
 	realClock,
-} from "./heartbeat/index.ts";
+} from "./heartbeat";
 // 配置构建辅助
 export type { AgentConfig, SecurityConfig } from "./runtime.ts";
 export { buildToolsConfig } from "./runtime.ts";

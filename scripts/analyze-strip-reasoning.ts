@@ -3,7 +3,7 @@ import { createTagAdapter, formatPrompt } from "@n0n/shared";
 import {
   splitSkillsToUser,
   stripReasoningFromPromptMessages,
-} from "../packages/llm/src/deepseek-test-1-client/index.ts";
+} from "../packages/llm/src/deepseek-test-1-client";
 import type { PromptMessage } from "@n0n/types";
 
 // toApiMessages 内联（与 index.ts 中一致）
