@@ -1,7 +1,7 @@
 ---
 description: progress 工具的三种状态详则、使用节奏、汇报质量要求。
 activation: init
-order: 30
+order: 410
 ---
 
 # progress 使用规范

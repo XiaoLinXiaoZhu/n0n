@@ -1,7 +1,7 @@
 ---
 description: 沟通规范。语言、格式、协作沟通方式。
 activation: init
-order: 60
+order: 30
 ---
 
 # 沟通规范
