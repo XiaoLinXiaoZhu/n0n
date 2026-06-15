@@ -337,7 +337,7 @@ export async function startCodeRepl(
 			case "working": {
 				writeln(`${style.cyan("⏳")} 进行中: ${ir.content}`);
 				writeln();
-				history.push(makeUserInput("", [], "继续", null));
+				history.push(makeUserInput("", [], "系统收到了你的汇报，请你继续保持当前节奏完成工作。当前消息未发送给用户，若遇到问题时用 progress(blocked) 主动提问。", null));
 				autoResume = true;
 				continue;
 			}
