@@ -39,6 +39,11 @@ interface WritePreview {
 /** 写入节流间隔（ms）— 避免过于频繁的磁盘写入 */
 const THROTTLE_MS = 100;
 
+/** partial-json 解析出的 write 工具参数（字段可能不完整） */
+function isWritePreviewArgs(v: unknown): v is Record<string, unknown> {
+	return v !== null && typeof v === "object" && !Array.isArray(v);
+}
+
 export class CodeRenderer extends RichRenderer {
 	/** 活跃的 write 预览（index → preview state） */
 	private previews = new Map<number, WritePreview>();
@@ -115,16 +120,18 @@ export class CodeRenderer extends RichRenderer {
 		let parsed: Record<string, unknown> | null = null;
 		try {
 			const result = parsePartialJSON(preview.args);
-			if (result && typeof result === "object" && !Array.isArray(result)) {
-				parsed = result as Record<string, unknown>;
+			if (isWritePreviewArgs(result)) {
+				parsed = result;
 			}
 		} catch {
 			return;
 		}
 		if (!parsed) return;
 
-		const hasPath = typeof parsed.path === "string" && parsed.path.length > 0;
-		const hasContent = typeof parsed.content === "string";
+		const pathStr = typeof parsed.path === "string" && parsed.path.length > 0 ? parsed.path : undefined;
+		const contentStr = typeof parsed.content === "string" ? parsed.content : undefined;
+		const hasPath = pathStr !== undefined;
+		const hasContent = contentStr !== undefined;
 
 		// 首次信号判定 mode
 		if (preview.mode === "unknown") {
@@ -142,29 +149,29 @@ export class CodeRenderer extends RichRenderer {
 			} else if (hasPath && hasContent) {
 				// 同时出现 — path 应已完整，直接锁定
 				preview.mode = "path-first";
-				preview.targetPath = this.resolvePath(parsed.path as string);
+				preview.targetPath = this.resolvePath(pathStr);
 			}
 			// 两者都未出现 → 保持 unknown，等待更多数据
 		}
 
 		// path-first 模式下，content 未出现前持续更新 targetPath
 		if (preview.mode === "path-first" && hasPath && !hasContent) {
-			preview.targetPath = this.resolvePath(parsed.path as string);
+			preview.targetPath = this.resolvePath(pathStr);
 		}
 
 		// 写入路由
-		if (hasContent) {
+		if (contentStr !== undefined) {
 			if (preview.mode === "path-first" && preview.targetPath) {
-				if ((parsed.content as string).length !== preview.lastContentLength) {
-					preview.lastContentLength = (parsed.content as string).length;
+				if (contentStr.length !== preview.lastContentLength) {
+					preview.lastContentLength = contentStr.length;
 					preview.lastWriteTime = now;
-					this.writeFile(preview.targetPath, parsed.content as string);
+					this.writeFile(preview.targetPath, contentStr);
 				}
 			} else if (preview.mode === "content-first" && preview.tempPreviewPath) {
-				if ((parsed.content as string).length !== preview.lastContentLength) {
-					preview.lastContentLength = (parsed.content as string).length;
+				if (contentStr.length !== preview.lastContentLength) {
+					preview.lastContentLength = contentStr.length;
 					preview.lastWriteTime = now;
-					this.writeFile(preview.tempPreviewPath, parsed.content as string);
+					this.writeFile(preview.tempPreviewPath, contentStr);
 				}
 			}
 		}

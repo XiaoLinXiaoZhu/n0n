@@ -61,6 +61,11 @@ export interface SkillMeta {
  */
 export interface SkillContent extends SkillMeta, Skill {}
 
+/** Skill 加载结果 — 判别联合，强制调用者处理失败 */
+export type SkillLoadResult =
+	| { ok: true; skill: SkillContent }
+	| { ok: false; path: string; error: string };
+
 /** 重导出 Skill，方便消费者从 @n0n/skills 同时拿到领域接口 */
 export type { Skill };
 

@@ -23,6 +23,7 @@ import type {
 	TagAdapter,
 } from "@n0n/types";
 import type { DeepSeekTest1ProviderConfig } from "../config.ts";
+import { parseBaseUrl, chatCompletionsUrl, modelsUrl, type BaseUrl } from "../base-url.ts";
 import { isAbortError } from "../errors.ts";
 import type { FormatFn } from "../factory.ts";
 import { filterEmptyMessages } from "../message-filter.ts";
@@ -49,7 +50,7 @@ export type { DSMessage, DSRequest, DSToolCall, DSToolDef } from "./types.ts";
 export class DeepSeekTest1Client implements LLMClient {
 	readonly modelId: string;
 	private readonly pc: DeepSeekTest1ProviderConfig;
-	private readonly apiUrl: string;
+	private readonly baseUrl: BaseUrl;
 	private readonly format: FormatFn;
 	private readonly tags: TagAdapter;
 	private readonly stripReasoning: boolean;
@@ -69,13 +70,9 @@ export class DeepSeekTest1Client implements LLMClient {
 		this.stripReasoning = stripReasoning;
 		this.memoryTag = memoryTag;
 
-		const base = this.pc.base_url;
-		if (base.includes("/chat/completions")) {
-			this.apiUrl = base;
-		} else {
-			const cleanBase = base.replace(/\/v1\/?$/, "").replace(/\/$/, "");
-			this.apiUrl = `${cleanBase}/v1/chat/completions`;
-		}
+		const result = parseBaseUrl(this.pc.base_url);
+		if (!result.ok) throw new Error(`无效的 base_url: ${result.error}`);
+		this.baseUrl = result.baseUrl;
 	}
 
 	async *stream(
@@ -134,7 +131,7 @@ export class DeepSeekTest1Client implements LLMClient {
 
 		let res: Response;
 		try {
-			res = await fetch(this.apiUrl, {
+			res = await fetch(chatCompletionsUrl(this.baseUrl), {
 				method: "POST",
 				headers: {
 					"Content-Type": "application/json",
@@ -189,7 +186,7 @@ export class DeepSeekTest1Client implements LLMClient {
 		}
 
 		const res = await fetchWithRetry(() =>
-			fetch(this.apiUrl, {
+			fetch(chatCompletionsUrl(this.baseUrl), {
 				method: "POST",
 				headers: {
 					"Content-Type": "application/json",
@@ -204,6 +201,6 @@ export class DeepSeekTest1Client implements LLMClient {
 	}
 
 	async ping(): Promise<{ ok: boolean; error?: string }> {
-		return pingModelsEndpoint(this.apiUrl, this.pc.api_key);
+		return pingModelsEndpoint(this.baseUrl, this.pc.api_key);
 	}
 }

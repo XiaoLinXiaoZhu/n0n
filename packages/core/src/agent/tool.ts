@@ -54,6 +54,14 @@ function normalizeArgOrder(
 	return normalized;
 }
 
+/** parse：将 unknown 收窄为 Record<string, unknown>，非 plain object 时抛错 */
+function parseRecord(v: unknown): Record<string, unknown> {
+	if (v === null || typeof v !== "object" || Array.isArray(v)) {
+		throw new Error("expected a plain object");
+	}
+	return v as Record<string, unknown>;
+}
+
 // ── 解析 ──
 
 /**
@@ -69,7 +77,8 @@ export function parseToolCalls(raw: AssistantToolCallPart[]): ToolCallRecord[] {
 		try {
 			const parsed =
 				typeof tc.input === "string" ? JSON.parse(tc.input) : tc.input;
-			args = normalizeArgOrder(parsed as Record<string, unknown>, tc.toolName);
+			const record = parseRecord(parsed);
+			args = normalizeArgOrder(record, tc.toolName);
 		} catch {
 			args = { _parseError: true, _raw: tc.input };
 		}
@@ -77,7 +86,8 @@ export function parseToolCalls(raw: AssistantToolCallPart[]): ToolCallRecord[] {
 			id: tc.toolCallId,
 			tool: tc.toolName,
 			args,
-			// tool 是运行时 string，无法满足判别联合的字面量约束
+			// NOTE: tool 是运行时 string，无法在 parse 阶段收窄为字面量联合。
+			// 执行阶段的 Zod schema 校验（executeToolStream）在入口处兜底。
 		} as ToolCallRecord;
 	});
 }

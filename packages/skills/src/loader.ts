@@ -12,7 +12,7 @@ import { resolve } from "node:path";
 import { parseFrontmatter as parseFM } from "@n0n/shared";
 import { Glob } from "bun";
 import { generateUid } from "./parser.ts";
-import type { SkillContent, SkillMeta } from "./types.ts";
+import type { SkillContent, SkillLoadResult, SkillMeta } from "./types.ts";
 
 /**
  * 加载 skill 完整内容：元数据 + 指令正文 + 脚本列表
@@ -22,7 +22,7 @@ import type { SkillContent, SkillMeta } from "./types.ts";
  */
 export async function loadSkillContent(
 	skillPath: string,
-): Promise<SkillContent | null> {
+): Promise<SkillLoadResult> {
 	try {
 		const content = await Bun.file(skillPath).text();
 		const fmResult = parseFM(content);
@@ -60,9 +60,13 @@ export async function loadSkillContent(
 			dir,
 		};
 
-		return { ...meta, body, scripts, resources };
-	} catch {
-		return null;
+		return { ok: true, skill: { ...meta, body, scripts, resources } };
+	} catch (err) {
+		return {
+			ok: false,
+			path: skillPath,
+			error: err instanceof Error ? err.message : String(err),
+		};
 	}
 }
 
@@ -73,7 +77,7 @@ export async function loadSkillContent(
  */
 export async function loadSkillContentWithMeta(
 	skill: SkillMeta,
-): Promise<SkillContent | null> {
+): Promise<SkillLoadResult> {
 	try {
 		const content = await Bun.file(skill.path).text();
 		const { body } = parseFM(content);
@@ -97,9 +101,13 @@ export async function loadSkillContentWithMeta(
 			resources.push(resolve(skill.dir, m));
 		}
 
-		return { ...skill, body, scripts, resources };
-	} catch {
-		return null;
+		return { ok: true, skill: { ...skill, body, scripts, resources } };
+	} catch (err) {
+		return {
+			ok: false,
+			path: skill.path,
+			error: err instanceof Error ? err.message : String(err),
+		};
 	}
 }
 
@@ -108,9 +116,15 @@ export async function loadSkillContentWithMeta(
  */
 export async function loadSkillContents(
 	skills: SkillMeta[],
-): Promise<SkillContent[]> {
+): Promise<{ loaded: SkillContent[]; errors: { path: string; error: string }[] }> {
 	const results = await Promise.all(
 		skills.map((s) => loadSkillContentWithMeta(s)),
 	);
-	return results.filter((r): r is SkillContent => r !== null);
+	const loaded: SkillContent[] = [];
+	const errors: { path: string; error: string }[] = [];
+	for (const r of results) {
+		if (r.ok) loaded.push(r.skill);
+		else errors.push({ path: r.path, error: r.error });
+	}
+	return { loaded, errors };
 }

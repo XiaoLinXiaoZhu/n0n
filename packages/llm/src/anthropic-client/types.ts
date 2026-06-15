@@ -5,6 +5,8 @@
  * 供 format.ts 和 anthropic-client.ts 共用。
  */
 
+import { z } from "zod";
+
 // ── Anthropic API Types ──
 
 export type AnthropicContent =
@@ -112,3 +114,48 @@ export type AnthropicSSEEvent =
 	| { type: "message_stop" }
 	| { type: "ping" }
 	| { type: "error"; error: { type: string; message: string } };
+
+// ── Zod Schemas（parse 替代 as 断言）──
+
+const _contentBlockSchema = z.union([
+	z.object({ type: z.literal("text"), text: z.string() }),
+	z.object({ type: z.literal("thinking"), thinking: z.string() }),
+	z.object({
+		type: z.literal("tool_use"),
+		id: z.string(),
+		name: z.string(),
+		input: z.record(z.string(), z.unknown()),
+	}),
+]);
+
+const _deltaSchema = z.union([
+	z.object({ type: z.literal("text_delta"), text: z.string() }),
+	z.object({ type: z.literal("thinking_delta"), thinking: z.string() }),
+	z.object({ type: z.literal("input_json_delta"), partial_json: z.string() }),
+	z.object({ type: z.literal("signature_delta"), signature: z.string() }),
+]);
+
+export const AnthropicSSEEventSchema = z.discriminatedUnion("type", [
+	z.object({ type: z.literal("content_block_start"), index: z.number(), content_block: _contentBlockSchema }),
+	z.object({ type: z.literal("content_block_delta"), index: z.number(), delta: _deltaSchema }),
+	z.object({
+		type: z.literal("message_delta"),
+		delta: z.object({ stop_reason: z.string().nullable() }),
+		usage: z.object({ output_tokens: z.number().optional() }).optional(),
+	}),
+	z.object({
+		type: z.literal("message_start"),
+		message: z.object({
+			usage: z.object({
+				input_tokens: z.number().optional(),
+				output_tokens: z.number().optional(),
+				cache_creation_input_tokens: z.number().optional(),
+				cache_read_input_tokens: z.number().optional(),
+			}).optional(),
+		}).optional(),
+	}),
+	z.object({ type: z.literal("content_block_stop"), index: z.number() }),
+	z.object({ type: z.literal("message_stop") }),
+	z.object({ type: z.literal("ping") }),
+	z.object({ type: z.literal("error"), error: z.object({ type: z.string(), message: z.string() }) }),
+]);

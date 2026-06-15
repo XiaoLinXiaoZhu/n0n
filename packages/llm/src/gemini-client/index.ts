@@ -24,6 +24,7 @@ import type {
 	StreamRequest,
 } from "@n0n/types";
 import type { GoogleProviderConfig } from "../config.ts";
+import { parseBaseUrl, chatCompletionsUrl, type BaseUrl } from "../base-url.ts";
 import { isAbortError } from "../errors.ts";
 import type { FormatFn } from "../factory.ts";
 import { filterEmptyMessages } from "../message-filter.ts";
@@ -52,7 +53,7 @@ export type {
 export class GeminiClient implements LLMClient {
 	readonly modelId: string;
 	private readonly pc: GoogleProviderConfig;
-	private readonly apiUrl: string;
+	private readonly baseUrl: BaseUrl;
 	private readonly format: FormatFn;
 
 	constructor(pc: GoogleProviderConfig, format: FormatFn) {
@@ -60,13 +61,9 @@ export class GeminiClient implements LLMClient {
 		this.modelId = this.pc.model;
 		this.format = format;
 
-		const base = this.pc.base_url;
-		if (base.includes("/chat/completions")) {
-			this.apiUrl = base;
-		} else {
-			const cleanBase = base.replace(/\/v1\/?$/, "").replace(/\/$/, "");
-			this.apiUrl = `${cleanBase}/v1/chat/completions`;
-		}
+		const result = parseBaseUrl(this.pc.base_url);
+		if (!result.ok) throw new Error(`无效的 base_url: ${result.error}`);
+		this.baseUrl = result.baseUrl;
 	}
 
 	async *stream(
@@ -95,7 +92,7 @@ export class GeminiClient implements LLMClient {
 
 		let res: Response;
 		try {
-			res = await fetch(this.apiUrl, {
+			res = await fetch(chatCompletionsUrl(this.baseUrl), {
 				method: "POST",
 				headers: {
 					"Content-Type": "application/json",
@@ -148,7 +145,7 @@ export class GeminiClient implements LLMClient {
 		}
 
 		const res = await fetchWithRetry(() =>
-			fetch(this.apiUrl, {
+			fetch(chatCompletionsUrl(this.baseUrl), {
 				method: "POST",
 				headers: {
 					"Content-Type": "application/json",

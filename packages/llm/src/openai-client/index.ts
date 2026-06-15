@@ -19,6 +19,7 @@ import type {
 	StreamRequest,
 } from "@n0n/types";
 import type { OpenAIProviderConfig } from "../config.ts";
+import { parseBaseUrl, chatCompletionsUrl, modelsUrl, type BaseUrl } from "../base-url.ts";
 import { isAbortError } from "../errors.ts";
 import type { FormatFn } from "../factory.ts";
 import { filterEmptyMessages } from "../message-filter.ts";
@@ -40,7 +41,7 @@ export type {
 export class OpenAIClient implements LLMClient {
 	readonly modelId: string;
 	private readonly apiKey: string;
-	private readonly apiUrl: string;
+	private readonly baseUrl: BaseUrl;
 	private readonly format: FormatFn;
 
 	constructor(pc: OpenAIProviderConfig, format: FormatFn) {
@@ -48,13 +49,9 @@ export class OpenAIClient implements LLMClient {
 		this.apiKey = pc.api_key;
 		this.format = format;
 
-		const base = pc.base_url;
-		if (base.includes("/chat/completions")) {
-			this.apiUrl = base;
-		} else {
-			const cleanBase = base.replace(/\/v1\/?$/, "").replace(/\/$/, "");
-			this.apiUrl = `${cleanBase}/v1/chat/completions`;
-		}
+		const result = parseBaseUrl(pc.base_url);
+		if (!result.ok) throw new Error(`无效的 base_url: ${result.error}`);
+		this.baseUrl = result.baseUrl;
 	}
 
 	async *stream(
@@ -80,7 +77,7 @@ export class OpenAIClient implements LLMClient {
 
 		let res: Response;
 		try {
-			res = await fetch(this.apiUrl, {
+			res = await fetch(chatCompletionsUrl(this.baseUrl), {
 				method: "POST",
 				headers: {
 					"Content-Type": "application/json",
@@ -129,7 +126,7 @@ export class OpenAIClient implements LLMClient {
 		}
 
 		const res = await fetchWithRetry(() =>
-			fetch(this.apiUrl, {
+			fetch(chatCompletionsUrl(this.baseUrl), {
 				method: "POST",
 				headers: {
 					"Content-Type": "application/json",
@@ -144,6 +141,6 @@ export class OpenAIClient implements LLMClient {
 	}
 
 	async ping(): Promise<{ ok: boolean; error?: string }> {
-		return pingModelsEndpoint(this.apiUrl, this.apiKey);
+		return pingModelsEndpoint(this.baseUrl, this.apiKey);
 	}
 }

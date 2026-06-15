@@ -33,8 +33,8 @@ export async function readSkill(query: string): Promise<SkillContent[]> {
 
 	const results: SkillContent[] = [];
 	for (const skill of matched) {
-		const content = await loadSkillContentWithMeta(skill);
-		if (content) results.push(content);
+		const r = await loadSkillContentWithMeta(skill);
+		if (r.ok) results.push(r.skill);
 	}
 	return results;
 }
@@ -56,8 +56,8 @@ export async function readSkills(
 			continue;
 		}
 		for (const skill of matched) {
-			const content = await loadSkillContentWithMeta(skill);
-			if (content) found.push(content);
+			const r = await loadSkillContentWithMeta(skill);
+			if (r.ok) found.push(r.skill);
 			else notFound.push(name);
 		}
 	}
@@ -73,8 +73,8 @@ export async function loadInitSkills(): Promise<SkillContent[]> {
 		.sort((a, b) => a.order - b.order || a.name.localeCompare(b.name));
 	const contents: SkillContent[] = [];
 	for (const skill of initSkills) {
-		const content = await loadSkillContentWithMeta(skill);
-		if (content) contents.push(content);
+		const r = await loadSkillContentWithMeta(skill);
+		if (r.ok) contents.push(r.skill);
 	}
 	return contents;
 }

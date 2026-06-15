@@ -216,9 +216,7 @@ function runtimesSection(): string {
 			.sort((a, b) => a.def.priority - b.def.priority);
 
 		if (groupResults.length > 0) {
-			const first = groupResults[0];
-			if (!first)
-				throw new Error("unreachable: empty groupResults despite length > 0");
+			const first = mustFirst(groupResults);
 			preferredByGroup.set(group, first.def.name);
 		}
 
@@ -327,11 +325,7 @@ function normalizeName(entry: string): string | null {
 	if (IS_WINDOWS) {
 		const parts = entry.split(".");
 		if (parts.length > 1) {
-			const rawExt = parts.pop();
-			if (!rawExt)
-				throw new Error(
-					"unreachable: parts.length > 1 guarantees pop returns a value",
-				);
+			const rawExt = mustPop(parts);
 			const ext = rawExt.toLowerCase();
 			if (!EXE_EXTENSIONS?.has(ext)) return null;
 			return parts.join(".").toLowerCase();
@@ -361,4 +355,17 @@ function isNameBlacklisted(name: string, config: PathToolsConfig): boolean {
 	}
 
 	return false;
+}
+
+/** 取数组首个元素，空数组时抛出（调用者保证非空） */
+function mustFirst<T>(xs: T[]): T {
+	if (xs.length === 0) throw new Error("invariant: empty array");
+	return xs[0]!;
+}
+
+/** 弹出数组末元素，空数组时抛出（调用者保证非空） */
+function mustPop<T>(xs: T[]): T {
+	const v = xs.pop();
+	if (v === undefined) throw new Error("invariant: empty array");
+	return v;
 }

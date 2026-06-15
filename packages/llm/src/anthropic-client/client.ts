@@ -22,6 +22,7 @@ import type {
 	TokenUsage,
 } from "@n0n/types";
 import type { AnthropicProviderConfig } from "../config.ts";
+import { parseBaseUrl, messagesUrl, type BaseUrl } from "../base-url.ts";
 import { isAbortError, LLMError } from "../errors.ts";
 import type { FormatFn } from "../factory.ts";
 import {
@@ -36,7 +37,7 @@ import type { AnthropicMessage, AnthropicRequest } from "./types.ts";
 export class AnthropicClient implements LLMClient {
 	readonly modelId: string;
 	private readonly pc: AnthropicProviderConfig;
-	private readonly apiUrl: string;
+	private readonly baseUrl: BaseUrl;
 	private readonly format: FormatFn;
 	/** stream() 需要的上下文，避免逐个字段传递 */
 	private readonly streamCtx;
@@ -46,14 +47,13 @@ export class AnthropicClient implements LLMClient {
 		this.modelId = this.pc.model;
 		this.format = format;
 
-		const base = this.pc.base_url;
-		// 处理 baseUrl 可能已包含 /v1 的情况（如代理 URL）
-		const cleanBase = base.replace(/\/v1\/?$/, "").replace(/\/$/, "");
-		this.apiUrl = `${cleanBase}/v1/messages`;
+		const result = parseBaseUrl(pc.base_url);
+		if (!result.ok) throw new Error(`无效的 base_url: ${result.error}`);
+		this.baseUrl = result.baseUrl;
 
 		this.streamCtx = {
 			modelId: this.modelId,
-			apiUrl: this.apiUrl,
+			apiUrl: messagesUrl(this.baseUrl),
 			format: this.format,
 			pc: this.pc,
 		};
@@ -100,7 +100,7 @@ export class AnthropicClient implements LLMClient {
 			}
 
 			try {
-				const res = await fetch(this.apiUrl, {
+				const res = await fetch(messagesUrl(this.baseUrl), {
 					method: "POST",
 					headers: {
 						"Content-Type": "application/json",
@@ -167,7 +167,7 @@ export class AnthropicClient implements LLMClient {
 		}
 
 		try {
-			const res = await fetch(this.apiUrl, {
+			const res = await fetch(messagesUrl(this.baseUrl), {
 				method: "POST",
 				headers: {
 					"Content-Type": "application/json",

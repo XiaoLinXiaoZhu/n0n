@@ -6,25 +6,26 @@
  */
 
 import { isAbortError } from "./errors.ts";
+import { modelsUrl, type BaseUrl } from "./base-url.ts";
 
 /** ping 结果 — 判别联合，消费方通过 ok 缩窄 error */
 export type PingResult = { ok: true } | { ok: false; error: string };
 
 /**
- * 通过 GET {apiUrl}/models 探测 API 连通性。
+ * 通过 GET /v1/models 探测 API 连通性。
  *
- * @param apiUrl chat/completions 端点的完整 URL
+ * @param baseUrl 规范化的 API Base URL
  * @param apiKey Bearer token
  */
 export async function pingModelsEndpoint(
-	apiUrl: string,
+	baseUrl: BaseUrl,
 	apiKey: string,
 ): Promise<PingResult> {
 	try {
-		const modelsUrl = apiUrl.replace(/\/chat\/completions\/?$/, "/models");
+		const url = modelsUrl(baseUrl);
 		const controller = new AbortController();
 		const timeout = setTimeout(() => controller.abort(), 15_000);
-		const resp = await fetch(modelsUrl, {
+		const resp = await fetch(url, {
 			method: "GET",
 			headers: {
 				Authorization: `Bearer ${apiKey}`,

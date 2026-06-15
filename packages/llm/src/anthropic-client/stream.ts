@@ -27,11 +27,12 @@ import type {
 	AnthropicSSEEvent,
 	MessageDelta,
 } from "./types.ts";
+import { AnthropicSSEEventSchema } from "./types.ts";
 
 /** AnthropicClient 暴露给 stream 方法的内部状态 */
 export interface AnthropicStreamContext {
 	modelId: string;
-	apiUrl: string;
+	apiUrl: string | URL;
 	format: FormatFn;
 	pc: AnthropicProviderConfig;
 }
@@ -184,7 +185,7 @@ export async function* anthropicStream(
 
 				let event: AnthropicSSEEvent;
 				try {
-					event = JSON.parse(eventData) as AnthropicSSEEvent;
+					event = AnthropicSSEEventSchema.parse(JSON.parse(eventData));
 				} catch {
 					boundary = buffer.indexOf("\n\n");
 					continue;
@@ -279,7 +280,7 @@ export async function* anthropicStream(
 			}
 			if (eventData) {
 				try {
-					const event = JSON.parse(eventData) as AnthropicSSEEvent;
+					const event = AnthropicSSEEventSchema.parse(JSON.parse(eventData));
 					if (event.type === "message_delta") {
 						yield* mapMessageDelta(event);
 					}

@@ -27,11 +27,12 @@ export async function readCommand(name: string | undefined): Promise<void> {
 	}
 
 	for (const skill of matched) {
-		const content = await loadSkillContentWithMeta(skill);
-		if (!content) {
-			console.error(`无法加载 skill "${skill.name}" 的内容。`);
+		const result = await loadSkillContentWithMeta(skill);
+		if (!result.ok) {
+			console.error(`无法加载 skill "${skill.name}" 的内容: ${result.error}`);
 			continue;
 		}
+		const content = result.skill;
 
 		// 多个匹配时加分隔标识
 		if (matched.length > 1) {
