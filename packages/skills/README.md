@@ -27,7 +27,7 @@
 - 是一组并行生效的约束/准则
 - 通常应该始终激活（auto），甚至可以考虑并入 system prompt
 
-**与系统的关系**：作为 init skill 启动时自动加载（activation: init），约束模型在使用 write/edit/act 时的行为——写什么样的代码、如何操作 git、如何处理错误。不编排工具使用顺序，不定义 progress 格式。
+**与系统的关系**：作为 init skill 启动时自动加载（activation: init），约束模型在使用 write/act 时的行为——写什么样的代码、如何操作 git、如何处理错误。不编排工具使用顺序，不定义 progress 格式。
 
 **典型代表**：coding（编码实践）、git（工作流规范）
 

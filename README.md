@@ -39,33 +39,25 @@ const schema = z.object({
 
 ---
 
-### 2. edit — 委托模式避免重复定位
+### 2. write — 声明式文件写入
 
-**问题**：传统编辑工具要求模型输出精确的 `old_string` 和 `new_string`，导致：
-- 上下文浪费：模型需要输出完整代码片段
-- 重复定位：模型定位一次，工具再定位一次
-- 容错性差：一个字符不匹配就失败
+**问题**：传统文件编辑要求模型描述变更路径（"在第 N 行插入"、"将 old_string 替换为 new_string"），导致脆弱性高、转义问题多、上下文浪费。
 
-**解决方案**：`edit` 采用**意图驱动 + Agent 委托**模式：
+**解决方案**：`write` 采用**声明式设计**——直接输出文件的目标状态，文件系统覆盖即完成：
 
 ```typescript
-// 主模型只需描述"改什么"，不需要输出代码
-edit({ 
-  path: "src/config.ts", 
-  intent: "Change TIMEOUT from 5000 to 10000" 
-})
+// 声明目标状态，比描述变更路径更安全、更确定
+write({
+  path: "src/config.ts",
+  content: `export const TIMEOUT = 10000;
+export const RETRY = 3;`
+});
 ```
 
-内部委托给 **Editor Agent**，它负责：
-1. 解析意图，定位目标代码
-2. 执行精确的 `str_replace` 操作
-3. 返回修改结果 + 对意图质量的反馈
-
 **设计亮点**：
-- **避免重复定位**：主模型提供语义描述，Editor Agent 负责精确定位
-- **反馈学习**：Editor Agent 评估 intent 质量，帮助主模型优化未来的请求
-- **提示词负载迁移**：复杂的编辑逻辑交给 Editor Agent，主模型上下文保持简洁
-- **上下文中学习**：通过反馈机制，主模型逐步学会写出更好的 intent
+- **声明式优于命令式**：关心"文件应该长什么样"，而非"文件应该怎么改"
+- **不可变思维**：每次写入产生完整文件，消除"部分修改导致不一致"的风险
+- **与 write skill 协同**：配合短文件策略（file-organization），每个 write 重写的成本可忽略
 
 ---
 
@@ -165,11 +157,12 @@ exec({ runtime: "bun", script: `
 │  │ LLM 调用                           │  │
 │  │     ↓                              │  │
 │  │ Tool Calls                         │  │
-│  │ ├─ exec  → 脚本执行（多运行时）      │  │
-│  │ ├─ write → 文件创建                │  │
-│  │ ├─ edit  → 意图驱动编辑（委托）      │  │
-│  │ ├─ reminder → 承诺-反思循环         │  │
-│  │ └─ submit → 结果提交（动态Schema）   │  │
+│  │ ├─ observe → 读取/搜索（无副作用）   │  │
+│  │ ├─ reason  → 结构化推理（无副作用）  │  │
+│  │ ├─ act     → 执行操作（有副作用）    │  │
+│  │ ├─ write   → 声明式文件写入         │  │
+│  │ ├─ progress → 状态汇报             │  │
+│  │ └─ submit  → 结果提交（动态Schema）  │  │
 │  │     ↓                              │  │
 │  │ Zod Schema 校验                     │  │
 │  │ 最多 4 次重试                       │  │
@@ -189,7 +182,7 @@ n0n/
 ├── packages/          # 核心库
 │   ├── types/         # DomainMessage 类型定义
 │   ├── llm/           # LLM 客户端（多 Provider、SSE 流式）
-│   ├── tools/         # 核心工具（exec/write/edit/reminder/submit）
+│   ├── tools/         # 核心工具（observe/reason/act/write/progress/submit）
 │   ├── core/          # Agent Loop 核心引擎
 │   ├── shared/        # Skills 发现、对话持久化
 │   ├── cli-ui/        # 共享终端渲染
@@ -198,6 +191,9 @@ n0n/
 ├── apps/              # 应用入口
 │   ├── code/          # 代码编辑 Agent
 │   └── fairy/         # 独立 Agent 应用
+│
+├── data/              # Skill 定义
+│   └── skills/        # standard / task / directive / capability
 │
 └── scripts/           # 工具脚本
 ```
@@ -217,8 +213,6 @@ LLM_API_KEY=your-api-key-here
 LLM_MODEL=deepseek/deepseek-v3.2
 LLM_ENABLE_THINKING=true
 LLM_PROVIDER=openai-compatible
-PROVIDER=openai-compatible
-EDITOR_LLM_BACKEND_PROVIDER=openai-compatible
 EOF
 
 # 启动交互式 REPL
@@ -272,8 +266,6 @@ LLM_API_KEY=sk_xxx
 LLM_MODEL=deepseek/deepseek-v3.2
 LLM_ENABLE_THINKING=true
 LLM_PROVIDER=openai-compatible
-PROVIDER=openai-compatible
-EDITOR_LLM_BACKEND_PROVIDER=openai-compatible
 ```
 
 ---

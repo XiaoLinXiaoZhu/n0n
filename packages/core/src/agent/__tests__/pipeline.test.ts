@@ -21,7 +21,7 @@ import {
 
 // ── canStart 策略 ──
 
-/** write/edit: 同 path 互斥，且不能与无 path 的工具并行 */
+/** write: 同 path 互斥，且不能与无 path 的工具并行 */
 const pathExclusive: CanStartFn = (self, active) => {
 	const path = (self.args as { path?: string }).path;
 	for (const a of active) {
@@ -140,7 +140,7 @@ describe("ExecutionScheduler", () => {
 			expect(jobs[0]!.status).toBe("completed");
 		});
 
-		it("多个不冲突的 write/edit 并行执行", async () => {
+		it("多个不冲突的 write 并行执行", async () => {
 			const { executor, log, resolve } = createControllableExecutor();
 			const scheduler = new ExecutionScheduler(executor);
 
@@ -166,7 +166,7 @@ describe("ExecutionScheduler", () => {
 			).toBe(true);
 		});
 
-		it("相同路径的 write/edit 串行执行", async () => {
+		it("相同路径的 write 串行执行", async () => {
 			const { executor, log, resolve } = createControllableExecutor();
 			const scheduler = new ExecutionScheduler(executor);
 
@@ -234,7 +234,7 @@ describe("ExecutionScheduler", () => {
 			await runPromise;
 		});
 
-		it("write/edit 在有 exec active 时被阻塞", async () => {
+		it("write 在有 exec active 时被阻塞", async () => {
 			const { executor, log, resolve } = createControllableExecutor();
 			const scheduler = new ExecutionScheduler(executor);
 

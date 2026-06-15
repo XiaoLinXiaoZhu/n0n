@@ -89,7 +89,7 @@ rg --files wiki/ | rg "\.md$"
 
 ### 5. 确认后执行
 
-用户确认后，用 `edit` 逐处修改。每次修改记录在 commit message 中。
+用户确认后，用 `write` 逐处重写修改。每次修改记录在 commit message 中。
 
 ## 自检
 

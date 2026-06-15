@@ -27,7 +27,7 @@ activation: manual
 - 应用删除测试：具象化"删掉后会怎样"
 
 **act（行动）**——改变世界，验证结果：
-- 执行重构操作（write/edit 改文件）
+- 执行重构操作（write 重写文件）
 - `bun run typecheck` 验证类型
 - `bun test` 运行测试
 - `git diff` 确认改动范围

@@ -27,7 +27,7 @@
 ## description
 
 ````
-Create or overwrite a file with the given content. Directories are created automatically. For modifying existing files, use the edit tool instead.
+Create or overwrite a file with the given content. Directories are created automatically.
 
 This tool is deterministic and always succeeds — do not wait for its result. Continue issuing more tool calls in the same response.
 ````
@@ -39,7 +39,7 @@ This tool is deterministic and always succeeds — do not wait for its result. C
   "type": "function",
   "function": {
     "name": "write",
-    "description": "Create or overwrite a file with the given content. Directories are created automatically. For modifying existing files, use the edit tool instead.\n\nThis tool is deterministic and always succeeds — do not wait for its result. Continue issuing more tool calls in the same response.",
+    "description": "Create or overwrite a file with the given content. Directories are created automatically.\n\nThis tool is deterministic and always succeeds — do not wait for its result. Continue issuing more tool calls in the same response.",
     "parameters": {
       "type": "object",
       "properties": {

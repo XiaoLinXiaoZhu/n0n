@@ -47,9 +47,9 @@ activation: manual
 ### 3. 记录决策
 
 每个问题确认后：
-- 用 `edit` 更新 issue 的 `hitlNotes`，记录决策内容
+- 用 `write` 更新 issue 的 `hitlNotes`，记录决策内容
 - 如果决策涉及 ADR 条件，用 `write` 写入 docs/adr/
-- 如果决策引入或修改了领域术语，用 `edit` 更新词汇表
+- 如果决策引入或修改了领域术语，用 `write` 更新词汇表
 
 ### 4. 判定是否可转换
 

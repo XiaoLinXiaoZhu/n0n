@@ -54,4 +54,4 @@ activation: manual
 
 - 每个问题一个 `progress(blocked)`，呈现问题、推荐答案和备选答案
 - 用户回答后 `progress(working)` 记录决策和依据
-- 文档更新（write/edit）在决策确定时立即执行，不等到会话结束
+- 文档更新（write）在决策确定时立即执行，不等到会话结束

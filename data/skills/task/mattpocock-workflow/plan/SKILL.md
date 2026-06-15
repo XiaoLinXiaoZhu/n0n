@@ -36,7 +36,7 @@ activation: manual
 7. **测试策略**："需要什么测试？"
 
 **同时内联维护**：
-- 领域词汇表：术语确定后用 `write`/`edit` 将术语写入 AGENTS.md 或 CONTEXT.md
+- 领域词汇表：术语确定后用 `write` 将术语写入 AGENTS.md 或 CONTEXT.md
 - ADR：用 `reason` 判断是否满足三个条件，满足后用 `write` 写入 docs/adr/（难以逆转 / 无上下文会困惑 / 真正的取舍）
 
 ### 阶段 2：PRD

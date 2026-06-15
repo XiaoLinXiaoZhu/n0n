@@ -80,7 +80,7 @@ alias: mwf-init
 
 ### 3. 写入配置
 
-所有四项确认后，用 `write`/`edit` 一次性写入：
+所有四项确认后，用 `write` 一次性写入：
 
 **AGENTS.md** — 添加或更新 `## Agent skills` 段：
 
