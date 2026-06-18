@@ -1,5 +1,5 @@
 ---
-description: 禁止使用 search-and-replace。说明原理、风险与替代方案。
+description: 禁止使用 search-and-replace。说明原理、风险与替代工具。
 activation: init
 order: 130
 ---
@@ -28,10 +28,6 @@ Search and replace 的问题不仅仅是转义麻烦：
 //   - JSON key "user"
 ```
 
-## 正确做法
+## 替代方案
 
-所有文件编辑操作都通过以下工具完成：
-
-- **`write`**：创建新文件或完整覆盖已有文件。当文件改动过大（超过一半需要改）时，完整重写比反复局部编辑更可靠。
-
-这个工具能理解代码结构，避免纯文本替换的陷阱。
+用 `write` 代替——声明式地输出目标状态，整体覆盖，不依赖文本匹配，从根源上避免上下文误判。具体用 write 改文件的决策（何时重写、何时先拆分、何时降级为 diff）见 write skill 的决策树。
