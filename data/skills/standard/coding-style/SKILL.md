@@ -61,4 +61,4 @@ const lookup = (m: ReadonlyMap<string, Value>, key: string): Value | undefined =
 
 ## Parse, Don't Validate
 
-在系统边界处将不精确的输入解析为精确的内部类型，让类型系统在后续流程中替你保证正确性，而非让原始数据在内部传播、到处重复校验。这是函数式风格在数据建模上的延伸——用类型消除非法状态。详细方法与各语言工具参考 `parse-dont-validate` capability。
+在系统边界处将不精确的输入解析为精确的内部类型，让类型系统在后续流程中替你保证正确性，而非让原始数据在内部传播、到处重复校验。这是函数式风格在数据建模上的延伸——用类型消除非法状态。
