@@ -1,7 +1,7 @@
 ---
 description: 为什么 Parse 优于 Validate——消除冗余检查、防止漏改、让非法状态不可表达。
-activation: init
-order: 211
+activation: manual
+
 ---
 
 1. **消除冗余检查**：已验证的数据到下游仍需再次检查，解析过的数据则不用。

@@ -1,7 +1,7 @@
 ---
 description: 不追求完美——残留运行时检查的标记与隔离方法。
-activation: init
-order: 219
+activation: manual
+
 ---
 
 并非所有约束都值得或都能编码到类型系统中。对于残留的运行时检查：

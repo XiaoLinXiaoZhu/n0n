@@ -1,7 +1,7 @@
 ---
 description: 在系统边界尽早解析——数据一进入系统就转为目标类型。
-activation: init
-order: 212
+activation: manual
+
 ---
 
 数据一进入系统就解析为目标类型，不要让原始数据在内部传播。输入校验、API 响应、环境变量、配置文件——在入口处完成转换。

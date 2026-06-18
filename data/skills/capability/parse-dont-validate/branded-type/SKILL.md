@@ -1,7 +1,7 @@
 ---
 description: Branded type——用 opaque type + 智能构造器模拟解析约束。
-activation: init
-order: 217
+activation: manual
+
 ---
 
 有些约束难以完全在类型中表达（如整数的取值范围、字符串的格式），此时用 opaque type / branded type + 智能构造器。

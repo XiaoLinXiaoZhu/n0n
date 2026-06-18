@@ -1,7 +1,7 @@
 ---
 description: 让类型推动代码设计——先设计理想类型，再写函数。
-activation: init
-order: 216
+activation: manual
+
 ---
 
 先设计你希望拥有的理想数据类型，再写函数。不要用现有数据的形状反过来限制函数签名。

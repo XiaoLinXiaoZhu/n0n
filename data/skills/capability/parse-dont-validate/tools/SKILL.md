@@ -1,7 +1,7 @@
 ---
 description: 各语言 Parse 工具推荐——TypeScript/Python/Rust/Go/Haskell/Java。
-activation: init
-order: 218
+activation: manual
+
 ---
 
 | 语言 | 推荐工具 |

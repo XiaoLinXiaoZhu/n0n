@@ -1,7 +1,7 @@
 ---
 description: 环境变量/配置解析示例——用 zod 在启动时一次性解析配置。
-activation: init
-order: 213
+activation: manual
+
 ---
 
 ```typescript

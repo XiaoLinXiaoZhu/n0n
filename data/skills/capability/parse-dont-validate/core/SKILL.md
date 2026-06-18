@@ -1,7 +1,7 @@
 ---
 description: Parse vs Validate 概念——验证返回同类型，解析返回更精确类型。
-activation: init
-order: 210
+activation: manual
+
 ---
 
 **验证** (validate) 检查数据是否合法，然后返回同样的类型。**解析** (parse) 检查数据，然后返回一个更精确的类型——非法状态在该类型中无法表达。
