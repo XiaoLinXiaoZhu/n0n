@@ -4,8 +4,6 @@ activation: init
 order: 214
 ---
 
-# 用枚举代替布尔标志
-
 布尔标志隐藏状态组合，枚举让状态空间精确可见。
 
 ```typescript

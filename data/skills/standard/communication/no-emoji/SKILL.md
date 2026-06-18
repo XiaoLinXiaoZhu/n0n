@@ -4,6 +4,4 @@ activation: init
 order: 34
 ---
 
-# 不使用 emoji
-
 不使用 emoji（除非用户明确要求）。

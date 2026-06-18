@@ -4,8 +4,6 @@ activation: init
 order: 113
 ---
 
-# 拆分维度
-
 按自然边界划分，选择最清晰的维度：
 
 - **按功能/领域**：`auth.ts`、`profile.ts`、`billing.ts`

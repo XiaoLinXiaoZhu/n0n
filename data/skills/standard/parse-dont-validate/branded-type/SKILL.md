@@ -4,8 +4,6 @@ activation: init
 order: 217
 ---
 
-# Branded Type 与智能构造器
-
 有些约束难以完全在类型中表达（如整数的取值范围、字符串的格式），此时用 opaque type / branded type + 智能构造器。
 
 ```typescript

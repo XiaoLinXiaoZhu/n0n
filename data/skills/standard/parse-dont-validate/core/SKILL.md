@@ -4,8 +4,6 @@ activation: init
 order: 210
 ---
 
-# Parse, Don't Validate — 核心概念
-
 **验证** (validate) 检查数据是否合法，然后返回同样的类型。**解析** (parse) 检查数据，然后返回一个更精确的类型——非法状态在该类型中无法表达。
 
 ```typescript

@@ -4,8 +4,6 @@ activation: init
 order: 249
 ---
 
-# 各语言常用测试工具
-
 | 语言 | 测试框架 | 断言风格 |
 |------|---------|---------|
 | TypeScript/JavaScript | `vitest`, `bun test` | `expect(x).toEqual(y)` |

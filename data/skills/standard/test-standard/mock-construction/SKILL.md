@@ -4,8 +4,6 @@ activation: init
 order: 246
 ---
 
-# Mock / Stub 构造
-
 ```typescript
 export const mockUserRepo = (): UserRepository => ({
   findById: async (id: string) => createTestUser({ id }),

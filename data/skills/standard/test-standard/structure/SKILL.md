@@ -4,8 +4,6 @@ activation: init
 order: 241
 ---
 
-# 测试结构
-
 遵循 Arrange-Act-Assert（准备-执行-断言）三段式：
 
 ```typescript

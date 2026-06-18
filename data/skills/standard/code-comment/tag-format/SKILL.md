@@ -4,8 +4,6 @@ activation: init
 order: 222
 ---
 
-# 标注格式
-
 - 临时代码：`// TODO: 为什么存在 + 何时移除`
 - 决策变更：`// switched from X to Y because Z`
 - 不确定是否仍需要：`// XXX: 待确认`

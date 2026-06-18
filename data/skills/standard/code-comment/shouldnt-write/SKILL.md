@@ -4,8 +4,6 @@ activation: init
 order: 224
 ---
 
-# 不应该写注释的情况
-
 - 解释代码在做什么——提取为命名良好的函数
 - 记录谁在什么时候改了什么——那是 git blame 的事
 - 大段背景故事——放设计文档或 commit message

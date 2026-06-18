@@ -4,8 +4,6 @@ activation: init
 order: 431
 ---
 
-# observe — 收集信息
-
 用 `observe` 读取文件、搜索代码、检查环境状态。无副作用。
 
 - 读文件：`observe({ script: "type src/index.ts" })`

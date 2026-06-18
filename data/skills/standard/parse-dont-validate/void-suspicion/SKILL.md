@@ -4,8 +4,6 @@ activation: init
 order: 215
 ---
 
-# 对返回 void 的校验函数保持怀疑
-
 如果一个函数的唯一目的是检测错误、返回 void/unit，通常可以改写成返回更精确类型的解析函数。
 
 ```typescript

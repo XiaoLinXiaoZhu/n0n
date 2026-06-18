@@ -4,8 +4,6 @@ activation: init
 order: 245
 ---
 
-# 测试数据工厂函数
-
 多个测试文件有共同的准备逻辑时，提取为工具函数，放在测试目录下的 `test-utils` 或 `helpers` 文件中：
 
 ```typescript

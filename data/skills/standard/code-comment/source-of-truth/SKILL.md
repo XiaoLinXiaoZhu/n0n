@@ -4,8 +4,6 @@ activation: init
 order: 225
 ---
 
-# 代码是唯一事实来源
-
 - 已实现功能在代码中，动机在相邻注释中，未实现功能在 TODO 中
 - 任务级上下文（"用于 X 流程""为 Y 功能添加"）放 commit message，不放代码
 - 解释 WHY，不解释 WHAT——良好命名已承载了 WHAT

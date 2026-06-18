@@ -4,8 +4,6 @@ activation: init
 order: 213
 ---
 
-# 环境变量/配置解析示例
-
 ```typescript
 // 好：入口处解析，内部直接用
 import { z } from "zod";

@@ -4,8 +4,6 @@ activation: init
 order: 130
 ---
 
-# 禁止 Search and Replace
-
 ## 原则
 
 任何时候都不应该使用 search-and-replace 的方式进行文件编辑。

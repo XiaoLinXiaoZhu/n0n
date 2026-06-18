@@ -4,8 +4,6 @@ activation: init
 order: 247
 ---
 
-# 工具函数适用范围
-
 测试工具函数适用于：
 - 测试数据工厂函数（带可选的 overrides 参数）
 - Mock / Stub 对象构造

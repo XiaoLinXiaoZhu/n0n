@@ -4,8 +4,6 @@ activation: init
 order: 218
 ---
 
-# 各语言的常用 Parse 工具
-
 | 语言 | 推荐工具 |
 |------|---------|
 | TypeScript | `zod`, `io-ts`, `arktype` |

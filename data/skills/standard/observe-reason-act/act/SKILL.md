@@ -4,8 +4,6 @@ activation: init
 order: 433
 ---
 
-# act — 改变世界
-
 用 `act` 执行改变环境状态的操作：
 
 - 跑测试：`act({ script: "bun test" })`

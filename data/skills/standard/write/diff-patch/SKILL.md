@@ -4,8 +4,6 @@ activation: init
 order: 125
 ---
 
-# Diff/Patch 降级方案
-
 当且仅当文件不值得重构（遗留代码、不属于你的代码库）时，使用 unified diff：
 
 ```

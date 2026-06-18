@@ -4,8 +4,6 @@ activation: init
 order: 124
 ---
 
-# 决策树：面对需要修改的文件
-
 1. **文件小** → `write` 重写整个文件
 2. **文件大 / 结构差** → 先拆分（按 file-organization 原则），再 `write` 各部分
 3. **外部约束文件**（package.json, tsconfig）→ 领域专用工具（`bun add`, `jq`, etc.）

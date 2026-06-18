@@ -4,8 +4,6 @@ activation: init
 order: 312
 ---
 
-# Git commit 从文件读取
-
 创建 commit 和 PR 时，先将变更描述写入文件，再从文件创建 commit/PR——避免 bash/cmd 中的引号问题。示例如下：
 
 ```yaml

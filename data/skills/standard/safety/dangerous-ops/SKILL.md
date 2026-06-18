@@ -4,8 +4,6 @@ activation: init
 order: 22
 ---
 
-# 危险操作列表
-
 以下操作需要用户确认：
 
 - **破坏性操作**：删除文件/分支、drop table、kill 进程、rm -rf、覆盖未提交的修改
