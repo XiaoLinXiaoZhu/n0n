@@ -89,12 +89,13 @@ export class DeepSeekClient implements LLMClient {
 			body.tool_choice = request.toolChoice ?? "auto";
 		}
 
-		if (this.pc.enable_thinking) {
-			body.enable_thinking = true;
-		}
-
 		if (this.pc.reasoning_effort) {
 			body.reasoning_effort = this.pc.reasoning_effort;
+		}
+
+		// extra_body 透传 — 可覆盖以上任意字段（含 thinking、enable_thinking 等）
+		if (this.pc.extra_body) {
+			Object.assign(body, this.pc.extra_body);
 		}
 
 		let res: Response;
@@ -148,6 +149,10 @@ export class DeepSeekClient implements LLMClient {
 
 		if (request.temperature !== undefined) {
 			body.temperature = request.temperature;
+		}
+
+		if (this.pc.extra_body) {
+			Object.assign(body, this.pc.extra_body);
 		}
 
 		const res = await fetchWithRetry(() =>

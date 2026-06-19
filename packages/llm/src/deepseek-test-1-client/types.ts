@@ -34,6 +34,7 @@ export interface DSRequest {
 	max_tokens?: number;
 	stream?: boolean;
 	stream_options?: { include_usage: boolean };
-	enable_thinking?: boolean;
 	reasoning_effort?: "high" | "max";
+	/** extra_body 透传字段 — 由 Object.assign 合并，可覆盖以上任意字段 */
+	[key: string]: unknown;
 }

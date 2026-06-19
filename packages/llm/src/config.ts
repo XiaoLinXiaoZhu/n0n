@@ -22,6 +22,9 @@ const tagStyleField = z
 	.enum(["deepseek", "glm", "minimax", "default"])
 	.default("default");
 
+/** 透传到 API 请求 body 的额外字段 — 覆盖同名显式参数 */
+const extraBodyField = z.record(z.string(), z.unknown()).optional();
+
 // ═══════════════════════════════════════════════════════════
 // ProviderConfig — discriminated union on `provider`
 // ═══════════════════════════════════════════════════════════
@@ -70,6 +73,7 @@ export const OpenAICompatibleProviderConfigSchema = z.object({
 	tag_style: tagStyleField,
 	backend_provider: z.enum(["anthropic", "google", "openai"]).default("openai"),
 	enable_thinking: z.boolean().default(false),
+	extra_body: extraBodyField,
 });
 export type OpenAICompatibleProviderConfig = z.infer<
 	typeof OpenAICompatibleProviderConfigSchema
@@ -88,6 +92,7 @@ export const DeepSeekProviderConfigSchema = z.object({
 		.default("deepseek"),
 	enable_thinking: z.boolean().default(false),
 	reasoning_effort: z.enum(["high", "max"]).optional(),
+	extra_body: extraBodyField,
 });
 export type DeepSeekProviderConfig = z.infer<
 	typeof DeepSeekProviderConfigSchema
@@ -105,6 +110,7 @@ export const DeepSeekTest1ProviderConfigSchema = z.object({
 	strip_reasoning: z.boolean().default(false),
 	memory_tag: z.boolean().default(false),
 	reasoning_effort: z.enum(["high", "max"]).optional(),
+	extra_body: extraBodyField,
 });
 export type DeepSeekTest1ProviderConfig = z.infer<
 	typeof DeepSeekTest1ProviderConfigSchema

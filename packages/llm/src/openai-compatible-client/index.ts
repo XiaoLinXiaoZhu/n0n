@@ -44,6 +44,7 @@ export class OpenAICompatibleClient implements LLMClient {
 	private readonly format: FormatFn;
 	private readonly enableThinking: boolean;
 	private readonly backendProvider: string | undefined;
+	private readonly extraBody: Record<string, unknown> | undefined;
 
 	constructor(pc: OpenAICompatibleProviderConfig, format: FormatFn) {
 		this.modelId = pc.model;
@@ -51,6 +52,7 @@ export class OpenAICompatibleClient implements LLMClient {
 		this.format = format;
 		this.enableThinking = pc.enable_thinking;
 		this.backendProvider = pc.backend_provider;
+		this.extraBody = pc.extra_body;
 
 		const result = parseBaseUrl(pc.base_url);
 		if (!result.ok) throw new Error(`无效的 base_url: ${result.error}`);
@@ -82,8 +84,9 @@ export class OpenAICompatibleClient implements LLMClient {
 			body.tool_choice = request.toolChoice ?? "auto";
 		}
 
-		if (this.enableThinking) {
-			body.enable_thinking = true;
+		// extra_body 透传 — 可覆盖以上任意字段（含 thinking、enable_thinking 等）
+		if (this.extraBody) {
+			Object.assign(body, this.extraBody);
 		}
 
 		let res: Response;
@@ -134,6 +137,10 @@ export class OpenAICompatibleClient implements LLMClient {
 
 		if (request.temperature !== undefined) {
 			body.temperature = request.temperature;
+		}
+
+		if (this.extraBody) {
+			Object.assign(body, this.extraBody);
 		}
 
 		const res = await fetchWithRetry(() =>
