@@ -128,8 +128,12 @@ export class CodeRenderer extends RichRenderer {
 		}
 		if (!parsed) return;
 
-		const pathStr = typeof parsed.path === "string" && parsed.path.length > 0 ? parsed.path : undefined;
-		const contentStr = typeof parsed.content === "string" ? parsed.content : undefined;
+		const pathStr =
+			typeof parsed.path === "string" && parsed.path.length > 0
+				? parsed.path
+				: undefined;
+		const contentStr =
+			typeof parsed.content === "string" ? parsed.content : undefined;
 		const hasPath = pathStr !== undefined;
 		const hasContent = contentStr !== undefined;
 

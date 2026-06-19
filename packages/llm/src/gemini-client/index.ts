@@ -23,8 +23,8 @@ import type {
 	StreamEvent,
 	StreamRequest,
 } from "@n0n/types";
+import { type BaseUrl, chatCompletionsUrl, parseBaseUrl } from "../base-url.ts";
 import type { GoogleProviderConfig } from "../config.ts";
-import { parseBaseUrl, chatCompletionsUrl, type BaseUrl } from "../base-url.ts";
 import { isAbortError } from "../errors.ts";
 import type { FormatFn } from "../factory.ts";
 import { filterEmptyMessages } from "../message-filter.ts";

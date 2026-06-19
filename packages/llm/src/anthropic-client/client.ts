@@ -21,8 +21,8 @@ import type {
 	StreamRequest,
 	TokenUsage,
 } from "@n0n/types";
+import { type BaseUrl, messagesUrl, parseBaseUrl } from "../base-url.ts";
 import type { AnthropicProviderConfig } from "../config.ts";
-import { parseBaseUrl, messagesUrl, type BaseUrl } from "../base-url.ts";
 import { isAbortError, LLMError } from "../errors.ts";
 import type { FormatFn } from "../factory.ts";
 import {

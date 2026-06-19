@@ -114,9 +114,10 @@ export async function loadSkillContentWithMeta(
 /**
  * 批量加载多个 skill 的完整内容
  */
-export async function loadSkillContents(
-	skills: SkillMeta[],
-): Promise<{ loaded: SkillContent[]; errors: { path: string; error: string }[] }> {
+export async function loadSkillContents(skills: SkillMeta[]): Promise<{
+	loaded: SkillContent[];
+	errors: { path: string; error: string }[];
+}> {
 	const results = await Promise.all(
 		skills.map((s) => loadSkillContentWithMeta(s)),
 	);

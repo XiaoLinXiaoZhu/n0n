@@ -136,8 +136,16 @@ const _deltaSchema = z.union([
 ]);
 
 export const AnthropicSSEEventSchema = z.discriminatedUnion("type", [
-	z.object({ type: z.literal("content_block_start"), index: z.number(), content_block: _contentBlockSchema }),
-	z.object({ type: z.literal("content_block_delta"), index: z.number(), delta: _deltaSchema }),
+	z.object({
+		type: z.literal("content_block_start"),
+		index: z.number(),
+		content_block: _contentBlockSchema,
+	}),
+	z.object({
+		type: z.literal("content_block_delta"),
+		index: z.number(),
+		delta: _deltaSchema,
+	}),
 	z.object({
 		type: z.literal("message_delta"),
 		delta: z.object({ stop_reason: z.string().nullable() }),
@@ -145,17 +153,24 @@ export const AnthropicSSEEventSchema = z.discriminatedUnion("type", [
 	}),
 	z.object({
 		type: z.literal("message_start"),
-		message: z.object({
-			usage: z.object({
-				input_tokens: z.number().optional(),
-				output_tokens: z.number().optional(),
-				cache_creation_input_tokens: z.number().optional(),
-				cache_read_input_tokens: z.number().optional(),
-			}).optional(),
-		}).optional(),
+		message: z
+			.object({
+				usage: z
+					.object({
+						input_tokens: z.number().optional(),
+						output_tokens: z.number().optional(),
+						cache_creation_input_tokens: z.number().optional(),
+						cache_read_input_tokens: z.number().optional(),
+					})
+					.optional(),
+			})
+			.optional(),
 	}),
 	z.object({ type: z.literal("content_block_stop"), index: z.number() }),
 	z.object({ type: z.literal("message_stop") }),
 	z.object({ type: z.literal("ping") }),
-	z.object({ type: z.literal("error"), error: z.object({ type: z.string(), message: z.string() }) }),
+	z.object({
+		type: z.literal("error"),
+		error: z.object({ type: z.string(), message: z.string() }),
+	}),
 ]);

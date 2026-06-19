@@ -5,8 +5,8 @@
  * OpenAI 兼容协议通用。
  */
 
+import { type BaseUrl, modelsUrl } from "./base-url.ts";
 import { isAbortError } from "./errors.ts";
-import { modelsUrl, type BaseUrl } from "./base-url.ts";
 
 /** ping 结果 — 判别联合，消费方通过 ok 缩窄 error */
 export type PingResult = { ok: true } | { ok: false; error: string };
