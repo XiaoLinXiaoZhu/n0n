@@ -36,17 +36,23 @@ export function parseBaseUrl(raw: string): BaseUrlResult {
 	}
 }
 
+/** 基于 baseUrl.pathname 拼接路径，避免绝对路径覆盖 base URL 的路径前缀 */
+function appendPath(baseUrl: BaseUrl, suffix: string): URL {
+	const basePath = baseUrl.pathname.replace(/\/$/, "");
+	return new URL(`${basePath}${suffix}`, baseUrl);
+}
+
 /** Chat Completions 端点（OpenAI 兼容协议） */
 export function chatCompletionsUrl(baseUrl: BaseUrl): URL {
-	return new URL("/v1/chat/completions", baseUrl);
+	return appendPath(baseUrl, "/v1/chat/completions");
 }
 
 /** Messages 端点（Anthropic 协议） */
 export function messagesUrl(baseUrl: BaseUrl): URL {
-	return new URL("/v1/messages", baseUrl);
+	return appendPath(baseUrl, "/v1/messages");
 }
 
 /** Models 端点（GET /v1/models，用于 ping） */
 export function modelsUrl(baseUrl: BaseUrl): URL {
-	return new URL("/v1/models", baseUrl);
+	return appendPath(baseUrl, "/v1/models");
 }
