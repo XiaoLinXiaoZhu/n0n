@@ -1,5 +1,7 @@
 /**
  * PromptMessage → deepseek-test-1 API Message 格式转换
+ *
+ * reasoning_content 始终保留（当存在时），不再由 enable_thinking 开关控制。
  */
 
 import type { PromptMessage, ToolDefinition } from "@n0n/types";
@@ -8,7 +10,6 @@ import type { DSMessage, DSToolDef } from "./types.ts";
 /** 将 PromptMessage 数组转换为 API 消息格式 */
 export function toApiMessages(
 	promptMessages: PromptMessage[],
-	enableThinking?: boolean,
 	memoryTag?: boolean,
 ): DSMessage[] {
 	const result: DSMessage[] = [];
@@ -28,8 +29,8 @@ export function toApiMessages(
 				const reasoningContent =
 					memoryTag && msg.reasoning
 						? `<memory>\n${msg.reasoning}\n</memory>`
-						: enableThinking
-							? (msg.reasoning ?? "")
+						: msg.reasoning
+							? msg.reasoning
 							: undefined;
 				const base: DSMessage = {
 					role: "assistant",

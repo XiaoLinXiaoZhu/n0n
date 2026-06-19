@@ -10,6 +10,9 @@
  *
  * parse, don't verify：有默认回退的字段在 parse 时填入默认值，
  * 消费方拿到的类型不含 optional，不存在不确定传播。
+ *
+ * enable_thinking / reasoning_effort 已移除——各厂商的 thinking 控制方式不同，
+ * 不应在 schema 中固化。统一通过 extra_body 透传。
  */
 
 import { z } from "zod";
@@ -72,7 +75,6 @@ export const OpenAICompatibleProviderConfigSchema = z.object({
 	base_url: z.string(),
 	tag_style: tagStyleField,
 	backend_provider: z.enum(["anthropic", "google", "openai"]).default("openai"),
-	enable_thinking: z.boolean().default(false),
 	extra_body: extraBodyField,
 });
 export type OpenAICompatibleProviderConfig = z.infer<
@@ -90,8 +92,6 @@ export const DeepSeekProviderConfigSchema = z.object({
 	system_tag_style: z
 		.enum(["deepseek", "glm", "minimax", "default"])
 		.default("deepseek"),
-	enable_thinking: z.boolean().default(false),
-	reasoning_effort: z.enum(["high", "max"]).optional(),
 	extra_body: extraBodyField,
 });
 export type DeepSeekProviderConfig = z.infer<
@@ -106,10 +106,8 @@ export const DeepSeekTest1ProviderConfigSchema = z.object({
 	tag_style: z
 		.enum(["deepseek", "glm", "minimax", "default"])
 		.default("deepseek"),
-	enable_thinking: z.boolean().default(false),
 	strip_reasoning: z.boolean().default(false),
 	memory_tag: z.boolean().default(false),
-	reasoning_effort: z.enum(["high", "max"]).optional(),
 	extra_body: extraBodyField,
 });
 export type DeepSeekTest1ProviderConfig = z.infer<

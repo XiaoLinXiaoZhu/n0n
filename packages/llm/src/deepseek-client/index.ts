@@ -3,8 +3,8 @@
  *
  * 基于 OpenAI Chat Completions 兼容协议，针对 DeepSeek 做专项适配：
  * - 系统提示词：通过 systemPromptAdapter 提取、合并、适配为 DeepSeek 原生 Markdown 风格
- * - 思考模式：支持 enable_thinking，reasoning_content 流式传输
  * - Tag 风格：默认 "deepseek"（## tagname / ---）
+ * - thinking / reasoning_effort 等厂商特定参数通过 extra_body 透传
  *
  * 走正常的 formatPrompt → TagAdapter 路线，不绕过 tag 适配体系。
  */
@@ -16,8 +16,8 @@ import type {
 	StreamEvent,
 	StreamRequest,
 } from "@n0n/types";
+import { type BaseUrl, chatCompletionsUrl, parseBaseUrl } from "../base-url.ts";
 import type { DeepSeekProviderConfig } from "../config.ts";
-import { parseBaseUrl, chatCompletionsUrl, modelsUrl, type BaseUrl } from "../base-url.ts";
 import { isAbortError } from "../errors.ts";
 import type { FormatFn } from "../factory.ts";
 import { filterEmptyMessages } from "../message-filter.ts";
@@ -66,10 +66,7 @@ export class DeepSeekClient implements LLMClient {
 		const adaptedSystemPrompt = systemPromptAdapter(request, this.systemFormat);
 
 		const promptMessages = this.format(request.messages);
-		const apiMessages = toDeepSeekMessages(
-			promptMessages,
-			this.pc.enable_thinking,
-		);
+		const apiMessages = toDeepSeekMessages(promptMessages);
 
 		const filteredMessages = filterEmptyMessages(apiMessages);
 
@@ -89,11 +86,7 @@ export class DeepSeekClient implements LLMClient {
 			body.tool_choice = request.toolChoice ?? "auto";
 		}
 
-		if (this.pc.reasoning_effort) {
-			body.reasoning_effort = this.pc.reasoning_effort;
-		}
-
-		// extra_body 透传 — 可覆盖以上任意字段（含 thinking、enable_thinking 等）
+		// extra_body 透传 — 可覆盖以上任意字段（含 thinking、enable_thinking、reasoning_effort 等）
 		if (this.pc.extra_body) {
 			Object.assign(body, this.pc.extra_body);
 		}

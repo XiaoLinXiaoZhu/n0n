@@ -2,8 +2,8 @@
  * PromptMessage → OpenAI Chat Completions 格式转换（compatible 变体）
  *
  * 与 openai-client/format.ts 的区别：
- * - 支持 enable_thinking（reasoning_content 回传）
  * - 支持 backend_provider（anthropic backend 时注入 cache_control）
+ * - reasoning_content 始终保留（当存在时），不再由 enable_thinking 开关控制
  */
 
 import type { PromptMessage, ToolDefinition } from "@n0n/types";
@@ -11,7 +11,6 @@ import type { OpenAIMessage, OpenAIToolCall, OpenAIToolDef } from "./types.ts";
 
 export function toOpenAIMessages(
 	promptMessages: PromptMessage[],
-	enableThinking: boolean,
 	backendProvider: string | undefined,
 ): OpenAIMessage[] {
 	const result: OpenAIMessage[] = [];
@@ -27,6 +26,9 @@ export function toOpenAIMessages(
 				break;
 
 			case "assistant": {
+				const reasoningContent = msg.reasoning
+					? { reasoning_content: msg.reasoning }
+					: {};
 				if (msg.toolCalls?.length) {
 					const toolCalls: OpenAIToolCall[] = msg.toolCalls.map((tc) => ({
 						id: tc.id,
@@ -39,18 +41,14 @@ export function toOpenAIMessages(
 					result.push({
 						role: "assistant",
 						content: msg.content || null,
-						...(enableThinking
-							? { reasoning_content: msg.reasoning ?? "" }
-							: {}),
+						...reasoningContent,
 						tool_calls: toolCalls,
 					});
 				} else {
 					result.push({
 						role: "assistant",
 						content: msg.content || null,
-						...(enableThinking
-							? { reasoning_content: msg.reasoning ?? "" }
-							: {}),
+						...reasoningContent,
 					});
 				}
 				break;

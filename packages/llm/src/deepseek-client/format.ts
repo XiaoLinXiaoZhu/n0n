@@ -2,6 +2,7 @@
  * PromptMessage → DeepSeek API Message 格式转换
  *
  * system 消息由 systemPromptAdapter 单独处理，此处跳过。
+ * reasoning_content 始终保留（当存在时），不再由 enable_thinking 开关控制。
  */
 
 import type { PromptMessage, ToolDefinition } from "@n0n/types";
@@ -14,7 +15,6 @@ import type {
 /** 将 PromptMessage 数组转换为 DeepSeek API 消息格式（跳过 system） */
 export function toDeepSeekMessages(
 	promptMessages: PromptMessage[],
-	enableThinking?: boolean,
 ): DeepSeekMessage[] {
 	const result: DeepSeekMessage[] = [];
 
@@ -27,6 +27,9 @@ export function toDeepSeekMessages(
 				break;
 
 			case "assistant": {
+				const reasoningContent = msg.reasoning
+					? { reasoning_content: msg.reasoning }
+					: {};
 				if (msg.toolCalls?.length) {
 					const toolCalls: DeepSeekToolCall[] = msg.toolCalls.map((tc) => ({
 						id: tc.id,
@@ -39,18 +42,14 @@ export function toDeepSeekMessages(
 					result.push({
 						role: "assistant",
 						content: msg.content || null,
-						...(enableThinking
-							? { reasoning_content: msg.reasoning ?? "" }
-							: {}),
+						...reasoningContent,
 						tool_calls: toolCalls,
 					});
 				} else {
 					result.push({
 						role: "assistant",
 						content: msg.content || null,
-						...(enableThinking
-							? { reasoning_content: msg.reasoning ?? "" }
-							: {}),
+						...reasoningContent,
 					});
 				}
 				break;

@@ -5,9 +5,9 @@
  * 原生 OpenAI 见 openai-client/。
  *
  * 与 OpenAI 原生客户端的差异：
- * - 支持 enable_thinking（reasoning_content 回传）
  * - 支持 backend_provider（anthropic backend 时注入 cache_control）
  * - base_url 必填（代理地址）
+ * - thinking / enable_thinking 等厂商特定参数通过 extra_body 透传
  */
 
 import type {
@@ -17,8 +17,8 @@ import type {
 	StreamEvent,
 	StreamRequest,
 } from "@n0n/types";
+import { type BaseUrl, chatCompletionsUrl, parseBaseUrl } from "../base-url.ts";
 import type { OpenAICompatibleProviderConfig } from "../config.ts";
-import { parseBaseUrl, chatCompletionsUrl, modelsUrl, type BaseUrl } from "../base-url.ts";
 import { isAbortError } from "../errors.ts";
 import type { FormatFn } from "../factory.ts";
 import { filterEmptyMessages } from "../message-filter.ts";
@@ -42,7 +42,6 @@ export class OpenAICompatibleClient implements LLMClient {
 	private readonly apiKey: string;
 	private readonly baseUrl: BaseUrl;
 	private readonly format: FormatFn;
-	private readonly enableThinking: boolean;
 	private readonly backendProvider: string | undefined;
 	private readonly extraBody: Record<string, unknown> | undefined;
 
@@ -50,7 +49,6 @@ export class OpenAICompatibleClient implements LLMClient {
 		this.modelId = pc.model;
 		this.apiKey = pc.api_key;
 		this.format = format;
-		this.enableThinking = pc.enable_thinking;
 		this.backendProvider = pc.backend_provider;
 		this.extraBody = pc.extra_body;
 
@@ -64,11 +62,7 @@ export class OpenAICompatibleClient implements LLMClient {
 		signal?: AbortSignal,
 	): AsyncGenerator<StreamEvent> {
 		const promptMessages = this.format(request.messages);
-		const apiMessages = toOpenAIMessages(
-			promptMessages,
-			this.enableThinking,
-			this.backendProvider,
-		);
+		const apiMessages = toOpenAIMessages(promptMessages, this.backendProvider);
 
 		const filteredMessages = filterEmptyMessages(apiMessages);
 

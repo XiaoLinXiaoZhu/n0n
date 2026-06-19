@@ -11,6 +11,7 @@
  *    依赖 API tools 参数自带的工具注入即可。
  *
  * 其余（OpenAI 兼容协议、SSE 解析、thinking、tools）与 DeepSeekClient 一致。
+ * thinking / reasoning_effort 等厂商特定参数通过 extra_body 透传。
  */
 
 import type {
@@ -22,8 +23,8 @@ import type {
 	StreamRequest,
 	TagAdapter,
 } from "@n0n/types";
+import { type BaseUrl, chatCompletionsUrl, parseBaseUrl } from "../base-url.ts";
 import type { DeepSeekTest1ProviderConfig } from "../config.ts";
-import { parseBaseUrl, chatCompletionsUrl, modelsUrl, type BaseUrl } from "../base-url.ts";
 import { isAbortError } from "../errors.ts";
 import type { FormatFn } from "../factory.ts";
 import { filterEmptyMessages } from "../message-filter.ts";
@@ -101,11 +102,7 @@ export class DeepSeekTest1Client implements LLMClient {
 			promptMessages = [...promptMessages, triggerUserMsg];
 		}
 
-		const apiMessages = toApiMessages(
-			promptMessages,
-			this.pc.enable_thinking,
-			this.memoryTag,
-		);
+		const apiMessages = toApiMessages(promptMessages, this.memoryTag);
 
 		const filteredMessages = filterEmptyMessages(apiMessages);
 
@@ -121,11 +118,7 @@ export class DeepSeekTest1Client implements LLMClient {
 			body.tool_choice = request.toolChoice ?? "auto";
 		}
 
-		if (this.pc.reasoning_effort) {
-			body.reasoning_effort = this.pc.reasoning_effort;
-		}
-
-		// extra_body 透传 — 可覆盖以上任意字段（含 thinking、enable_thinking 等）
+		// extra_body 透传 — 可覆盖以上任意字段（含 thinking、enable_thinking、reasoning_effort 等）
 		if (this.pc.extra_body) {
 			Object.assign(body, this.pc.extra_body);
 		}
