@@ -75,7 +75,8 @@ function buildUserInputContent(
 	if (msg.context) {
 		parts.push(tags.wrapTag("context", msg.context));
 	}
-	parts.push(msg.content);
+	// 用户实际输入用 <user-request> 包裹，增强历史记录中系统指令与用户输入的可辨性
+	parts.push(tags.wrapTag("user-request", msg.content));
 	if (msg.mentionedSkills.length > 0) {
 		parts.push(formatSkills(msg.mentionedSkills, tags));
 	}

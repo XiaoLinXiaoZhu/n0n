@@ -30,7 +30,7 @@ describe("formatPrompt — system_with_skill", () => {
 		expect(out).toHaveLength(1);
 		expect(out[0]?.role).toBe("system");
 		expect(out[0]?.content).toBe(
-			"You are an agent.\n\n<workflow>\n%% This is a skill %%\n\nread → implement → verify\n</workflow>",
+			'You are an agent.\n\n<skill name="workflow">\n<!-- This is a skill -->\n\nread → implement → verify\n\n<!-- end of skill workflow -->\n</skill>',
 		);
 	});
 
@@ -52,12 +52,14 @@ describe("formatPrompt — system_with_skill", () => {
 		];
 		const out = formatPrompt(msgs, tags);
 		const content = out[0]?.content ?? "";
-		expect(content.indexOf("<a>")).toBeLessThan(content.indexOf("<b>"));
+		expect(content.indexOf('<skill name="a">')).toBeLessThan(
+			content.indexOf('<skill name="b">'),
+		);
 	});
 });
 
 describe("formatPrompt — user_input.mentionedSkills", () => {
-	test("mentionedSkills 拼接到正文之后、hint 之前", () => {
+	test("mentionedSkills 拼接到 user-request 之后、hint 之前", () => {
 		const msgs: DomainMessage[] = [
 			{
 				type: "user_input",
@@ -70,12 +72,12 @@ describe("formatPrompt — user_input.mentionedSkills", () => {
 		const out = formatPrompt(msgs, tags);
 		expect(out).toHaveLength(1);
 		const content = out[0]?.content ?? "";
-		// 顺序：正文 → skill → hint
-		const bodyIdx = content.indexOf("use this skill");
-		const skillIdx = content.indexOf("<debug>");
+		// 顺序：user-request → skill → hint
+		const reqIdx = content.indexOf("<user-request>");
+		const skillIdx = content.indexOf('<skill name="debug">');
 		const hintIdx = content.indexOf("remember to verify");
-		expect(bodyIdx).toBeGreaterThanOrEqual(0);
-		expect(skillIdx).toBeGreaterThan(bodyIdx);
+		expect(reqIdx).toBeGreaterThanOrEqual(0);
+		expect(skillIdx).toBeGreaterThan(reqIdx);
 		expect(hintIdx).toBeGreaterThan(skillIdx);
 	});
 
@@ -90,6 +92,8 @@ describe("formatPrompt — user_input.mentionedSkills", () => {
 			},
 		];
 		const out = formatPrompt(msgs, tags);
-		expect(out[0]?.content).toBe("plain message");
+		expect(out[0]?.content).toBe(
+			"<user-request>\nplain message\n</user-request>",
+		);
 	});
 });

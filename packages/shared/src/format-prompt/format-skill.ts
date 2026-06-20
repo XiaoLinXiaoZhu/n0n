@@ -8,28 +8,26 @@
  * adaptTags 会用正则扫描全文改写所有 `<tag>`，会误伤 body 内的内容标签。
  * wrapTag 只生成指定的控制标签，content 内部原样保留，body 绝不被触碰。
  *
- * 标签命名：以 skill 名本身作为标签名（无属性），由 wrapTag 按 client 风格渲染，
- * 因此 skill 标签随 provider 风格走（XML / deepseek `## name` / minimax 等）。
- * scripts / resources 同样用 wrapTag 包裹为子标签，嵌入 skill 标签内部。
+ * 标签命名：外层统一使用 `<skill name="xxx">` 标签（tag name 固定为 "skill"，
+ * skill 名称通过 name 属性传递）。scripts / resources 同样用 wrapTag 包裹为子标签。
  */
 
 import type { Skill, TagAdapter } from "@n0n/types";
 
-/** skill 块内顶部的标记行，标识该控制块是一个 skill */
-const SKILL_MARKER = "%% This is a skill %%";
-
-/** 单个 skill → 控制块：wrapTag(skillName, marker + body + 可选 scripts/resources) */
+/** 单个 skill → 控制块：<skill name="xxx"> marker + body + 可选子标签 + 结束注释 */
 function formatOneSkill(skill: Skill, tags: TagAdapter): string {
-	const inner: string[] = [SKILL_MARKER, "", skill.body];
+	const scriptsBlock =
+		skill.scripts.length > 0
+			? `\n\n${tags.wrapTag("scripts", skill.scripts.join("\n"))}`
+			: "";
+	const resourcesBlock =
+		skill.resources.length > 0
+			? `\n\n${tags.wrapTag("resources", skill.resources.join("\n"))}`
+			: "";
 
-	if (skill.scripts.length > 0) {
-		inner.push("", tags.wrapTag("scripts", skill.scripts.join("\n")));
-	}
-	if (skill.resources.length > 0) {
-		inner.push("", tags.wrapTag("resources", skill.resources.join("\n")));
-	}
+	const body = `<!-- This is a skill -->\n\n${skill.body}${scriptsBlock}${resourcesBlock}\n\n<!-- end of skill ${skill.name} -->`;
 
-	return tags.wrapTag(skill.name, inner.join("\n"));
+	return tags.wrapTag("skill", body, { name: skill.name });
 }
 
 /**

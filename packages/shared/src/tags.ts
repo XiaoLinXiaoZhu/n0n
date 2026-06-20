@@ -19,24 +19,41 @@ import type { TagAdapter, TagStyle } from "@n0n/types";
 
 export type { TagAdapter, TagStyle };
 
+/** 将属性对象渲染为 XML 属性字符串（含前导空格） */
+function renderAttrs(attrs?: Record<string, string>): string {
+	if (!attrs) return "";
+	const entries = Object.entries(attrs);
+	if (entries.length === 0) return "";
+	return " " + entries.map(([k, v]) => `${k}="${v}"`).join(" ");
+}
+
 /** 生成开标签 */
-export function openTag(style: TagStyle, name: string): string {
+export function openTag(
+	style: TagStyle,
+	name: string,
+	attrs?: Record<string, string>,
+): string {
+	const attrStr = renderAttrs(attrs);
 	switch (style) {
 		case "minimax":
-			return `]~b]${name}`;
+			return `]~b]${name}${attrStr}`;
 		case "glm":
 		case "deepseek":
 		case "default":
-			return `<${name}>`;
+			return `<${name}${attrStr}>`;
 		default: {
 			const _exhaustive: never = style;
-			return `<${name}>`;
+			return `<${name}${attrStr}>`;
 		}
 	}
 }
 
-/** 生成闭标签 */
-export function closeTag(style: TagStyle, name: string): string {
+/** 生成闭标签。attrs 参数仅为接口统一，闭标签一般不携带属性。 */
+export function closeTag(
+	style: TagStyle,
+	name: string,
+	_attrs?: Record<string, string>,
+): string {
 	switch (style) {
 		case "minimax":
 			return "[e~[";
@@ -67,8 +84,9 @@ function wrapTagByStyle(
 	name: string,
 	content: string,
 	style: TagStyle,
+	attrs?: Record<string, string>,
 ): string {
-	return `${openTag(style, name)}\n${content}\n${closeTag(style, name)}`;
+	return `${openTag(style, name, attrs)}\n${content}\n${closeTag(style, name, attrs)}`;
 }
 
 /**
@@ -78,7 +96,8 @@ function wrapTagByStyle(
  */
 export function createTagAdapter(style: TagStyle): TagAdapter {
 	return {
-		wrapTag: (name, content) => wrapTagByStyle(name, content, style),
+		wrapTag: (name, content, attrs) =>
+			wrapTagByStyle(name, content, style, attrs),
 		adaptTags: (text) => adaptTagsByStyle(text, style),
 	};
 }

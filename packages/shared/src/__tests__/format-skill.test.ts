@@ -3,7 +3,7 @@
  *
  * 验证 Skill[] → 提示词文本的拼装（全程 wrapTag 精细包裹，body 不被改写）：
  * - 空列表返回空串
- * - 单 skill 以「skill 名作为标签 + 标记行 + body」包裹
+ * - 单 skill 以 <skill name="xxx"> 包裹标记行与正文，末尾带结束注释
  * - scripts / resources 以子标签嵌入，按需出现
  * - 多 skill 顺序保持
  * - skill body 内的 XML 片段原样保留（adaptTags 误用回归测试）
@@ -15,7 +15,6 @@ import { formatSkills } from "../format-prompt/format-skill.ts";
 import { createTagAdapter } from "../tags.ts";
 
 const tags = createTagAdapter("default");
-const MARKER = "%% This is a skill %%";
 
 function mkSkill(overrides: Partial<Skill> = {}): Skill {
 	return {
@@ -32,12 +31,14 @@ describe("formatSkills", () => {
 		expect(formatSkills([], tags)).toBe("");
 	});
 
-	test("单 skill 以 skill 名作为标签包裹标记行与正文", () => {
+	test("单 skill 以 <skill name=\"xxx\"> 包裹标记行与正文，末尾带结束注释", () => {
 		const out = formatSkills(
 			[mkSkill({ name: "review", body: "review code" })],
 			tags,
 		);
-		expect(out).toBe(`<review>\n${MARKER}\n\nreview code\n</review>`);
+		expect(out).toBe(
+			'<skill name="review">\n<!-- This is a skill -->\n\nreview code\n\n<!-- end of skill review -->\n</skill>',
+		);
 	});
 
 	test("scripts 非空时以 scripts 子标签嵌入", () => {
@@ -47,8 +48,10 @@ describe("formatSkills", () => {
 		);
 		expect(out).toContain("<scripts>\nrun.sh\ncheck.py\n</scripts>");
 		// 子标签嵌在 skill 标签内部
-		expect(out.indexOf("<scripts>")).toBeGreaterThan(out.indexOf("<demo>"));
-		expect(out.indexOf("</scripts>")).toBeLessThan(out.indexOf("</demo>"));
+		expect(out.indexOf("<scripts>")).toBeGreaterThan(
+			out.indexOf('<skill name="demo">'),
+		);
+		expect(out.indexOf("</scripts>")).toBeLessThan(out.indexOf("</skill>"));
 	});
 
 	test("resources 非空时以 resources 子标签嵌入", () => {
@@ -71,7 +74,8 @@ describe("formatSkills", () => {
 			tags,
 		);
 		expect(out).toBe(
-			`<first>\n${MARKER}\n\nA\n</first>\n\n<second>\n${MARKER}\n\nB\n</second>`,
+			'<skill name="first">\n<!-- This is a skill -->\n\nA\n\n<!-- end of skill first -->\n</skill>\n\n' +
+				'<skill name="second">\n<!-- This is a skill -->\n\nB\n\n<!-- end of skill second -->\n</skill>',
 		);
 	});
 
