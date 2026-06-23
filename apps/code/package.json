@@ -8,12 +8,12 @@
 	},
 	"dependencies": {
 		"@n0n/cli-ui": "workspace:*",
-		"@n0n/config": "workspace:*",
 		"@n0n/core": "workspace:*",
 		"@n0n/llm": "workspace:*",
 		"@n0n/shared": "workspace:*",
 		"@n0n/skill": "workspace:*",
 		"@n0n/types": "workspace:*",
+		"@xlxz/config": "^0.1.2",
 		"@xlxz/terminal-renderer": "0.1.3",
 		"partial-json": "^0.1.7",
 		"zod": "4.3.6"

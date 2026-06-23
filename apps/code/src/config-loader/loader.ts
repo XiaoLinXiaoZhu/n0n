@@ -5,7 +5,7 @@
  */
 
 import { existsSync, readFileSync } from "node:fs";
-import { type ConfigSource, getConfig } from "@n0n/config";
+import { type ConfigSource, getConfig } from "@xlxz/config";
 import { DEFAULT_TOML } from "../config-defaults.ts";
 import { type ConfigPaths, ensureGlobalConfigDir } from "./paths.ts";
 import { type CodeSettings, codeConfigSchema } from "./schema.ts";
