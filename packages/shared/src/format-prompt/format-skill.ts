@@ -25,7 +25,7 @@ function formatOneSkill(skill: Skill, tags: TagAdapter): string {
 			? `\n\n${tags.wrapTag("resources", skill.resources.join("\n"))}`
 			: "";
 
-	const body = `<!-- This is a skill -->\n\n${skill.body}${scriptsBlock}${resourcesBlock}\n\n<!-- end of skill ${skill.name} -->`;
+	const body = `<!-- begin of skill ${skill.name} -->\n\n${skill.body}${scriptsBlock}${resourcesBlock}\n\n<!-- end of skill ${skill.name} -->`;
 
 	return tags.wrapTag("skill", body, { name: skill.name });
 }
