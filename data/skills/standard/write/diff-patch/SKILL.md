@@ -13,4 +13,4 @@ act(git apply .temp/fix.patch)
 
 单个 diff 文件可以原子性地完成多文件操作：修改、创建、删除、重命名。
 
-选择 diff 而非 search-and-replace：diff 有行号 + 上下文两重定位，不会错误匹配；`git apply` 在无法确认匹配时会失败而非猜测。
+diff 有行号 + 上下文两重定位，不会错误匹配；`git apply` 在无法确认匹配时会失败而非猜测。

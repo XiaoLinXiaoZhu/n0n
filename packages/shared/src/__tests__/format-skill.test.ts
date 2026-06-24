@@ -37,7 +37,7 @@ describe("formatSkills", () => {
 			tags,
 		);
 		expect(out).toBe(
-			'<skill name="review">\n<!-- This is a skill -->\n\nreview code\n\n<!-- end of skill review -->\n</skill>',
+			'<skill name="review">\n<!-- begin of skill review -->\n\nreview code\n\n<!-- end of skill review -->\n</skill>',
 		);
 	});
 
@@ -74,8 +74,8 @@ describe("formatSkills", () => {
 			tags,
 		);
 		expect(out).toBe(
-			'<skill name="first">\n<!-- This is a skill -->\n\nA\n\n<!-- end of skill first -->\n</skill>\n\n' +
-				'<skill name="second">\n<!-- This is a skill -->\n\nB\n\n<!-- end of skill second -->\n</skill>',
+			'<skill name="first">\n<!-- begin of skill first -->\n\nA\n\n<!-- end of skill first -->\n</skill>\n\n' +
+				'<skill name="second">\n<!-- begin of skill second -->\n\nB\n\n<!-- end of skill second -->\n</skill>',
 		);
 	});
 

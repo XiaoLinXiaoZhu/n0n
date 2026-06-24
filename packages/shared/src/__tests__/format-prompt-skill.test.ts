@@ -30,7 +30,7 @@ describe("formatPrompt — system_with_skill", () => {
 		expect(out).toHaveLength(1);
 		expect(out[0]?.role).toBe("system");
 		expect(out[0]?.content).toBe(
-			'You are an agent.\n\n<skill name="workflow">\n<!-- This is a skill -->\n\nread → implement → verify\n\n<!-- end of skill workflow -->\n</skill>',
+			'You are an agent.\n\n<skill name="workflow">\n<!-- begin of skill workflow -->\n\nread → implement → verify\n\n<!-- end of skill workflow -->\n</skill>',
 		);
 	});
 
