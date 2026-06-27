@@ -27,10 +27,10 @@ import { CodeRenderer } from "../code-renderer.ts";
 import { buildEnvironmentContext } from "../context-env.ts";
 import type { UserInputConfig } from "../multiline-input/config.ts";
 import type { NotifyConfig } from "../notify-sound.ts";
-import { ProgressWriter } from "../progress-writer.ts";
 import { getPrompt } from "../prompts/index.ts";
 import type { CodeShowResult } from "../schema.ts";
 import { showConfig } from "../show-config.ts";
+import { ShowWriter } from "../show-writer.ts";
 import { parseAndInjectSkills } from "../skill-inject.ts";
 import { createStdinController } from "../stdin-controller.ts";
 import { UserPrompter } from "../user-prompter.ts";
@@ -102,7 +102,7 @@ export async function startCodeRepl(
 
 	const stdin = canInteract ? createStdinController() : null;
 	const prompter = new UserPrompter(stdin, userInputConfig);
-	const progressWriter = new ProgressWriter(paths.temp);
+	const showWriter = new ShowWriter(paths.temp);
 
 	// ── 心跳保活 ──
 
@@ -294,7 +294,7 @@ export async function startCodeRepl(
 			continue;
 		}
 
-		const outcome = handleShowResult(ir, history, progressWriter, notifyConfig);
+		const outcome = handleShowResult(ir, history, showWriter, notifyConfig);
 		switch (outcome.action) {
 			case "prompt":
 				userInput = await prompter.prompt();

@@ -110,7 +110,7 @@ function splitRounds(h: DomainMessage[]): Round[] {
   for (const r of rounds) {
     for (let i = r.startIdx; i <= r.endIdx; i++) {
       const m = h[i];
-      if (m?.type === "assistant_tool_call" && m.toolCalls?.some((tc: any) => tc.tool === "progress"))
+      if (m?.type === "assistant_tool_call" && m.toolCalls?.some((tc: any) => tc.tool === "show"))
         { r.hasProgress = true; break; }
     }
   }

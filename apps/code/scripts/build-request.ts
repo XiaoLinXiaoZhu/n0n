@@ -34,7 +34,7 @@ import type {
 
 import { getPrompt } from "../src/prompts";
 import { buildEnvironmentContext } from "../src/context-env.ts";
-import { showConfig } from "../src/progress-config.ts";
+import { showConfig } from "../src/show-config.ts";
 
 // ── CLI 参数 ──
 
@@ -82,7 +82,7 @@ const mockClient: LLMClient = {
 			content: "Request capture complete.",
 		});
 
-		yield { type: "tool_call_delta", index: 0, id: callId, name: "progress", arguments: "" };
+		yield { type: "tool_call_delta", index: 0, id: callId, name: "show", arguments: "" };
 		yield { type: "tool_call_delta", index: 0, arguments: args };
 		yield { type: "done", finishReason: "tool_calls", usage: null };
 	},

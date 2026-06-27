@@ -9,8 +9,8 @@ import { parseDsl } from "@n0n/shared";
 import type { DomainMessage } from "@n0n/types";
 import type { NotifyConfig } from "../notify-sound.ts";
 import { playNotifySound } from "../notify-sound.ts";
-import type { ProgressWriter } from "../progress-writer.ts";
 import type { CodeShowResult } from "../schema.ts";
+import type { ShowWriter } from "../show-writer.ts";
 import { WORKING_NUDGE_TEXT } from "../working-nudge.ts";
 
 /** 结果处理后的循环控制 */
@@ -35,10 +35,10 @@ function makeUserInput(content: string, hint?: string | null): DomainMessage {
 export function handleShowResult(
 	ir: CodeShowResult,
 	history: DomainMessage[],
-	progressWriter: ProgressWriter,
+	showWriter: ShowWriter,
 	notifyConfig: NotifyConfig,
 ): HandleResultOutcome {
-	progressWriter.write(ir);
+	showWriter.write(ir);
 
 	switch (ir.type) {
 		case "ask user question": {

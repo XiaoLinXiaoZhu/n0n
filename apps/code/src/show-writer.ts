@@ -1,5 +1,5 @@
 /**
- * ProgressWriter — Show 结果持久化
+ * ShowWriter — Show 结果持久化
  *
  * 管理 session 目录编号和 show 结果文件的写入。
  * 每次 agent loop 完成后，将 show 结果写入 session 目录。
@@ -7,10 +7,10 @@
 
 import { existsSync, mkdirSync, readdirSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { formatProgressResult } from "./progress-formatter.ts";
 import type { CodeShowResult } from "./schema.ts";
+import { formatShowResult } from "./show-formatter.ts";
 
-export class ProgressWriter {
+export class ShowWriter {
 	private readonly sessionDir: string;
 	private seq = 0;
 
@@ -40,7 +40,7 @@ export class ProgressWriter {
 		// 将 type 中的空格替换为连字符用于文件名
 		const typeSlug = result.type.replace(/\s+/g, "-");
 		const filename = `${String(this.seq).padStart(4, "0")}-${typeSlug}.md`;
-		const formatted = formatProgressResult(result);
+		const formatted = formatShowResult(result);
 		try {
 			if (!existsSync(this.sessionDir)) {
 				mkdirSync(this.sessionDir, { recursive: true });

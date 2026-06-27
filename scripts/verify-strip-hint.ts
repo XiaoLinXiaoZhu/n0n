@@ -94,7 +94,7 @@ for (let callIdx = 0; callIdx < atcIndices.length; callIdx++) {
     if (!pm) continue;
     if (pm.role === "tool" && "toolName" in pm) {
       const hasHint = pm.content.includes("【system-hint】") || pm.content.includes("<system-hint>");
-      const isProgress = (pm as any).toolName === "progress";
+      const isProgress = (pm as any).toolName === "show";
       hintMessages.push({
         idx: i,
         role: `tool(${(pm as any).toolName})`,

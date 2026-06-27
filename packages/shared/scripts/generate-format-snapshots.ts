@@ -224,8 +224,8 @@ const scenarios: Scenario[] = [
 		messages: [{ type: "idle_nudge", idleCount: 2, maxIdleRounds: 5 }],
 	},
 	{
-		file: "progress-result",
-		title: "progress tool_result",
+		file: "show-result",
+		title: "show tool_result",
 		messages: [
 			{
 				type: "tool_result",

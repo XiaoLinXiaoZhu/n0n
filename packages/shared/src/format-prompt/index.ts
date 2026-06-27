@@ -34,7 +34,7 @@ import type {
 import { affectsSubsequent } from "./config.ts";
 import { formatExecResult } from "./format-exec.ts";
 import { formatIdleNudge } from "./format-idle-nudge.ts";
-import { formatShowResult } from "./format-progress.ts";
+import { formatShowResult } from "./format-show.ts";
 import { formatSkills } from "./format-skill.ts";
 import { formatToolArgError } from "./format-tool-arg-error.ts";
 import { formatTurnFeedback } from "./format-turn-feedback.ts";

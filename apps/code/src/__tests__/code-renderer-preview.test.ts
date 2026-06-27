@@ -10,8 +10,8 @@ import { existsSync, mkdirSync, readdirSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import type { ToolCallRecord } from "@n0n/types";
 import { CodeRenderer } from "../code-renderer.ts";
-import { formatProgressResult } from "../progress-formatter.ts";
 import type { CodeShowResult } from "../schema.ts";
+import { formatShowResult } from "../show-formatter.ts";
 
 // ── 测试用临时目录 ──
 const TEST_WORKSPACE = join(import.meta.dir, ".tmp-preview-test");
@@ -179,9 +179,9 @@ describe("CodeRenderer 流式 write 预览", () => {
 	});
 });
 
-describe("formatProgressResult 单元测试", () => {
+describe("formatShowResult 单元测试", () => {
 	test("final report 仅 content", () => {
-		const md = formatProgressResult({
+		const md = formatShowResult({
 			type: "final report",
 			content: "done",
 		} satisfies CodeShowResult);
@@ -190,7 +190,7 @@ describe("formatProgressResult 单元测试", () => {
 	});
 
 	test("final report 完整 content", () => {
-		const md = formatProgressResult({
+		const md = formatShowResult({
 			type: "final report",
 			content: "done",
 		} satisfies CodeShowResult);
@@ -198,7 +198,7 @@ describe("formatProgressResult 单元测试", () => {
 	});
 
 	test("ask user question 完整 content", () => {
-		const md = formatProgressResult({
+		const md = formatShowResult({
 			type: "ask user question",
 			content: "选哪个？\n## A\n影响A\n\n## B\n影响B",
 		} satisfies CodeShowResult);
@@ -209,7 +209,7 @@ describe("formatProgressResult 单元测试", () => {
 	});
 
 	test("ask user question 检查列表", () => {
-		const md = formatProgressResult({
+		const md = formatShowResult({
 			type: "ask user question",
 			content: "需要帮助\n## 检查项1\n详情1\n\n## 检查项2\n详情2",
 		} satisfies CodeShowResult);

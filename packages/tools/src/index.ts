@@ -30,7 +30,7 @@ import {
 	execToolStream,
 	makeExecToolDefinition,
 } from "./exec";
-import { makeShowTool, type ShowTypeConfig, showTool } from "./progress.ts";
+import { makeShowTool, type ShowTypeConfig, showTool } from "./show.ts";
 import {
 	makeWriteRecover,
 	WRITE_TOOL_DEFINITION,
@@ -206,4 +206,4 @@ export type { ToolsConfig } from "./config.ts";
 
 export type { ExecRole } from "./exec";
 
-export type { ShowTypeConfig } from "./progress.ts";
+export type { ShowTypeConfig } from "./show.ts";

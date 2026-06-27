@@ -38,7 +38,7 @@ import type {
 
 import { getPrompt } from "../src/prompts";
 import { buildEnvironmentContext } from "../src/context-env.ts";
-import { showConfig } from "../src/progress-config.ts";
+import { showConfig } from "../src/show-config.ts";
 
 // ── CLI 参数 ──
 
@@ -59,7 +59,7 @@ const previewDir = resolve(workspace, "apps/code/scripts");
 const outPath = resolve(previewDir, "PREVIEW.md");
 
 // ── Mock LLMClient ──
-// 截获 agentLoop 发来的第一次 stream() 请求，导出后用 progress(completed) 结束循环。
+// 截获 agentLoop 发来的第一次 stream() 请求，导出后用 show(final report) 结束循环。
 
 interface CapturedRequest {
 	messages: DomainMessage[];
@@ -82,7 +82,7 @@ const mockClient: LLMClient = {
 			tools: request.tools ?? [],
 		};
 
-		// 返回一个 progress(completed) 工具调用，让 agentLoop 正常结束
+		// 返回一个 show(final report) 工具调用，让 agentLoop 正常结束
 		const callId = "preview_done";
 		const args = JSON.stringify({
 			type: "final report",
@@ -90,7 +90,7 @@ const mockClient: LLMClient = {
 		});
 
 		// tool_call_delta: 先发 name，再发 arguments，最后 done
-		yield { type: "tool_call_delta", index: 0, id: callId, name: "progress", arguments: "" };
+		yield { type: "tool_call_delta", index: 0, id: callId, name: "show", arguments: "" };
 		yield { type: "tool_call_delta", index: 0, arguments: args };
 		yield { type: "done", finishReason: "tool_calls", usage: null };
 	},

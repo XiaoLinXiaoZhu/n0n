@@ -117,7 +117,7 @@ console.log(
 );
 
 if (strippedWithReasoning.length > 0) {
-  console.log(`\n保留 reasoning 的 assistant 消息 (progress 之后):`);
+  console.log(`\n保留 reasoning 的 assistant 消息 (show 之后):`);
   for (const m of strippedWithReasoning) {
     const idx = stripped.messages.indexOf(m);
     console.log(

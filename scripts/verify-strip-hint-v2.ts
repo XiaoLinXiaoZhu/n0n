@@ -1,5 +1,5 @@
 /**
- * 精确追踪：progress 后第一次 API 调用的完整消息管道
+ * 精确追踪：show 后第一次 API 调用的完整消息管道
  *
  * 输入: n0n-conversation-20260606-014008.json history[0..10]
  * 预期: 产生 index 11 的 assistant_tool_call (tools=[write])
@@ -19,7 +19,7 @@ const triggerPromptContent = triggerPromptRaw.replace(/<!--[\s\S]*?-->/g, "").tr
 const tags = createTagAdapter("deepseek");
 
 // ── API Call 输入: history[0..10] (产生 index 11 的 atc) ──
-// 这是 model 第一次调用 progress 后，用户输入 "继续" 触发的调用
+// 这是 model 第一次调用 show 后，用户输入 "继续" 触发的调用
 const inputMessages = history.slice(0, 11) as DomainMessage[];
 console.log("输入消息数:", inputMessages.length);
 for (let i = 0; i < inputMessages.length; i++) {
@@ -123,13 +123,13 @@ if (triggerIdx >= 0 && triggerIdx + 1 < promptMessages.length) {
   console.log(`下一条消息: role=${next?.role}, preview="${next?.content?.slice(0, 120)}"`);
 }
 
-// 检查 progress tool_result 是否有 hint (progress 本身无 hint，这是正常的)
-const progressIdx = promptMessages.findIndex(
-  pm => pm?.role === "tool" && (pm as any).toolName === "progress"
+// 检查 show tool_result 是否有 hint (progress 本身无 hint，这是正常的)
+const showIdx = promptMessages.findIndex(
+  pm => pm?.role === "tool" && (pm as any).toolName === "show"
 );
-console.log(`Progress tool_result 在索引 ${progressIdx}`);
-if (progressIdx >= 0) {
-  const pp = promptMessages[progressIdx];
+console.log(`Show tool_result 在索引 ${showIdx}`);
+if (showIdx >= 0) {
+  const pp = promptMessages[showIdx];
   console.log(`Progress content: "${pp?.content}"`);
 }
 

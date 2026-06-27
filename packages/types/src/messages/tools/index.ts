@@ -10,8 +10,6 @@ export type {
 	ExecToolResult,
 	ExecTruncated,
 } from "./exec.ts";
-// Show
-export type { ShowToolResult } from "./progress.ts";
 // 注册表核心
 export type {
 	ActToolCall,
@@ -28,6 +26,8 @@ export type {
 	ToolName,
 	WriteToolCall,
 } from "./registry.ts";
+// Show
+export type { ShowToolResult } from "./show.ts";
 // Write
 export type {
 	WriteCompleted,
@@ -40,7 +40,7 @@ export type {
 // ── 聚合 ToolResult 联合 ──
 
 import type { ExecToolResult } from "./exec.ts";
-import type { ShowToolResult } from "./progress.ts";
+import type { ShowToolResult } from "./show.ts";
 import type { WriteToolResult } from "./write.ts";
 
 export type ToolResult = ExecToolResult | WriteToolResult | ShowToolResult;
