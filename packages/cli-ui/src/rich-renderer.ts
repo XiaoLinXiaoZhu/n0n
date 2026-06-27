@@ -342,7 +342,7 @@ export class RichRenderer implements Renderer {
 		);
 	}
 
-	progressRejected(attempt: number, maxAttempts: number, error: string): void {
+	showRejected(attempt: number, maxAttempts: number, error: string): void {
 		writeln(
 			`${style.red("✗")} show rejected (${attempt}/${maxAttempts}): ${style.gray(error)}`,
 		);
