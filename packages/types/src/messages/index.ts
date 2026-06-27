@@ -46,10 +46,10 @@ export type {
 	MakeResultBase,
 	ObserveToolCall,
 	PartialToolCallRecord,
-	ProgressToolCall,
-	// Progress
-	ProgressToolResult,
 	ReasonToolCall,
+	// Show
+	ShowToolCall,
+	ShowToolResult,
 	ToolCallRecord,
 	ToolCallRecordMap,
 	ToolExecOutcome,

@@ -34,7 +34,7 @@ import type {
 
 import { getPrompt } from "../src/prompts";
 import { buildEnvironmentContext } from "../src/context-env.ts";
-import { codeProgressConfig } from "../src/progress-config.ts";
+import { showConfig } from "../src/progress-config.ts";
 
 // ── CLI 参数 ──
 
@@ -78,7 +78,7 @@ const mockClient: LLMClient = {
 
 		const callId = "preview_done";
 		const args = JSON.stringify({
-			status: "completed",
+			type: "final report",
 			content: "Request capture complete.",
 		});
 
@@ -114,7 +114,7 @@ const toolsConfig = buildToolsConfig(
 	{ workspace, tempDir },
 );
 
-const toolkit = makeToolkit(codeProgressConfig, toolsConfig, mockClient.modelId);
+const toolkit = makeToolkit(showConfig, toolsConfig, mockClient.modelId);
 
 const envContext = buildEnvironmentContext(workspace);
 

@@ -5,7 +5,7 @@
  * MakeCall / MakeResult 辅助类型消除具体定义中的样板代码。
  */
 
-import type { ExecArgs, ProgressArgs, WriteArgs } from "../../tool-args.ts";
+import type { ExecArgs, ShowArgs, WriteArgs } from "../../tool-args.ts";
 
 // ── 核心注册表 ──
 
@@ -14,7 +14,7 @@ export interface ToolMap {
 	reason: ExecArgs;
 	act: ExecArgs;
 	write: WriteArgs;
-	progress: ProgressArgs;
+	show: ShowArgs;
 }
 
 export type ToolName = keyof ToolMap;
@@ -63,7 +63,7 @@ export type ObserveToolCall = ToolCallRecordMap["observe"];
 export type ReasonToolCall = ToolCallRecordMap["reason"];
 export type ActToolCall = ToolCallRecordMap["act"];
 export type WriteToolCall = ToolCallRecordMap["write"];
-export type ProgressToolCall = ToolCallRecordMap["progress"];
+export type ShowToolCall = ToolCallRecordMap["show"];
 
 /**
  * 截断恢复失败的不完整工具调用记录。

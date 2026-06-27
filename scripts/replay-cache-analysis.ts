@@ -139,12 +139,12 @@ function replay(
     if (stripReasoning) {
       const stripped = stripReasoningFromPromptMessages(prompt);
       prompt = stripped.messages;
-      if (stripped.lastProgressIdx >= 0) {
+      if (stripped.lastShowIdx >= 0) {
         hasStrip = true;
         prompt = [
-          ...prompt.slice(0, stripped.lastProgressIdx + 1),
+          ...prompt.slice(0, stripped.lastShowIdx + 1),
           { role: "user" as const, content: "[TRIGGER]" },
-          ...prompt.slice(stripped.lastProgressIdx + 1),
+          ...prompt.slice(stripped.lastShowIdx + 1),
         ];
       }
     }

@@ -6,7 +6,7 @@
  * - reason: 物化思考，将推理过程编码为可执行代码（无副作用）
  * - act: 执行环境变更操作（有副作用，谨慎使用）
  * - write: 文件创建/覆盖
- * - progress: 报告进度/提交结果（动态生成）
+ * - show: 向用户汇报进度/提问/请求协助/提交最终结果（动态生成）
  *
  * 每个工具使用 ToolDefinition 格式定义 + 自定义执行器绑定。
  * 工具参数通过 Zod schema 做运行时校验。
@@ -15,7 +15,7 @@
 import type {
 	CanStartFn,
 	DomainMessage,
-	ProgressToolCall,
+	ShowToolCall,
 	ToolCallRecord,
 	ToolDefinition,
 	ToolResult,
@@ -30,11 +30,7 @@ import {
 	execToolStream,
 	makeExecToolDefinition,
 } from "./exec";
-import {
-	makeProgressTool,
-	type ProgressStatusConfig,
-	progressTool,
-} from "./progress.ts";
+import { makeShowTool, type ShowTypeConfig, showTool } from "./progress.ts";
 import {
 	makeWriteRecover,
 	WRITE_TOOL_DEFINITION,
@@ -97,7 +93,7 @@ const pathExclusiveCanStart: CanStartFn = (self, active) => {
 };
 
 /**
- * 构建基础工具注册表（不含 progress）。
+ * 构建基础工具注册表（不含 show）。
  */
 function buildBaseRegistry(
 	toolsConfig: ToolsConfig,
@@ -160,38 +156,38 @@ export const REGISTERED_TOOLS = new Set([
 	"reason",
 	"act",
 	"write",
-	"progress",
+	"show",
 ]);
 
 /**
- * 构建完整的工具集（含 progress）。
+ * 构建完整的工具集（含 show）。
  *
- * @param progressConfig progress 工具的状态配置列表。
+ * @param showConfig show 工具的 type 配置列表。
  * @param toolsConfig 工具配置，包含 workspace、tempDir、security 等。
  * @param model LLM 模型名称（可选，保留接口兼容）。
  */
 export function makeToolkit(
-	progressConfig: ProgressStatusConfig[],
+	showConfig: ShowTypeConfig[],
 	toolsConfig: ToolsConfig,
 	_model?: string,
 ): Toolkit {
-	const progressEntry: ToolEntry = {
-		definition: makeProgressTool(progressConfig),
+	const showEntry: ToolEntry = {
+		definition: makeShowTool(showConfig),
 		stream: false,
 		canStart: () => true,
 		execute: (tc) => {
-			return progressTool(tc as ProgressToolCall);
+			return showTool(tc as ShowToolCall);
 		},
 	};
 
 	const registry: Record<string, ToolEntry> = {
 		...buildBaseRegistry(toolsConfig),
-		progress: progressEntry,
+		show: showEntry,
 	};
 
 	// 工具顺序是隐性优先级信号——模型对前置工具有注意力偏向。
 	// 显式声明顺序，避免依赖 JS 对象属性的插入顺序。
-	const TOOL_ORDER = ["progress", "observe", "reason", "act", "write"] as const;
+	const TOOL_ORDER = ["show", "observe", "reason", "act", "write"] as const;
 	const tools = TOOL_ORDER.map((name) => registry[name]?.definition).filter(
 		(t): t is ToolDefinition => t !== undefined,
 	);
@@ -210,4 +206,4 @@ export type { ToolsConfig } from "./config.ts";
 
 export type { ExecRole } from "./exec";
 
-export type { ProgressStatusConfig } from "./progress.ts";
+export type { ShowTypeConfig } from "./progress.ts";

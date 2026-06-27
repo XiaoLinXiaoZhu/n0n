@@ -74,9 +74,9 @@ for (let i = 0; i < promptMessages.length; i++) {
 }
 
 console.log("\n=== Step 3: stripReasoningFromPromptMessages ===");
-const { messages: stripped, lastProgressIdx } = stripReasoningFromPromptMessages(promptMessages);
+const { messages: stripped, lastShowIdx } = stripReasoningFromPromptMessages(promptMessages);
 promptMessages = stripped;
-console.log(`lastProgressIdx = ${lastProgressIdx}`);
+console.log(`lastShowIdx = ${lastShowIdx}`);
 
 // 检查 reasoning 状态
 for (let i = 0; i < promptMessages.length; i++) {
@@ -87,7 +87,7 @@ for (let i = 0; i < promptMessages.length; i++) {
 }
 
 console.log("\n=== Step 4: Inject trigger prompt ===");
-if (lastProgressIdx >= 0) {
+if (lastShowIdx >= 0) {
   const triggerUserMsg: PromptMessage = {
     role: "user",
     content: triggerPromptContent,

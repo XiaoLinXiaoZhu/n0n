@@ -12,7 +12,7 @@
 import { describe, expect, it } from "bun:test";
 import {
 	ExecArgsSchema,
-	ProgressArgsSchema,
+	ShowArgsSchema,
 	WriteArgsSchema,
 } from "../tool-args.ts";
 
@@ -30,10 +30,7 @@ describe("schema shape 参数顺序", () => {
 		expect(Object.keys(WriteArgsSchema.shape)).toEqual(["path", "content"]);
 	});
 
-	it("ProgressArgsSchema 顺序: status, content", () => {
-		expect(Object.keys(ProgressArgsSchema.shape)).toEqual([
-			"status",
-			"content",
-		]);
+	it("ShowArgsSchema 顺序: type, content", () => {
+		expect(Object.keys(ShowArgsSchema.shape)).toEqual(["type", "content"]);
 	});
 });

@@ -27,15 +27,15 @@ export type {
 	InferShape,
 	ParamDef,
 	ParamDescriptions,
-	ProgressArgs,
+	ShowArgs,
 	WriteArgs,
 } from "./tool-args.ts";
 export {
 	buildSchema,
 	ExecArgsSchema,
 	ExecParamDefs,
-	ProgressArgsSchema,
-	ProgressParamDefs,
+	ShowArgsSchema,
+	ShowParamDefs,
 	WriteArgsSchema,
 	WriteParamDefs,
 	withDescriptions,

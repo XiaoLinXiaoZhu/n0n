@@ -53,7 +53,11 @@ export type TagStyle = "deepseek" | "glm" | "minimax" | "default";
  */
 export interface TagAdapter {
 	/** 用标签包裹内容。attrs 为可选的标签属性（如 { name: "xxx" } → name="xxx"） */
-	wrapTag(name: string, content: string, attrs?: Record<string, string>): string;
+	wrapTag(
+		name: string,
+		content: string,
+		attrs?: Record<string, string>,
+	): string;
 	/** 将文本中的标准 XML 标签替换为当前风格 */
 	adaptTags(text: string): string;
 }

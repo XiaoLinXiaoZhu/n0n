@@ -335,16 +335,16 @@ export class RichRenderer implements Renderer {
 		);
 	}
 
-	progressAccepted(): void {
+	showAccepted(): void {
 		writeln();
 		writeln(
-			`${style.bgGreen(style.bold(" ✔ DONE "))} ${style.green("progress accepted")}`,
+			`${style.bgGreen(style.bold(" ✔ DONE "))} ${style.green("show accepted")}`,
 		);
 	}
 
 	progressRejected(attempt: number, maxAttempts: number, error: string): void {
 		writeln(
-			`${style.red("✗")} progress rejected (${attempt}/${maxAttempts}): ${style.gray(error)}`,
+			`${style.red("✗")} show rejected (${attempt}/${maxAttempts}): ${style.gray(error)}`,
 		);
 	}
 
@@ -482,8 +482,8 @@ export class RichRenderer implements Renderer {
 				}
 				return `${style.dim("◂")} ${style.cyan("write")} ${result.call.args.path}`;
 			}
-			case "progress": {
-				return `${style.dim("◂")} ${style.cyan("progress")} ${style.gray(`[${result.call.args.status}]`)}`;
+			case "show": {
+				return `${style.dim("◂")} ${style.cyan("show")} ${style.gray(`[${result.call.args.type}]`)}`;
 			}
 			default: {
 				console.warn("[RichRenderer] unknown tool result:", result);

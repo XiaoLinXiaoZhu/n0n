@@ -86,15 +86,15 @@ export class DeepSeekTest1Client implements LLMClient {
 		let promptMessages = this.format(preprocessed);
 
 		// 在 format 后、toApiMessages 前应用 strip_reasoning
-		let lastProgressIdx = -1;
+		let lastShowIdx = -1;
 		if (this.stripReasoning) {
 			const result = stripReasoningFromPromptMessages(promptMessages);
 			promptMessages = result.messages;
-			lastProgressIdx = result.lastProgressIdx;
+			lastShowIdx = result.lastShowIdx;
 		}
 
-		// 在消息数组末尾插入 trigger prompt（如果存在 progress tool_result）
-		if (lastProgressIdx >= 0) {
+		// 在消息数组末尾插入 trigger prompt（如果存在 show tool_result）
+		if (lastShowIdx >= 0) {
 			const triggerUserMsg: PromptMessage = {
 				role: "user",
 				content: triggerPromptContent,

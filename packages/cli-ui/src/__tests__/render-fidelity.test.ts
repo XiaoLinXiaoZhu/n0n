@@ -89,11 +89,11 @@ describe("RichRenderer 虚拟终端保真测试", () => {
 
 		renderer.roundStart(1, 10, 3);
 
-		// 含中文的 progress 工具参数
+		// 含中文的 show 工具参数
 		const json =
-			'{"status":"completed","content":"已完成 PR #61 的清理：1. 关闭 PR #61，附带说明关闭原因（核心功能已被 PR #75/#76 覆盖，分支严重过时）2. 删除远程分支"}';
+			'{"type":"final report","content":"已完成 PR #61 的清理：1. 关闭 PR #61，附带说明关闭原因（核心功能已被 PR #75/#76 覆盖，分支严重过时）2. 删除远程分支"}';
 		const chunks = randomChunks(json, 123);
-		renderer.toolCallArgStart(0, "progress");
+		renderer.toolCallArgStart(0, "show");
 		for (const chunk of chunks) {
 			renderer.toolCallArgChunk(0, chunk);
 		}
@@ -101,15 +101,15 @@ describe("RichRenderer 虚拟终端保真测试", () => {
 
 		renderer.toolExecStart("call_1", {
 			id: "call_1",
-			tool: "progress",
+			tool: "show",
 			args: JSON.parse(json),
 		});
 		renderer.toolExecEnd("call_1", {
 			status: "completed",
 			result: {
 				type: "tool_result" as const,
-				tool: "progress",
-				call: { id: "call_1", tool: "progress", args: JSON.parse(json) },
+				tool: "show",
+				call: { id: "call_1", tool: "show", args: JSON.parse(json) },
 				cleanedResult: null,
 			},
 		});
@@ -124,7 +124,7 @@ describe("RichRenderer 虚拟终端保真测试", () => {
 
 		// 不应有重复的工具头
 		const toolHeaders = cleanLines.filter((l) =>
-			l.trimStart().startsWith("▸ progress"),
+			l.trimStart().startsWith("▸ show"),
 		);
 		expect(toolHeaders.length).toBe(1);
 	});
@@ -228,9 +228,10 @@ describe("RichRenderer 虚拟终端保真测试", () => {
 
 		renderer.roundStart(1, 10, 3);
 
-		const json = '{"summary":"关闭并清理远程分支和本地引用完成所有操作"}';
+		const json =
+			'{"type":"progress report","content":"关闭并清理远程分支和本地引用完成所有操作"}';
 		const chunks = randomChunks(json, 77);
-		renderer.toolCallArgStart(0, "progress");
+		renderer.toolCallArgStart(0, "show");
 		for (const chunk of chunks) {
 			renderer.toolCallArgChunk(0, chunk);
 		}
@@ -238,15 +239,15 @@ describe("RichRenderer 虚拟终端保真测试", () => {
 
 		renderer.toolExecStart("call_1", {
 			id: "call_1",
-			tool: "progress",
+			tool: "show",
 			args: JSON.parse(json),
 		});
 		renderer.toolExecEnd("call_1", {
 			status: "completed",
 			result: {
 				type: "tool_result" as const,
-				tool: "progress",
-				call: { id: "call_1", tool: "progress", args: JSON.parse(json) },
+				tool: "show",
+				call: { id: "call_1", tool: "show", args: JSON.parse(json) },
 				cleanedResult: null,
 			},
 		});
@@ -260,7 +261,7 @@ describe("RichRenderer 虚拟终端保真测试", () => {
 		}
 
 		// 应有结果行
-		const hasResult = cleanLines.some((l) => l.includes("progress"));
+		const hasResult = cleanLines.some((l) => l.includes("show"));
 		expect(hasResult).toBe(true);
 	});
 });

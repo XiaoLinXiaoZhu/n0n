@@ -1,8 +1,8 @@
 /**
  * Headless 模式 — 单次执行后退出，用于 Harbor 评测等非交互场景
  *
- * 接收一条 instruction，驱动 agentLoop 执行到 completed 或超时，
- * 不等待用户输入，blocked 自动回复 "proceed with your best judgment"。
+ * 接收一条 instruction，驱动 agentLoop 执行到 final report 或超时，
+ * 不等待用户输入，ask user question / request user assistance 自动回复 "proceed with your best judgment"。
  *
  * 输出 JSON 结果到 stdout，日志输出到 stderr。
  */
@@ -19,9 +19,9 @@ import { loadInitSkills, toSkill } from "@n0n/skill";
 import { makeToolkit } from "@n0n/tools";
 import type { DomainMessage, LLMClient, Skill } from "@n0n/types";
 import { buildEnvironmentContext } from "./context-env.ts";
-import { codeProgressConfig } from "./progress-config.ts";
 import { getPrompt } from "./prompts";
-import type { CodeProgressResult } from "./schema.ts";
+import type { CodeShowResult } from "./schema.ts";
+import { showConfig } from "./show-config.ts";
 
 export interface HeadlessOptions {
 	/** 任务指令 */
@@ -47,8 +47,8 @@ export interface HeadlessOptions {
 export interface HeadlessResult {
 	/** agent 是否成功完成 */
 	success: boolean;
-	/** agent 的 progress 结果 */
-	result: CodeProgressResult | null;
+	/** agent 的 show 结果 */
+	result: CodeShowResult | null;
 	/** agent 的 report */
 	report: string | null;
 	/** 循环轮次 */
@@ -62,10 +62,10 @@ export interface HeadlessResult {
 function buildHeadlessHint(): string {
 	return [
 		"You are running in HEADLESS mode — there is no human to interact with.",
-		"You MUST complete the task autonomously. Do NOT call progress with `blocked` status.",
+		"You MUST complete the task autonomously. Do NOT call show with `ask user question` or `request user assistance` type.",
 		"If uncertain, make your best judgment and proceed.",
-		"First, use `exec` to understand the codebase, then implement the fix, then verify.",
-		"Call progress with `completed` status when done.",
+		"First, use `observe` to understand the codebase, then implement the fix, then verify.",
+		"Call show with `final report` type when done.",
 	].join("\n");
 }
 
@@ -107,7 +107,7 @@ export async function runHeadless(
 		},
 	);
 	const client = options.client;
-	const toolkit = makeToolkit(codeProgressConfig, toolsConfig, client.modelId);
+	const toolkit = makeToolkit(showConfig, toolsConfig, client.modelId);
 	const envContext = buildEnvironmentContext(paths.workspace);
 
 	let history: DomainMessage[] = [
@@ -132,7 +132,7 @@ export async function runHeadless(
 
 	try {
 		while (true) {
-			const agentResult = await agentLoop<CodeProgressResult>(history, {
+			const agentResult = await agentLoop<CodeShowResult>(history, {
 				client,
 				toolkit,
 				max_iterations,
@@ -157,7 +157,7 @@ export async function runHeadless(
 				};
 			}
 
-			if (ir.status === "completed") {
+			if (ir.type === "final report") {
 				return {
 					success: true,
 					result: ir,
@@ -168,8 +168,8 @@ export async function runHeadless(
 				};
 			}
 
-			if (ir.status === "working") {
-				// working 状态：自动继续
+			if (ir.type === "progress report") {
+				// progress report 状态：自动继续
 				history.push({
 					type: "user_input",
 					content: "",
@@ -180,7 +180,10 @@ export async function runHeadless(
 				continue;
 			}
 
-			if (ir.status === "blocked") {
+			if (
+				ir.type === "ask user question" ||
+				ir.type === "request user assistance"
+			) {
 				blockedCount++;
 				if (blockedCount >= MAX_BLOCKED_RETRIES) {
 					return {
@@ -193,12 +196,16 @@ export async function runHeadless(
 						error: `Agent requested help ${blockedCount} times in headless mode`,
 					};
 				}
-				// 自动回复，让 agent 继续
+				// 根据 type 给出不同的自动回复
+				const hint =
+					ir.type === "ask user question"
+						? "You are in headless/autonomous mode. There is no human available. Make your best choice and proceed to complete the task."
+						: "You are in headless/autonomous mode. There is no human to assist you. Try to resolve the issue on your own and proceed.";
 				history.push({
 					type: "user_input",
 					content: "",
 					context: null,
-					hint: "You are in headless/autonomous mode. There is no human available. Proceed with your best judgment and complete the task.",
+					hint,
 					mentionedSkills: [],
 				});
 			}

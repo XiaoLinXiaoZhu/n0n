@@ -130,7 +130,7 @@ if (strippedWithReasoning.length > 0) {
 
 // Trigger prompt
 console.log(`\n--- Trigger Prompt ---`);
-const triggerInserted = stripped.lastProgressIdx >= 0;
+const triggerInserted = stripped.lastShowIdx >= 0;
 console.log(`是否应插入: ${triggerInserted ? "是" : "否"}`);
 
 // API message 对比

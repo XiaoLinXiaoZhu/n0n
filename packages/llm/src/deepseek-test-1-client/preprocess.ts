@@ -2,7 +2,7 @@
  * deepseek-test-1 消息预处理
  *
  * splitSkillsToUser: system_with_skill → system + user（含 skill 文本）
- * stripReasoningFromPromptMessages: 清除 progress tool 之前的 reasoning
+ * stripReasoningFromPromptMessages: 清除 show tool 之前的 reasoning
  */
 
 import { formatSkills } from "@n0n/shared";
@@ -43,37 +43,32 @@ export function splitSkillsToUser(
 }
 
 /**
- * 找到最后一个 toolName==="progress" 的消息索引，清空该索引之前（含）
+ * 找到最后一个 toolName==="show" 的消息索引，清空该索引之前（含）
  * 所有 assistant 消息的 reasoning 字段。
  *
- * @returns `{ messages, lastProgressIdx }` — `lastProgressIdx` 为最后一个
- * progress 的索引（-1 表示未找到），`messages` 为处理后的消息列表。
+ * @returns `{ messages, lastShowIdx }` — `lastShowIdx` 为最后一个
+ * show 的索引（-1 表示未找到），`messages` 为处理后的消息列表。
  */
 export function stripReasoningFromPromptMessages(
 	promptMessages: PromptMessage[],
-): { messages: PromptMessage[]; lastProgressIdx: number } {
-	let lastProgressIdx = -1;
+): { messages: PromptMessage[]; lastShowIdx: number } {
+	let lastShowIdx = -1;
 	for (let i = 0; i < promptMessages.length; i++) {
 		const msg = promptMessages[i];
 		if (!msg) continue;
-		if (
-			msg.role === "tool" &&
-			"toolName" in msg &&
-			msg.toolName === "progress"
-		) {
-			lastProgressIdx = i;
+		if (msg.role === "tool" && "toolName" in msg && msg.toolName === "show") {
+			lastShowIdx = i;
 		}
 	}
-	if (lastProgressIdx === -1)
-		return { messages: promptMessages, lastProgressIdx: -1 };
+	if (lastShowIdx === -1) return { messages: promptMessages, lastShowIdx: -1 };
 
 	return {
 		messages: promptMessages.map((msg, idx) => {
-			if (idx <= lastProgressIdx && msg.role === "assistant" && msg.reasoning) {
+			if (idx <= lastShowIdx && msg.role === "assistant" && msg.reasoning) {
 				return { ...msg, reasoning: undefined };
 			}
 			return msg;
 		}),
-		lastProgressIdx,
+		lastShowIdx,
 	};
 }

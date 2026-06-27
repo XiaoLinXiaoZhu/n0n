@@ -3,7 +3,7 @@
  *
  * 与 cli REPL 的区别：
  * - System prompt 为 code.md（代码 agent 而非 workflow builder）
- * - Progress schema 为 CodeProgressSchema（completed/working/blocked）
+ * - Show schema 为 CodeShowSchema（progress report / ask user question / request user assistance / final report）
  * - Context 注入项目结构和 git 状态，而非 workflow 列表
  */
 
@@ -27,14 +27,14 @@ import { CodeRenderer } from "../code-renderer.ts";
 import { buildEnvironmentContext } from "../context-env.ts";
 import type { UserInputConfig } from "../multiline-input/config.ts";
 import type { NotifyConfig } from "../notify-sound.ts";
-import { codeProgressConfig } from "../progress-config.ts";
 import { ProgressWriter } from "../progress-writer.ts";
 import { getPrompt } from "../prompts/index.ts";
-import type { CodeProgressResult } from "../schema.ts";
+import type { CodeShowResult } from "../schema.ts";
+import { showConfig } from "../show-config.ts";
 import { parseAndInjectSkills } from "../skill-inject.ts";
 import { createStdinController } from "../stdin-controller.ts";
 import { UserPrompter } from "../user-prompter.ts";
-import { handleProgressResult } from "./handle-result.ts";
+import { handleShowResult } from "./handle-result.ts";
 import { createHeartbeatKeeper } from "./heartbeat.ts";
 
 export interface CodeReplOptions {
@@ -93,7 +93,7 @@ export async function startCodeRepl(
 		skills: systemSkills,
 	};
 	const notifyConfig = options.notifyConfig ?? { enabled: false };
-	const toolkit = makeToolkit(codeProgressConfig, toolsConfig, client.modelId);
+	const toolkit = makeToolkit(showConfig, toolsConfig, client.modelId);
 
 	const canInteract = typeof process.stdin.setRawMode === "function";
 	const renderer = canInteract
@@ -233,9 +233,9 @@ export async function startCodeRepl(
 			stdin.phase = "agent";
 		}
 
-		let agentResult: Awaited<ReturnType<typeof agentLoop<CodeProgressResult>>>;
+		let agentResult: Awaited<ReturnType<typeof agentLoop<CodeShowResult>>>;
 		try {
-			agentResult = await agentLoop<CodeProgressResult>(history, {
+			agentResult = await agentLoop<CodeShowResult>(history, {
 				client,
 				toolkit,
 				max_iterations: agentConfig.max_iterations,
@@ -294,12 +294,7 @@ export async function startCodeRepl(
 			continue;
 		}
 
-		const outcome = handleProgressResult(
-			ir,
-			history,
-			progressWriter,
-			notifyConfig,
-		);
+		const outcome = handleShowResult(ir, history, progressWriter, notifyConfig);
 		switch (outcome.action) {
 			case "prompt":
 				userInput = await prompter.prompt();

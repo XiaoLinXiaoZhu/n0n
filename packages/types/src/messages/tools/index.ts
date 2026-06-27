@@ -10,8 +10,8 @@ export type {
 	ExecToolResult,
 	ExecTruncated,
 } from "./exec.ts";
-// Progress
-export type { ProgressToolResult } from "./progress.ts";
+// Show
+export type { ShowToolResult } from "./progress.ts";
 // 注册表核心
 export type {
 	ActToolCall,
@@ -20,8 +20,8 @@ export type {
 	MakeResultBase,
 	ObserveToolCall,
 	PartialToolCallRecord,
-	ProgressToolCall,
 	ReasonToolCall,
+	ShowToolCall,
 	ToolCallRecord,
 	ToolCallRecordMap,
 	ToolMap,
@@ -40,10 +40,10 @@ export type {
 // ── 聚合 ToolResult 联合 ──
 
 import type { ExecToolResult } from "./exec.ts";
-import type { ProgressToolResult } from "./progress.ts";
+import type { ShowToolResult } from "./progress.ts";
 import type { WriteToolResult } from "./write.ts";
 
-export type ToolResult = ExecToolResult | WriteToolResult | ProgressToolResult;
+export type ToolResult = ExecToolResult | WriteToolResult | ShowToolResult;
 
 // ── 工具执行结局 ──
 

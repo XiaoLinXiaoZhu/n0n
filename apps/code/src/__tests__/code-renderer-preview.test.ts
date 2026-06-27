@@ -11,7 +11,7 @@ import { join } from "node:path";
 import type { ToolCallRecord } from "@n0n/types";
 import { CodeRenderer } from "../code-renderer.ts";
 import { formatProgressResult } from "../progress-formatter.ts";
-import type { CodeProgressResult } from "../schema.ts";
+import type { CodeShowResult } from "../schema.ts";
 
 // ── 测试用临时目录 ──
 const TEST_WORKSPACE = join(import.meta.dir, ".tmp-preview-test");
@@ -180,39 +180,39 @@ describe("CodeRenderer 流式 write 预览", () => {
 });
 
 describe("formatProgressResult 单元测试", () => {
-	test("completed 仅 content", () => {
+	test("final report 仅 content", () => {
 		const md = formatProgressResult({
-			status: "completed",
+			type: "final report",
 			content: "done",
-		} satisfies CodeProgressResult);
+		} satisfies CodeShowResult);
 		expect(md).toContain("# ✅ 任务完成");
 		expect(md).toContain("done");
 	});
 
-	test("completed 完整 content", () => {
+	test("final report 完整 content", () => {
 		const md = formatProgressResult({
-			status: "completed",
+			type: "final report",
 			content: "done",
-		} satisfies CodeProgressResult);
+		} satisfies CodeShowResult);
 		expect(md).toContain("done");
 	});
 
-	test("blocked 完整 content", () => {
+	test("ask user question 完整 content", () => {
 		const md = formatProgressResult({
-			status: "blocked",
+			type: "ask user question",
 			content: "选哪个？\n## A\n影响A\n\n## B\n影响B",
-		} satisfies CodeProgressResult);
+		} satisfies CodeShowResult);
 		expect(md).toContain("# ❓ 需要确认");
 		expect(md).toContain("选哪个？");
 		expect(md).toContain("## A");
 		expect(md).toContain("## B");
 	});
 
-	test("blocked 检查列表", () => {
+	test("ask user question 检查列表", () => {
 		const md = formatProgressResult({
-			status: "blocked",
+			type: "ask user question",
 			content: "需要帮助\n## 检查项1\n详情1\n\n## 检查项2\n详情2",
-		} satisfies CodeProgressResult);
+		} satisfies CodeShowResult);
 		expect(md).toContain("# ❓ 需要确认");
 		expect(md).toContain("## 检查项1");
 		expect(md).toContain("## 检查项2");

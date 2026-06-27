@@ -121,7 +121,7 @@ const scenarios: Scenario[] = [
 			{
 				type: "tool_result",
 				tool: "observe",
-				status: "completed",
+				type: "final report",
 				call: {
 					id: "tc_1",
 					tool: "observe",
@@ -141,7 +141,7 @@ const scenarios: Scenario[] = [
 			{
 				type: "tool_result",
 				tool: "observe",
-				status: "completed",
+				type: "final report",
 				call: { id: "tc_2", tool: "observe", args: { script: "cat missing.txt" } },
 				exitCode: 1,
 				stdout: "",
@@ -213,7 +213,7 @@ const scenarios: Scenario[] = [
 					tool: "write",
 					args: { path: "src/config.ts", content: "export const x = 1;" },
 				},
-				status: "completed",
+				type: "final report",
 			},
 		],
 	},
@@ -229,13 +229,13 @@ const scenarios: Scenario[] = [
 		messages: [
 			{
 				type: "tool_result",
-				tool: "progress",
+				tool: "show",
 				call: {
 					id: "tc_7",
-					tool: "progress",
-					args: { status: "completed", content: "Task done" },
+					tool: "show",
+					args: { type: "final report", content: "Task done" },
 				},
-				cleanedResult: { status: "completed", content: "Task done" },
+				cleanedResult: { type: "final report", content: "Task done" },
 			},
 		],
 	},

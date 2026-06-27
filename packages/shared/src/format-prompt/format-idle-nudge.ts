@@ -11,11 +11,11 @@ import { pick } from "./utils.ts";
 
 const templates = [
 	(idle: number, max: number) =>
-		`Your previous response was not delivered to the user — only submit results reach them. If you had content they should see, include it in a submit(completed) or submit(ask_user) call. Idle ${idle}/${max}.`,
+		`Your previous response was not delivered to the user — only show results reach them. If you had content they should see, include it in a show(progress report) or show(final report) call. Idle ${idle}/${max}.`,
 	(idle: number, max: number) =>
-		`The user did not see your last text output. If it contained information meant for them, submit it via a proper result instead of discarding it. Idle count: ${idle}/${max}.`,
+		`The user did not see your last text output. If it contained information meant for them, submit it via show(final report) instead of discarding it. Idle count: ${idle}/${max}.`,
 	(idle: number, max: number) =>
-		`Plain text replies are invisible to the user. If you drafted a response they should read, put it in a submit result — that's the only channel that reaches them. (${idle}/${max} idle rounds)`,
+		`Plain text replies are invisible to the user. If you drafted a response they should read, put it in a show call — that's the only channel that reaches them. (${idle}/${max} idle rounds)`,
 ];
 
 export function formatIdleNudge(

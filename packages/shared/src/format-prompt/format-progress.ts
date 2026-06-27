@@ -1,10 +1,10 @@
 /**
- * progress tool result 格式化 — 含 anti-few-shot 变体
+ * show tool result 格式化 — 含 anti-few-shot 变体
  *
- * 返回 FormattedToolResult。progress 结果无 hint（纯 fact）。
+ * 返回 FormattedToolResult。show 结果无 hint（纯 fact）。
  */
 
-import type { ProgressToolResult } from "@n0n/types";
+import type { ShowToolResult } from "@n0n/types";
 import type { FormattedToolResult, TagAdapter } from "./utils.ts";
 import { pick } from "./utils.ts";
 
@@ -14,8 +14,8 @@ const successTemplates = [
 	"Result submitted.",
 ];
 
-export function formatProgressResult(
-	_msg: ProgressToolResult,
+export function formatShowResult(
+	_msg: ShowToolResult,
 	tags: TagAdapter,
 	msgIndex: number,
 ): FormattedToolResult {

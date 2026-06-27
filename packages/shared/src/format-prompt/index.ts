@@ -34,7 +34,7 @@ import type {
 import { affectsSubsequent } from "./config.ts";
 import { formatExecResult } from "./format-exec.ts";
 import { formatIdleNudge } from "./format-idle-nudge.ts";
-import { formatProgressResult } from "./format-progress.ts";
+import { formatShowResult } from "./format-progress.ts";
 import { formatSkills } from "./format-skill.ts";
 import { formatToolArgError } from "./format-tool-arg-error.ts";
 import { formatTurnFeedback } from "./format-turn-feedback.ts";
@@ -55,8 +55,8 @@ function toolResultToStructured(
 			return formatExecResult(msg, tags, msgIndex);
 		case "write":
 			return formatWriteResult(msg, tags, msgIndex);
-		case "progress":
-			return formatProgressResult(msg, tags, msgIndex);
+		case "show":
+			return formatShowResult(msg, tags, msgIndex);
 		default: {
 			const _exhaustive: never = msg;
 			throw new Error(`Unknown tool`);

@@ -87,13 +87,13 @@ export const WriteArgsSchema = buildSchema(WriteParamDefs);
 export type WriteArgs = z.infer<typeof WriteArgsSchema>;
 
 // ═══════════════════════════════════════════════════════════════
-// progress
+// show
 // ═══════════════════════════════════════════════════════════════
 
-export const ProgressParamDefs = [
-	{ name: "status", schema: z.string() },
+export const ShowParamDefs = [
+	{ name: "type", schema: z.string() },
 	{ name: "content", schema: z.string() },
 ] as const satisfies readonly ParamDef[];
 
-export const ProgressArgsSchema = buildSchema(ProgressParamDefs);
-export type ProgressArgs = z.infer<typeof ProgressArgsSchema>;
+export const ShowArgsSchema = buildSchema(ShowParamDefs);
+export type ShowArgs = z.infer<typeof ShowArgsSchema>;

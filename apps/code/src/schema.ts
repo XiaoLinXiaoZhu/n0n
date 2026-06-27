@@ -1,20 +1,26 @@
 /**
- * Code Agent progress 结果 schema
+ * Code Agent show 结果 schema
  *
- * 三种 status：
- * - completed：任务完成，完整汇报
- * - working：阶段性进展，继续工作
- * - blocked：需要用户输入才能继续
+ * 四种 type：
+ * - progress report：阶段性进展，继续工作
+ * - ask user question：向用户提问，等待选择
+ * - request user assistance：需要用户介入操作
+ * - final report：任务完成，最终汇报
  *
- * progress 是模型唯一能被用户看到的信息出口。
+ * show 是模型唯一能被用户看到的信息出口。
  * 所有字段描述均假定用户已失去上下文——内容必须完整且自包含。
  */
 
 import { z } from "zod";
 
-export const CodeProgressSchema = z.object({
-	status: z.enum(["completed", "working", "blocked"]),
+export const CodeShowSchema = z.object({
+	type: z.enum([
+		"progress report",
+		"ask user question",
+		"request user assistance",
+		"final report",
+	]),
 	content: z.string(),
 });
 
-export type CodeProgressResult = z.infer<typeof CodeProgressSchema>;
+export type CodeShowResult = z.infer<typeof CodeShowSchema>;

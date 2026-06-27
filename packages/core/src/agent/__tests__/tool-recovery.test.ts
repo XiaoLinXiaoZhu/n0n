@@ -51,7 +51,7 @@ describe("recoverPartialCalls", () => {
 				},
 			];
 
-			const knownTools = new Set(["observe", "write", "progress"]);
+			const knownTools = new Set(["observe", "write", "show"]);
 			const result = await recoverPartialCalls(
 				partials,
 				makeTryRecover(knownTools),
@@ -76,7 +76,7 @@ describe("recoverPartialCalls", () => {
 				},
 			];
 
-			const knownTools = new Set(["observe", "write", "progress"]);
+			const knownTools = new Set(["observe", "write", "show"]);
 			const result = await recoverPartialCalls(
 				partials,
 				makeTryRecover(knownTools),

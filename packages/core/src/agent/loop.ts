@@ -260,10 +260,10 @@ export async function agentLoop<T = unknown>(
 			messages.push(pair.result);
 		}
 
-		// ── 7. 检测 progress 调用 → 终止循环并返回结果 ──
+		// ── 7. 检测 show 调用 → 终止循环并返回结果 ──
 		for (const job of scheduler.orderedJobs()) {
-			if (job.status === "completed" && job.result.tool === "progress") {
-				renderer.progressAccepted();
+			if (job.status === "completed" && job.result.tool === "show") {
+				renderer.showAccepted();
 				renderer.roundEnd();
 				return {
 					result: job.result.cleanedResult as T,

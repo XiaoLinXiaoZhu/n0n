@@ -61,20 +61,20 @@ for (let callIdx = 0; callIdx < atcIndices.length; callIdx++) {
   let promptMessages = format(preprocessed);
 
   // Step 3: stripReasoning
-  const { messages: stripped, lastProgressIdx } =
+  const { messages: stripped, lastShowIdx } =
     stripReasoningFromPromptMessages(promptMessages);
   promptMessages = stripped;
 
   // Step 4: Insert trigger prompt
-  if (lastProgressIdx >= 0) {
+  if (lastShowIdx >= 0) {
     const triggerUserMsg: PromptMessage = {
       role: "user",
       content: triggerPromptContent,
     };
     promptMessages = [
-      ...promptMessages.slice(0, lastProgressIdx + 1),
+      ...promptMessages.slice(0, lastShowIdx + 1),
       triggerUserMsg,
-      ...promptMessages.slice(lastProgressIdx + 1),
+      ...promptMessages.slice(lastShowIdx + 1),
     ];
   }
 
@@ -136,7 +136,7 @@ for (let callIdx = 0; callIdx < atcIndices.length; callIdx++) {
 
   console.log(`\n  Format 后的消息数: ${promptMessages.length}`);
   console.log(`  最后一个 assistant_tool_call (PromptMessage): index=${lastAssistantIdx}`);
-  console.log(`  lastProgressIdx: ${lastProgressIdx}`);
+  console.log(`  lastShowIdx: ${lastShowIdx}`);
   console.log(`  system-hint 含/不含: ${hintCount}/${strippedHintCount}`);
 
   if (hintMessages.length > 0) {

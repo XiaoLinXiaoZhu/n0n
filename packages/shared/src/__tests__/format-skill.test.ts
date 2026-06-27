@@ -31,7 +31,7 @@ describe("formatSkills", () => {
 		expect(formatSkills([], tags)).toBe("");
 	});
 
-	test("单 skill 以 <skill name=\"xxx\"> 包裹标记行与正文，末尾带结束注释", () => {
+	test('单 skill 以 <skill name="xxx"> 包裹标记行与正文，末尾带结束注释', () => {
 		const out = formatSkills(
 			[mkSkill({ name: "review", body: "review code" })],
 			tags,

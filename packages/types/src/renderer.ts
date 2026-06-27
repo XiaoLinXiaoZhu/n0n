@@ -97,8 +97,8 @@ export interface Renderer
 	/** LLM 纯文本回复（非流式回退） */
 	textResponse(content: string, idleCount: number): void;
 
-	/** progress 被接受 */
-	progressAccepted(): void;
+	/** show 被接受 */
+	showAccepted(): void;
 
 	/** agent 终止 */
 	agentTerminated(reason: string): void;

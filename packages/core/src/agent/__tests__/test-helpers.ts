@@ -29,11 +29,11 @@ export function mockPathExclusiveTC(id: string, path: string): ToolCallRecord {
 	} as ToolCallRecord;
 }
 
-export function mockProgressTC(id: string): ToolCallRecord {
+export function mockShowTC(id: string): ToolCallRecord {
 	return {
 		id,
-		tool: "progress",
-		args: { status: "completed", content: "test" },
+		tool: "show",
+		args: { type: "final report", content: "test" },
 	} as ToolCallRecord;
 }
 

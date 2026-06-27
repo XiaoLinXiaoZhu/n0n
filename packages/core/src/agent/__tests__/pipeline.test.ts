@@ -14,8 +14,8 @@ import { ExecutionScheduler, type SchedulerEvents } from "../scheduler.ts";
 import {
 	mockExecTC,
 	mockPathExclusiveTC,
-	mockProgressTC,
 	mockResult,
+	mockShowTC,
 	mockWriteTC,
 } from "./test-helpers.ts";
 
@@ -32,7 +32,7 @@ const pathExclusive: CanStartFn = (self, active) => {
 	return true;
 };
 
-/** progress: 无条件并行 */
+/** show: 无条件并行 */
 const always: CanStartFn = () => true;
 
 /** 创建一个可控的异步执行器：通过 resolve 回调手动控制完成时机 */
@@ -260,13 +260,13 @@ describe("ExecutionScheduler", () => {
 		});
 	});
 
-	describe("progress 无条件执行", () => {
-		it("progress 可与任何工具并行", async () => {
+	describe("show 无条件执行", () => {
+		it("show 可与任何工具并行", async () => {
 			const { executor, log, resolve } = createControllableExecutor();
 			const scheduler = new ExecutionScheduler(executor);
 
 			scheduler.enqueue(mockPathExclusiveTC("e1", "a.ts"), pathExclusive);
-			scheduler.enqueue(mockProgressTC("r1"), always);
+			scheduler.enqueue(mockShowTC("r1"), always);
 			scheduler.seal();
 
 			const runPromise = scheduler.run();

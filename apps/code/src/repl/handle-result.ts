@@ -1,5 +1,5 @@
 /**
- * Agent 结果处理 — completed/working/blocked 三种状态的响应逻辑
+ * Agent 结果处理 — 四种 show type 的响应逻辑
  *
  * 独立于主循环，便于单独测试各状态的流转行为。
  */
@@ -10,7 +10,7 @@ import type { DomainMessage } from "@n0n/types";
 import type { NotifyConfig } from "../notify-sound.ts";
 import { playNotifySound } from "../notify-sound.ts";
 import type { ProgressWriter } from "../progress-writer.ts";
-import type { CodeProgressResult } from "../schema.ts";
+import type { CodeShowResult } from "../schema.ts";
 import { WORKING_NUDGE_TEXT } from "../working-nudge.ts";
 
 /** 结果处理后的循环控制 */
@@ -30,18 +30,18 @@ function makeUserInput(content: string, hint?: string | null): DomainMessage {
 }
 
 /**
- * 根据 agent 返回的 progress 结果决定下一步循环行为。
+ * 根据 agent 返回的 show 结果决定下一步循环行为。
  */
-export function handleProgressResult(
-	ir: CodeProgressResult,
+export function handleShowResult(
+	ir: CodeShowResult,
 	history: DomainMessage[],
 	progressWriter: ProgressWriter,
 	notifyConfig: NotifyConfig,
 ): HandleResultOutcome {
 	progressWriter.write(ir);
 
-	switch (ir.status) {
-		case "blocked": {
+	switch (ir.type) {
+		case "ask user question": {
 			writeln(`${style.yellow("?")} ${ir.content}`);
 			writeln();
 			const blockItems = parseDsl(ir.content);
@@ -55,7 +55,13 @@ export function handleProgressResult(
 			playNotifySound(notifyConfig);
 			return { action: "prompt", userInput: "" };
 		}
-		case "working": {
+		case "request user assistance": {
+			writeln(`${style.yellow("?")} ${ir.content}`);
+			writeln();
+			playNotifySound(notifyConfig);
+			return { action: "prompt", userInput: "" };
+		}
+		case "progress report": {
 			writeln(`${style.cyan("⏳")} 进行中: ${ir.content}`);
 			writeln();
 			history.push(makeUserInput("", WORKING_NUDGE_TEXT));
@@ -64,14 +70,14 @@ export function handleProgressResult(
 				historyEntry: makeUserInput("", WORKING_NUDGE_TEXT),
 			};
 		}
-		case "completed": {
+		case "final report": {
 			writeln(`${style.green("✓")} 完成: ${ir.content}`);
 			writeln();
 			playNotifySound(notifyConfig);
 			return { action: "prompt", userInput: "" };
 		}
 		default: {
-			const _exhaustive: never = ir.status;
+			const _exhaustive: never = ir.type;
 			return { action: "continue" };
 		}
 	}
