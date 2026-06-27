@@ -42,18 +42,18 @@ activation: manual
 2. 支持该假设的**具体证据引用**（文件名、行号、时间戳、数值等）
 3. 下一步要做什么来验证/推翻
 
-### 约束三：总是使用 `progress(blocked)` 请求人类审阅
+### 约束三：总是使用 `show(ask user question)` 请求人类审阅
 
-当研究产出了**需要人类判断才能继续推进**的文档时，必须用 `progress(blocked)` 请求审阅。
+当研究产出了**需要人类判断才能继续推进**的文档时，必须用 `show(ask user question)` 请求审阅。
 
-`progress(blocked)` 的**必须元素**：
+`show(ask user question)` 的**必须元素**：
 1. 核心结论（1-3 句话摘要）
 2. 自信程度（以及不确定的地方）
 3. 需要人类确认的具体决策点（2-4 个选项）
 
 ### 约束四：投入足够工作量后才推进
 
-`progress(blocked)` 之间应有若干个 `show(progress report)`。在请求人类介入之前，先做完所有自己能做的探索。
+`show(ask user question)` 之间应有若干个 `show(progress report)`。在请求人类介入之前，先做完所有自己能做的探索。
 
 ## 工作流模板
 

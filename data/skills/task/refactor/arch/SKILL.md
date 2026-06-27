@@ -37,7 +37,7 @@ activation: manual
 - 每 3-4 次 observe 提交一次小结
 - 记录摩擦点、删除测试结果、初步判断
 
-**`progress(blocked)`** — 需要用户决策时使用：
+**`show(ask user question)`** — 需要用户决策时使用：
 - 呈现候选列表，等用户选择深入方向
 - 接口设计方案对比，等用户选择或修改
 - 发现与现有 ADR 冲突，等用户确认是否重新讨论
@@ -104,7 +104,7 @@ activation: manual
 
 **不要在此阶段提出具体接口。**
 
-**退出 → 提交 `progress(blocked)`，格式：**
+**退出 → 提交 `show(ask user question)`，格式：**
 
 ```
 【阶段】架构候选

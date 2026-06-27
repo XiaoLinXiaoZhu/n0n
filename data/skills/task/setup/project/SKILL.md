@@ -13,7 +13,7 @@ activation: manual
 每项配置遵循"解释 → 选择 → 确认"的小循环：
 
 1. 简短解释这项配置是什么、为什么需要、选不同有什么影响
-2. 呈现选项，用 `progress(blocked)` 等待用户选择
+2. 呈现选项，用 `show(ask user question)` 等待用户选择
 3. 用户确认后立即写入，然后进入下一项
 
 一次只呈现一项配置，不一次性抛出所有选项。
@@ -72,7 +72,7 @@ observe 检查当前状态：`git remote`、现有配置文件、目录结构。
 
 ### 2. 逐项配置
 
-按 A → B → C → D 顺序，每项一个 `progress(blocked)` 循环。
+按 A → B → C → D 顺序，每项一个 `show(ask user question)` 循环。
 
 ### 3. 写入
 

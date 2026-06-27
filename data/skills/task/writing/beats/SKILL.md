@@ -21,13 +21,13 @@ activation: manual
 
 ## 前置
 
-用户提供原始素材文件。如果没指定输出路径，用 `progress(blocked)` 询问一次。
+用户提供原始素材文件。如果没指定输出路径，用 `show(ask user question)` 询问一次。
 
 ## 循环
 
 ### 1. 起始 beat
 
-从原始素材中写出 2-3 个候选起始 beat，每个是不同的入口。用 `progress(blocked)` 呈现，附带每个选项可能导向的后续方向预览。
+从原始素材中写出 2-3 个候选起始 beat，每个是不同的入口。用 `show(ask user question)` 呈现，附带每个选项可能导向的后续方向预览。
 
 用户选一个。
 
@@ -39,7 +39,7 @@ activation: manual
 
 ### 3. 提供下一步选项
 
-observe 重读文章文件（用户可能已编辑）。然后提供 2-3 个候选下一步 beat，每个是不同的方向。用 `progress(blocked)` 呈现。
+observe 重读文章文件（用户可能已编辑）。然后提供 2-3 个候选下一步 beat，每个是不同的方向。用 `show(ask user question)` 呈现。
 
 ### 4. 循环
 

@@ -10,7 +10,7 @@ activation: manual
 
 ## 前置
 
-读取用户提供的原始素材文件（fragments、笔记、草稿、转录）。如果用户没指定输出路径，用 `progress(blocked)` 询问一次。
+读取用户提供的原始素材文件（fragments、笔记、草稿、转录）。如果用户没指定输出路径，用 `show(ask user question)` 询问一次。
 
 原始素材文件是只读的——不编辑它。产出写入单独的文章文件。
 
@@ -18,7 +18,7 @@ activation: manual
 
 ### 1. 产出候选开头
 
-写出 2-3 个候选开头，每个暗示不同的论点或角度。用 `progress(blocked)` 呈现，用户选一个或混合。
+写出 2-3 个候选开头，每个暗示不同的论点或角度。用 `show(ask user question)` 呈现，用户选一个或混合。
 
 选定的开头定义了文章剩余部分的方向。
 

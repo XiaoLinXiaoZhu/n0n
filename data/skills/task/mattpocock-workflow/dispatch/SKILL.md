@@ -42,9 +42,9 @@ session 中存在至少一个 `afk-ready` 或 `pending` 状态的 issue。
 - 验收条件
 
 实现过程中，如果发现：
-- **issue 定义不足** → 用 `progress(blocked)` 向用户补充确认（类似 resolve-hitl 但范围更窄）
+- **issue 定义不足** → 用 `show(ask user question)` 向用户补充确认（类似 resolve-hitl 但范围更窄）
 - **发现新的依赖** → 更新 session 中的依赖关系
-- **发现可以拆分更细** → 用 `progress(blocked)` 询问用户是否要拆分
+- **发现可以拆分更细** → 用 `show(ask user question)` 询问用户是否要拆分
 
 **验收条件检查**：实现后用 `act` 逐条验证验收条件。全部通过才算完成。
 
@@ -67,7 +67,7 @@ issue 完成后，用 `reason` 检查哪些 issue 被它阻塞。如果被阻塞
 
 ### 4. 继续循环
 
-用 `progress(blocked)` 询问用户：
+用 `show(ask user question)` 询问用户：
 
 ```
 MWF-01 已完成（<验收结果>）

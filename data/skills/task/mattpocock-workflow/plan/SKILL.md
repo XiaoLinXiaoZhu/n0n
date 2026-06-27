@@ -23,7 +23,7 @@ activation: manual
 
 参考 `grill-with-docs` 的质询方式，对计划进行穷举式提问。整个质询过程中，能用 `observe` 回答的就不问用户。
 
-**一次一个问题**，用 `progress(blocked)` 提出，每个问题附上你的推荐答案。等待用户反馈后再继续。
+**一次一个问题**，用 `show(ask user question)` 提出，每个问题附上你的推荐答案。等待用户反馈后再继续。
 
 #### 质询清单（按优先级）
 
@@ -73,7 +73,7 @@ activation: manual
 
 ### 3. 呈现 PRD
 
-用 `progress(blocked)` 呈现 PRD 草案让用户审阅。确认后写入文件。
+用 `show(ask user question)` 呈现 PRD 草案让用户审阅。确认后写入文件。
 
 确认后，用 `act` 在上下文中维护 plan 引用（文件路径或内容摘要），供后续 `split` 阶段使用。
 

@@ -18,7 +18,7 @@ activation: manual
 
 勾勒需要构建或修改的主要模块。积极寻找可以提取为"接口简单、可独立测试"的深模块。
 
-用 `progress(blocked)` 呈现模块划分，请用户确认：
+用 `show(ask user question)` 呈现模块划分，请用户确认：
 - 这些模块划分符合预期吗？
 - 哪些模块需要写测试？
 
@@ -54,6 +54,6 @@ activation: manual
 
 ### 4. 发布
 
-用 `progress(blocked)` 呈现 PRD 草案让用户审阅。确认后写入文件或发布到 issue tracker。
+用 `show(ask user question)` 呈现 PRD 草案让用户审阅。确认后写入文件或发布到 issue tracker。
 
 **退出 → 提交 `show(final report)`**，包含 PRD 路径和内容概要。

@@ -30,7 +30,7 @@ activation: manual
 
 ### 2. 准备质询
 
-用 `reason` 根据阻塞类型准备具体问题。**一次一个问题**，用 `progress(blocked)` 提出，每个问题附上你的推荐答案。等待用户反馈后再继续。
+用 `reason` 根据阻塞类型准备具体问题。**一次一个问题**，用 `show(ask user question)` 提出，每个问题附上你的推荐答案。等待用户反馈后再继续。
 
 能通过探索代码库回答的问题（observe），不问用户。
 
@@ -75,4 +75,4 @@ activation: manual
 【下一步】继续 resolve 其他 HITL / 回到 dispatch
 ```
 
-如果仍有未解决的阻塞，保持 `progress(blocked)` 继续质询。只有所有阻塞都解决或明确放弃时，提交 `show(progress report)` 并退出。
+如果仍有未解决的阻塞，保持 `show(ask user question)` 继续质询。只有所有阻塞都解决或明确放弃时，提交 `show(progress report)` 并退出。

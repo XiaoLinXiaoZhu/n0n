@@ -57,7 +57,7 @@ plan 阶段已完成，上下文中存在 plan 引用。
 
 ### 5. 呈现给用户
 
-用 `progress(blocked)` 呈现拆分方案：
+用 `show(ask user question)` 呈现拆分方案：
 
 ```
 计划拆分：<plan 标题>

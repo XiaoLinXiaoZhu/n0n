@@ -74,7 +74,7 @@ activation: manual
 
 ### 5. 汇报
 
-用 `progress(blocked)` 提交完整报告：
+用 `show(ask user question)` 提交完整报告：
 
 ```
 【审校范围】N 篇文档：xxx.md, yyy.md, ...

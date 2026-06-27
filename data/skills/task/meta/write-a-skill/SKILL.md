@@ -46,7 +46,7 @@ skill-name/
 
 ### 1. 收集需求
 
-用 `progress(blocked)` 逐项询问：
+用 `show(ask user question)` 逐项询问：
 
 - 这个 skill 覆盖什么任务/领域？
 - 具体触发场景和关键词是什么？
@@ -76,7 +76,7 @@ skill-name/
 
 ### 5. 审查
 
-用 `progress(blocked)` 呈现草案，请用户审阅。检查清单：
+用 `show(ask user question)` 呈现草案，请用户审阅。检查清单：
 
 - [ ] description 包含触发条件，覆盖用户场景
 - [ ] activation 字段正确（init 需配 order，manual 需配触发词在 description 中）

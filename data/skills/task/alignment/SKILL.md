@@ -34,7 +34,7 @@ activation: manual
 
 ### 4. 汇报 → 确认
 
-用 `progress(blocked)` 提交对齐报告：
+用 `show(ask user question)` 提交对齐报告：
 
 ```
 【需求对齐】

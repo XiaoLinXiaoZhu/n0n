@@ -85,7 +85,7 @@ session 已存在时，`@mwf` 自动恢复上下文。
 | "状态" / "进度" / "怎么样了" | `status` |
 | "继续" / "下一个" | 推断当前阶段并继续 |
 
-意图不明确时，用 `progress(blocked)` 询问用户想进入哪个阶段。
+意图不明确时，用 `show(ask user question)` 询问用户想进入哪个阶段。
 
 ## Session 维护
 

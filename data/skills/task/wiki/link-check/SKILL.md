@@ -70,7 +70,7 @@ rg --files wiki/ | rg "\.md$"
 
 ### 4. 汇报
 
-用 `progress(blocked)` 提交完整报告，等待用户确认是否执行修改：
+用 `show(ask user question)` 提交完整报告，等待用户确认是否执行修改：
 
 ```
 【文档】xxx.md

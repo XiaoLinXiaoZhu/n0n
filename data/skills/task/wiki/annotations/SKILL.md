@@ -65,7 +65,7 @@ rg "%%" wiki/xxx.md -n
 
 ### 5. 汇报
 
-用 `progress(blocked)` 提交完整报告：
+用 `show(ask user question)` 提交完整报告：
 
 ```
 【文档】xxx.md

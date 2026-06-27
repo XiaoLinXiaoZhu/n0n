@@ -63,7 +63,7 @@ activation: manual
 
 **非确定性 bug**：目标不是稳定复现，而是提高复现率。循环触发 100 次、并行化、加压、缩小时间窗口——把 1% 的 flake 提到可调试的 50%。
 
-**确实无法构建循环时**：停下来明确说。列出尝试过什么。用 `progress(blocked)` 请求用户提供环境访问、日志转储、或临时插桩权限。不要在没有循环的情况下继续推进。
+**确实无法构建循环时**：停下来明确说。列出尝试过什么。用 `show(request user assistance)` 请求用户提供环境访问、日志转储、或临时插桩权限。不要在没有循环的情况下继续推进。
 
 **退出 → 提交 `show(progress report)`，格式：**
 
@@ -84,7 +84,7 @@ activation: manual
 **行动**：
 - 定义验收条件（可验证的 true/false 信号）
 - 确定每个条件的观测方式
-- 如果涉及用户主观判断，用 `progress(blocked)` 请求确认
+- 如果涉及用户主观判断，用 `show(ask user question)` 请求确认
 
 **退出 → 提交 `show(progress report)`，格式：**
 
@@ -97,7 +97,7 @@ activation: manual
 【失败回溯路径】（如果验证不通过，往哪个方向排查）
 ```
 
-如需用户确认 → 改用 `progress(blocked)`，在 blocked 中完整展示你的问题理解和拟定的验收条件。
+如需用户确认 → 改用 `show(ask user question)`，在 ask user question 中完整展示你的问题理解和拟定的验收条件。
 
 ---
 
