@@ -87,7 +87,7 @@ MWF-01 ──→ MWF-02 ──→ MWF-03
 
 确认后，用 `act` 在上下文中维护 issue 列表（session.issues）。
 
-**退出 → 提交 `progress(working)`，格式：**
+**退出 → 提交 `show(progress report)`，格式：**
 
 ```
 【阶段】Split — 完成

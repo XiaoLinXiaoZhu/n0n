@@ -64,7 +64,7 @@ skill-name/
 
 - 读者是 agent——用祈使句下指令，不写面向人类的解释。
 - 每个步骤明确关联工具（observe/reason/act）和 progress 状态。
-- 退出条件用 `progress(completed)` 格式模板定义。
+- 退出条件用 `show(final report)` 格式模板定义。
 - 使用中文。
 
 ### 4. 何时拆分文件
@@ -84,4 +84,4 @@ skill-name/
 - [ ] 有具体的 progress 格式模板（何时 working、何时 blocked、何时 completed）
 - [ ] 引用只一层深，附件平铺在同级目录
 
-**退出 → 提交 `progress(completed)`**，包含 skill 路径和概要。
+**退出 → 提交 `show(final report)`**，包含 skill 路径和概要。

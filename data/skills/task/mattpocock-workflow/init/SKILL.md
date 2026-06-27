@@ -112,7 +112,7 @@ alias: mwf-init
 
 ### 4. 完成
 
-**退出 → 提交 `progress(completed)`，格式：**
+**退出 → 提交 `show(final report)`，格式：**
 
 ```
 【阶段】Init — 完成

@@ -30,7 +30,7 @@ review-init 已完成，你已知道 diff 命令和 standards 来源列表。
 
 ### 3. 产出报告
 
-**退出 → 提交 `progress(working)`，格式：**
+**退出 → 提交 `show(progress report)`，格式：**
 
 ```
 【阶段】Review Standards

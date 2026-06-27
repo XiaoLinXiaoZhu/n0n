@@ -77,7 +77,7 @@ activation: manual
 
 确认后，用 `act` 在上下文中维护 plan 引用（文件路径或内容摘要），供后续 `split` 阶段使用。
 
-**退出 → 提交 `progress(working)`，格式：**
+**退出 → 提交 `show(progress report)`，格式：**
 
 ```
 【阶段】Plan — 完成

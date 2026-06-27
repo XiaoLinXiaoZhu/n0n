@@ -65,10 +65,10 @@ activation: manual
 
 不猜测未确认的状态——不确定时用 `progress(blocked)` 询问。
 
-**退出 → `progress(working)`：** 标注清单和数量。
+**退出 → `show(progress report)`：** 标注清单和数量。
 
 ### 3. 决策文档
 
 与用户确认需要记录的决策点。梳理背景、决策、约束、排除方案。用 `write` 创建文档。
 
-**退出 → `progress(completed)`：** 标注清单和决策文档路径。
+**退出 → `show(final report)`：** 标注清单和决策文档路径。

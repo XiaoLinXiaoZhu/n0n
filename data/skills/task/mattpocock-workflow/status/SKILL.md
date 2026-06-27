@@ -59,4 +59,4 @@ MWF-01 [done] ──→ MWF-02 [afk-ready] ──→ MWF-03 [hitl-blocked] ← �
 | 全部 done | "全部完成！🎉" |
 | 空 session | "还没有 session，建议用 @mwf plan 开始" |
 
-**退出 → 提交 `progress(completed)`，格式同上。**
+**退出 → 提交 `show(final report)`，格式同上。**

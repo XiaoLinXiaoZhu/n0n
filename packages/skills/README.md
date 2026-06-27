@@ -43,7 +43,7 @@
 - 有明确的起点和终点（任务完成即结束）
 - 将重复出现的任务抽取为可复用的标准化流程
 
-**与系统的关系**：编排 observe/reason/act 三个工具的使用顺序。每个步骤天然映射到某种工具类型。每个步骤的退出条件对应一个 `progress(working)` 报告。
+**与系统的关系**：编排 observe/reason/act 三个工具的使用顺序。每个步骤天然映射到某种工具类型。每个步骤的退出条件对应一个 `show(progress report)` 报告。
 
 **典型代表**：bugfix（修 bug）、refactor（重构）、review（代码审查）、disk-cleanup（清理磁盘）、triage（分诊 issue）、to-prd（生成 PRD）、handoff（生成交接文档）
 

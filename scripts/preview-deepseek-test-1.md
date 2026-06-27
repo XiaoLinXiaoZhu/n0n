@@ -97,7 +97,7 @@
 </task>
 
 <external-world>
-- Your internal reasoning is invisible to the user. Only content submitted via the `progress` tool is delivered as a push notification.
+- Your internal reasoning is invisible to the user. Only content submitted via the `show` tool is delivered as a push notification.
 - Tool calls in a single response execute sequentially with no conflicts — always batch as many as possible.
 - Messages wrapped in `<system-hint>...</system-hint>` are system-level guidance. Do not reply to their content,but use their infomation or  suggestions.它们并不是用户的实际输入，而是来自系统自动添加的补充提示。请你充分考虑其中的建议。并不要将其视为主要目标要求。
 </external-world>
@@ -748,10 +748,10 @@ progress 是用户能看到的**唯一输出通道**。你的内部推理对用�
 
 ## 使用节奏
 
-- progress 可以与其他工具调用同批发出——所有工具正常执行，然后循环重启。调用 `progress(working)` 不额外消耗轮次。有有意义的状态就汇报。
-- "不必要的往返"指的是空等确定性工具结果——不是指 `progress(working)`。汇报进展是有价值的，不是浪费。
-- 每个独立的推理步骤（提出假设、检查证据、排除/确认、转向）都应该通过 `progress(working)` 声明。不要等整个阶段结束才汇报。
-- `progress(blocked)` 之前应该有若干个 `progress(working)`——在请求用户介入之前，先做完所有自己能做的探索。
+- progress 可以与其他工具调用同批发出——所有工具正常执行，然后循环重启。调用 `show(progress report)` 不额外消耗轮次。有有意义的状态就汇报。
+- "不必要的往返"指的是空等确定性工具结果——不是指 `show(progress report)`。汇报进展是有价值的，不是浪费。
+- 每个独立的推理步骤（提出假设、检查证据、排除/确认、转向）都应该通过 `show(progress report)` 声明。不要等整个阶段结束才汇报。
+- `progress(blocked)` 之前应该有若干个 `show(progress report)`——在请求用户介入之前，先做完所有自己能做的探索。
 
 ## 汇报质量
 

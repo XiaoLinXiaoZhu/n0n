@@ -61,4 +61,4 @@ activation: manual
 
 文章结束由用户决定。大多数素材堆会有剩余——正常，不必全用完。
 
-**退出 → 提交 `progress(completed)`**，包含文章路径和结构概要。
+**退出 → 提交 `show(final report)`**，包含文章路径和结构概要。

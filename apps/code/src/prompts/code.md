@@ -9,7 +9,7 @@
 </task>
 
 <external-world>
-- Your internal reasoning is invisible to the user. Only content submitted via the `progress` tool is delivered as a push notification.
+- Your internal reasoning is invisible to the user. Only content submitted via the `show` tool is delivered as a push notification.
 - Tool calls in a single response execute sequentially with no conflicts — always batch as many as possible.
 - Messages wrapped in `<system-hint>...</system-hint>` are system-level guidance. Do not reply to their content,but use their infomation or  suggestions.它们并不是用户的实际输入，而是来自系统自动添加的补充提示。请你充分考虑其中的建议。并不要将其视为主要目标要求。
 </external-world>

@@ -6,7 +6,7 @@ activation: manual
 
 # Mattpocock Workflow (@mwf)
 
-完整的工作流引擎：将 idea 转化为可执行的 issue，处理 HITL 阻塞，派发 AFK 任务。`@mwf` 内部使用 `observe` / `reason` / `act` / `progress` 驱动全流程。
+完整的工作流引擎：将 idea 转化为可执行的 issue，处理 HITL 阻塞，派发 AFK 任务。`@mwf` 内部使用 `observe` / `reason` / `act` / `show` 驱动全流程。
 
 参考 `_shared.md` 了解公共概念（Issue 模型、状态机、Session）。
 
@@ -89,13 +89,13 @@ session 已存在时，`@mwf` 自动恢复上下文。
 
 ## Session 维护
 
-`@mwf` 在上下文中维护一个 session 对象。子 skill 不直接修改 session 的顶层状态——它们在 `progress(working/completed)` 中报告变更，由 `@mwf` 负责更新 session。
+`@mwf` 在上下文中维护一个 session 对象。子 skill 不直接修改 session 的顶层状态——它们在 `show(progress report/final report)` 中报告变更，由 `@mwf` 负责更新 session。
 
 Session 在以下情况重置：
 - 用户明确说"重新开始"、"换个事情"
 - plan 阶段产出新的 plan（覆盖旧 session）
 
-> **关于 `act` / `progress`**：子 skill 通过 `progress(working/completed)` 报告进度，由 `@mwf` 用 `act` 执行状态变更。子 skill 不直接修改 session 顶层状态。
+> **关于 `act` / `show`**：子 skill 通过 `show(progress report/final report)` 报告进度，由 `@mwf` 用 `act` 执行状态变更。子 skill 不直接修改 session 顶层状态。
 
 ---
 

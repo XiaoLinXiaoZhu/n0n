@@ -33,9 +33,9 @@ activation: manual
 
 在得出结论前，用 `reason` 运行思维实验——把假设、预期、实际检查写成可执行的具体逻辑。有时候直接用 `act` 尝试再用 `observe` 看结果比纯推演更高效。
 
-### 约束二：极其高频地使用 `progress(working)` 提供推理阶段声明
+### 约束二：极其高频地使用 `show(progress report)` 提供推理阶段声明
 
-不要等到一个完整阶段结束才汇报。每个独立的推理步骤（提出假设、检查证据、排除/确认、转向）都应该通过 `progress(working)` 对外声明。
+不要等到一个完整阶段结束才汇报。每个独立的推理步骤（提出假设、检查证据、排除/确认、转向）都应该通过 `show(progress report)` 对外声明。
 
 阶段声明的**必须元素**：
 1. 当前假设/探索方向
@@ -53,7 +53,7 @@ activation: manual
 
 ### 约束四：投入足够工作量后才推进
 
-`progress(blocked)` 之间应有若干个 `progress(working)`。在请求人类介入之前，先做完所有自己能做的探索。
+`progress(blocked)` 之间应有若干个 `show(progress report)`。在请求人类介入之前，先做完所有自己能做的探索。
 
 ## 工作流模板
 

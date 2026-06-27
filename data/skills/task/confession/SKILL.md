@@ -60,7 +60,7 @@ git diff HEAD
 
 ### 6. 报告
 
-用 `progress(completed)` 输出审计报告：
+用 `show(final report)` 输出审计报告：
 
 ```
 【合规审计报告】

@@ -107,7 +107,7 @@ Session 由 `@mwf` 在上下文中维护，子 skill 通过上下文读取和更
 
 - issue id: `MWF-01`, `MWF-02`...（按创建顺序递增）
 - 在 `@mwf` 上下文中用 `this session` 引用当前 session
-- 子 skill 结束时通过 `progress(working)` 报告 session 状态变更
+- 子 skill 结束时通过 `show(progress report)` 报告 session 状态变更
 
 ---
 

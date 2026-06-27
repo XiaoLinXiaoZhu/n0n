@@ -85,4 +85,4 @@ observe 检查当前状态：`git remote`、现有配置文件、目录结构。
 
 ### 4. 完成
 
-**退出 → 提交 `progress(completed)`**，列出已创建的所有文件和配置概要。
+**退出 → 提交 `show(final report)`**，列出已创建的所有文件和配置概要。

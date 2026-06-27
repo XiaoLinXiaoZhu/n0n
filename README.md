@@ -161,7 +161,7 @@ exec({ runtime: "bun", script: `
 │  │ ├─ reason  → 结构化推理（无副作用）  │  │
 │  │ ├─ act     → 执行操作（有副作用）    │  │
 │  │ ├─ write   → 声明式文件写入         │  │
-│  │ ├─ progress → 状态汇报             │  │
+│  │ ├─ show → 状态汇报             │  │
 │  │ └─ submit  → 结果提交（动态Schema）  │  │
 │  │     ↓                              │  │
 │  │ Zod Schema 校验                     │  │
@@ -182,7 +182,7 @@ n0n/
 ├── packages/          # 核心库
 │   ├── types/         # DomainMessage 类型定义
 │   ├── llm/           # LLM 客户端（多 Provider、SSE 流式）
-│   ├── tools/         # 核心工具（observe/reason/act/write/progress/submit）
+│   ├── tools/         # 核心工具（observe/reason/act/write/show/submit）
 │   ├── core/          # Agent Loop 核心引擎
 │   ├── shared/        # Skills 发现、对话持久化
 │   ├── cli-ui/        # 共享终端渲染

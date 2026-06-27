@@ -54,4 +54,4 @@ observe 重读文章文件（用户可能已编辑）。然后提供 2-3 个候�
 
 ## 完成
 
-**退出 → 提交 `progress(completed)`**，包含文章路径和 beat 列表概要。
+**退出 → 提交 `show(final report)`**，包含文章路径和 beat 列表概要。

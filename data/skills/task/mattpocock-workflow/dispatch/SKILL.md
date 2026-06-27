@@ -79,7 +79,7 @@ HITL 等待处理：MWF-03（HITL blocked）
 
 用户选择后继续循环。
 
-**退出 → 提交 `progress(working)`，格式：**
+**退出 → 提交 `show(progress report)`，格式：**
 
 ```
 【阶段】Dispatch
@@ -90,4 +90,4 @@ HITL 等待处理：MWF-03（HITL blocked）
 【下一步】继续 dispatch / resolve-hitl / status
 ```
 
-如果所有 issue 都已完成 → 提交 `progress(completed)`，包含完整的 session 总结。
+如果所有 issue 都已完成 → 提交 `show(final report)`，包含完整的 session 总结。

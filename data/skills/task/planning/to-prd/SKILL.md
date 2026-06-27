@@ -56,4 +56,4 @@ activation: manual
 
 用 `progress(blocked)` 呈现 PRD 草案让用户审阅。确认后写入文件或发布到 issue tracker。
 
-**退出 → 提交 `progress(completed)`**，包含 PRD 路径和内容概要。
+**退出 → 提交 `show(final report)`**，包含 PRD 路径和内容概要。
