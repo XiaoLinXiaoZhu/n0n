@@ -66,6 +66,15 @@ function toolResultToStructured(
 
 // ── user_input 构建 ──
 
+/**
+ * 构建 user_input 消息的最终文本内容。
+ *
+ * 排列顺序（由远及近，尾部获得最强注意力）：
+ * 1. context — 环境背景信息（仅首次）
+ * 2. mentionedSkills — 用户引用的 skill（规则/约束层）
+ * 3. user-request — 用户实际输入（意图层）
+ * 4. system-hint — 系统行为引导（尾部锚定，占据本地注意力窗口）
+ */
 function buildUserInputContent(
 	msg: Extract<DomainMessage, { type: "user_input" }>,
 	tags: TagAdapter,
@@ -75,11 +84,11 @@ function buildUserInputContent(
 	if (msg.context) {
 		parts.push(tags.wrapTag("context", msg.context));
 	}
-	// 用户实际输入用 <user-request> 包裹，增强历史记录中系统指令与用户输入的可辨性
-	parts.push(tags.wrapTag("user-request", msg.content));
 	if (msg.mentionedSkills.length > 0) {
 		parts.push(formatSkills(msg.mentionedSkills, tags));
 	}
+	// 用户实际输入用 <user-request> 包裹，紧邻尾部锚定块
+	parts.push(tags.wrapTag("user-request", msg.content));
 	if (includeHint && msg.hint) {
 		parts.push(tags.wrapTag("system-hint", msg.hint));
 	}

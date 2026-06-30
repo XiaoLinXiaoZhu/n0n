@@ -3,7 +3,7 @@
  *
  * 验证 skill 在两个注入点的拼装：
  * 1. system_with_skill — 主提示词 + 排序好的 init skills 拼成单条 system 消息
- * 2. user_input.mentionedSkills — 用户引用的 skill 拼接到用户消息正文之后、hint 之前
+ * 2. user_input.mentionedSkills — 用户引用的 skill 拼接到 user-request 之前、hint 之前
  */
 
 import { describe, expect, test } from "bun:test";
@@ -59,7 +59,7 @@ describe("formatPrompt — system_with_skill", () => {
 });
 
 describe("formatPrompt — user_input.mentionedSkills", () => {
-	test("mentionedSkills 拼接到 user-request 之后、hint 之前", () => {
+	test("mentionedSkills 拼接到 user-request 之前、hint 之前", () => {
 		const msgs: DomainMessage[] = [
 			{
 				type: "user_input",
@@ -72,13 +72,34 @@ describe("formatPrompt — user_input.mentionedSkills", () => {
 		const out = formatPrompt(msgs, tags);
 		expect(out).toHaveLength(1);
 		const content = out[0]?.content ?? "";
-		// 顺序：user-request → skill → hint
-		const reqIdx = content.indexOf("<user-request>");
+		// 顺序：skill → user-request → hint
 		const skillIdx = content.indexOf('<skill name="debug">');
+		const reqIdx = content.indexOf("<user-request>");
 		const hintIdx = content.indexOf("remember to verify");
-		expect(reqIdx).toBeGreaterThanOrEqual(0);
-		expect(skillIdx).toBeGreaterThan(reqIdx);
-		expect(hintIdx).toBeGreaterThan(skillIdx);
+		expect(skillIdx).toBeGreaterThanOrEqual(0);
+		expect(reqIdx).toBeGreaterThan(skillIdx);
+		expect(hintIdx).toBeGreaterThan(reqIdx);
+	});
+
+	test("context 排在 skill 之前", () => {
+		const msgs: DomainMessage[] = [
+			{
+				type: "user_input",
+				content: "do something",
+				context: "project info here",
+				hint: null,
+				mentionedSkills: [mkSkill("review", "check code")],
+			},
+		];
+		const out = formatPrompt(msgs, tags);
+		const content = out[0]?.content ?? "";
+		// 顺序：context → skill → user-request
+		const ctxIdx = content.indexOf("<context>");
+		const skillIdx = content.indexOf('<skill name="review">');
+		const reqIdx = content.indexOf("<user-request>");
+		expect(ctxIdx).toBeGreaterThanOrEqual(0);
+		expect(skillIdx).toBeGreaterThan(ctxIdx);
+		expect(reqIdx).toBeGreaterThan(skillIdx);
 	});
 
 	test("mentionedSkills 为空时不注入 skill 块", () => {
