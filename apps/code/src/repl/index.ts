@@ -33,6 +33,7 @@ import { showConfig } from "../show-config.ts";
 import { ShowWriter } from "../show-writer.ts";
 import { parseAndInjectSkills } from "../skill-inject.ts";
 import { createStdinController } from "../stdin-controller.ts";
+import { CODE_TAIL_ANCHOR } from "../tail-anchor.ts";
 import { UserPrompter } from "../user-prompter.ts";
 import { handleShowResult } from "./handle-result.ts";
 import { createHeartbeatKeeper } from "./heartbeat.ts";
@@ -220,7 +221,7 @@ export async function startCodeRepl(
 				makeUserInput(
 					finalText,
 					skillResult.mentionedSkills ?? [],
-					null,
+					CODE_TAIL_ANCHOR,
 					context,
 				),
 			);
