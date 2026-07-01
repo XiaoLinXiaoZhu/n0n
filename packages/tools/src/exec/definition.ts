@@ -46,7 +46,7 @@ export function makeExecToolDefinition(
 	const descriptions = {
 		script:
 			"Script content. Single command or multi-line code with imports, loops, etc.",
-		runtime: `Runtime (default: "${defaultRuntime}"). Options: ${ALL_RUNTIMES}. Shell runtimes are generally always available; language runtimes depend on installation — check agent init.`,
+		runtime: `Runtime (default: "${defaultRuntime}"). Options: ${ALL_RUNTIMES}.`,
 		cwd: "Working directory (default: injected workspace root)",
 		waitfor: `Max seconds to wait for process (default: ${waitfor.default}, max: ${waitfor.max}). Process continues in background if exceeded.`,
 	};
