@@ -10,9 +10,11 @@ role: user
 <git_status>M src/auth.ts</git_status>
 </context>
 
+<user-request>
 Fix the bug in auth module
+</user-request>
 
-<hint>
+<system-hint>
 Start by reading src/auth.ts
-</hint>
+</system-hint>
 ```

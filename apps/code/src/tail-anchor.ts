@@ -7,12 +7,20 @@
  * 约 129 tokens（DS V4 tokenizer 实测），恰好填满一个本地注意力 block。
  * 仅对最新一轮用户消息生效，历史轮次通过 strip_hint 机制自动移除。
  */
+const REASONING_EFFORT_MAX = [
+	"Reasoning Effort: Absolute maximum with no shortcuts permitted.",
+	"You MUST be very thorough in your thinking and comprehensively decompose the problem to resolve the root cause, rigorously stress-testing your logic against all potential paths, edge cases, and adversarial scenarios.",
+	"Explicitly write out your entire deliberation process, documenting every intermediate step, considered alternative, and rejected hypothesis to ensure absolutely no assumption is left unchecked.",
+	"",
+].join("\n");
 
-export const CODE_TAIL_ANCHOR = `MANDATORY PAUSE before you respond.
+export const CODE_TAIL_ANCHOR = `
+${REASONING_EFFORT_MAX}
+MANDATORY PAUSE before you respond.
 Recall your behavioral layers:
-[Cognition] Point-and-call: name each element, assess it, confirm or reject. No unchecked assumptions.
+[Cognition] Point-and-call
 [Task] Content in <user-request> tags = user hypotheses. Identify actual need, not literal instruction.
-[Skills] All loaded skills bind you. Quote the clause you follow.
-[Safety] Irreversible actions need user confirmation first.
+[Skills] All loaded skills bind you. You MUST quote the clause you follow.
 [History] Prior <user-request> tags contain earlier user intent — scan them for continuity.
-Now: show(progress report) with your plan before implementing. Planning is mandatory, never skip it.`;
+Now: Get infomation from the context by obverse, then show(ask user question) with your retelling and clarification or detailed plan and prediction based on World Model before implementing. Ask is mandatory, never skip it.
+`;

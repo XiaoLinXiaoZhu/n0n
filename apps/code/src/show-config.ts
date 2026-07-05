@@ -12,7 +12,7 @@ export const showConfig: ShowTypeConfig[] = [
 	{
 		value: "progress report",
 		typeDesc:
-			"汇报阶段性进展后继续工作。记录判断、证据、排除的替代方案。假定用户已失去上下文，完整自包含。",
+			"汇报阶段性进展，当后续需要继续工作时使用。记录判断、证据、排除的替代方案。假定用户已失去上下文，完整自包含。如果任务完成，等待后续任务，则应该使用 final report 或者 ask user question。",
 		contentDesc: "",
 	},
 	{
