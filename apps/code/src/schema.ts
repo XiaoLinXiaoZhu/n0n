@@ -2,7 +2,7 @@
  * Code Agent show 结果 schema
  *
  * 四种 type：
- * - progress report：阶段性进展，继续工作
+ * - working log：阶段性进展，继续工作
  * - ask user question：向用户提问，等待选择
  * - request user assistance：需要用户介入操作
  * - final report：任务完成，最终汇报
@@ -15,7 +15,7 @@ import { z } from "zod";
 
 export const CodeShowSchema = z.object({
 	type: z.enum([
-		"progress report",
+		"working log",
 		"ask user question",
 		"request user assistance",
 		"final report",

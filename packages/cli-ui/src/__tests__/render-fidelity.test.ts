@@ -229,7 +229,7 @@ describe("RichRenderer 虚拟终端保真测试", () => {
 		renderer.roundStart(1, 10, 3);
 
 		const json =
-			'{"type":"progress report","content":"关闭并清理远程分支和本地引用完成所有操作"}';
+			'{"type":"working log","content":"关闭并清理远程分支和本地引用完成所有操作"}';
 		const chunks = randomChunks(json, 77);
 		renderer.toolCallArgStart(0, "show");
 		for (const chunk of chunks) {

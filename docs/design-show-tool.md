@@ -6,7 +6,7 @@
 
 ## 概述
 
-show 是 agent 唯一的结构化输出工具，承担三重职责：阶段性推理日志（progress report）、最终交付（final report）、请求关键决策（ask user question / request user assistance）。
+show 是 agent 唯一的结构化输出工具，承担三重职责：阶段性推理日志（working log）、最终交付（final report）、请求关键决策（ask user question / request user assistance）。
 
 本文档记录"为什么这样做"——show 的设计来自对人机交互范式的分析，理解这个背景才能正确使用和演进它。
 
@@ -62,13 +62,13 @@ vibe coding 演进轴中，"模型询问用户"（阶段2）被判定为假参�
 
 ### show 如何实现"真参与"
 
-`show(progress report)` 产出可审阅的推理日志 → 用户直接在文本上标注"这里错了" → 这是在具体产物上操作，而非在 AI 的提问框架内被动选择。
+`show(working log)` 产出可审阅的推理日志 → 用户直接在文本上标注"这里错了" → 这是在具体产物上操作，而非在 AI 的提问框架内被动选择。
 
 对应交互范式的核心机制：**AI 产出初稿，人在上面改。修改本身就是意图的完整、无歧义表达。**
 
 ---
 
-## progress report 的正确定位：可审计的判断日志
+## working log 的正确定位：可审计的判断日志
 
 ### 不是状态通知
 
@@ -98,21 +98,21 @@ vibe coding 演进轴中，"模型询问用户"（阶段2）被判定为假参�
 
 ### 双时态服务
 
-progress report 服务于两种阅读场景：
+working log 服务于两种阅读场景：
 
 **场景一：实时纠偏**
-- 用户想了解进展 → 查看 progress report 日志 → 发现推导问题 → 手动停止 + 标注纠正
+- 用户想了解进展 → 查看 working log 日志 → 发现推导问题 → 手动停止 + 标注纠正
 - 价值：早发现早纠正，减少后续浪费
 
 **场景二：事后溯因**
-- 用户发现 final report 结果有问题 → 回查历史 progress report 日志 → 定位逻辑错误的位置 → 告诉模型"你这里错了"
+- 用户发现 final report 结果有问题 → 回查历史 working log 日志 → 定位逻辑错误的位置 → 告诉模型"你这里错了"
 - 价值：即使没实时盯着，事后也能追溯错误根源
 
-因此 progress report 的内容必须**自包含**——脱离对话上下文，单独阅读某条 progress report 也能理解当时的判断和依据。
+因此 working log 的内容必须**自包含**——脱离对话上下文，单独阅读某条 working log 也能理解当时的判断和依据。
 
 ### 可选阅读，不是强制推送
 
-progress report 像 email 收件箱——用户可以选择阅读或跳过。不是即时通讯的弹窗通知。用户在想了解细节时主动查看，不需要实时盯着每条输出。
+working log 像 email 收件箱——用户可以选择阅读或跳过。不是即时通讯的弹窗通知。用户在想了解细节时主动查看，不需要实时盯着每条输出。
 
 ### 触发粒度：判断节点，不是执行步骤
 
@@ -126,12 +126,12 @@ progress report 像 email 收件箱——用户可以选择阅读或跳过。不
 
 ask user question 请求用户做决策。但如果使用不当，它会退化为"假参与"。
 
-**有效使用的前提：之前的 progress report 已经充分展示了推导过程。**
+**有效使用的前提：之前的 working log 已经充分展示了推导过程。**
 
-- 有充分 progress report → 用户已验证框架正确 → ask user question 是"在经过验证的框架中请求关键决策" → 真参与
-- 无 progress report / 质量差 → 用户无法验证框架 → ask user question 可能嵌入了未验证假设 → 假参与
+- 有充分 working log → 用户已验证框架正确 → ask user question 是"在经过验证的框架中请求关键决策" → 真参与
+- 无 working log / 质量差 → 用户无法验证框架 → ask user question 可能嵌入了未验证假设 → 假参与
 
-ask user question 不应该作为第一个动作出现。模型应该先通过 progress report 展示自己的理解和推导，让用户有机会验证框架是否正确，然后再在必要时用 ask user question 请求关键决策。
+ask user question 不应该作为第一个动作出现。模型应该先通过 working log 展示自己的理解和推导，让用户有机会验证框架是否正确，然后再在必要时用 ask user question 请求关键决策。
 
 ---
 
@@ -143,9 +143,9 @@ ask user question 不应该作为第一个动作出现。模型应该先通过 p
 
 包含：已完成的工作、验证结果、关键决策及其依据。
 
-用户审阅结论。如果发现问题，可以通过历史 progress report 追溯原因。
+用户审阅结论。如果发现问题，可以通过历史 working log 追溯原因。
 
-### progress report — 可审计的判断日志
+### working log — 可审计的判断日志
 
 在关键判断点产出，记录推导过程供用户审阅或事后追溯。
 
@@ -162,7 +162,7 @@ content 应包含：
 
 需要用户做出选择才能继续。提出具体问题并提供 2-4 个选项。
 
-有效性前提：之前的 progress report 已经充分展示了推导框架，用户有能力判断"这个问题的前提是对的"。
+有效性前提：之前的 working log 已经充分展示了推导框架，用户有能力判断"这个问题的前提是对的"。
 
 ### request user assistance — 请求用户协助
 
@@ -172,9 +172,9 @@ content 应包含：
 
 ## 未来展望：节点回滚
 
-理想的交互模式：用户发现某条 progress report 中的判断有问题 → 将模型/工作区还原到那个时刻的状态 → 提供标注 → 从历史节点重新开始。
+理想的交互模式：用户发现某条 working log 中的判断有问题 → 将模型/工作区还原到那个时刻的状态 → 提供标注 → 从历史节点重新开始。
 
-这需要多组件协调（对话历史快照 × 工作区版本 × 模型上下文），当前仅作展望。但它对现在的设计有一个隐含要求：**每条 progress report 应该自包含到"能作为恢复点使用"的程度**——单独阅读这条记录就能理解当时的完整状态和判断依据。
+这需要多组件协调（对话历史快照 × 工作区版本 × 模型上下文），当前仅作展望。但它对现在的设计有一个隐含要求：**每条 working log 应该自包含到"能作为恢复点使用"的程度**——单独阅读这条记录就能理解当时的完整状态和判断依据。
 
 ---
 
@@ -184,10 +184,10 @@ content 应包含：
 
 LLM 可能先做了决策再编造合理化的推导展示——文本表面看起来有判断、有依据、有排除，但实际是事后填充。用户无法从文本形式区分真实推理和事后编造。
 
-当前的务实缓解：要求 progress report 中引用具体可验证的事实（"日志第3行显示 X"），而非抽象推理（"因为性能考虑"）。即使推理是事后编造的，具体事实引用是可独立验证的。
+当前的务实缓解：要求 working log 中引用具体可验证的事实（"日志第3行显示 X"），而非抽象推理（"因为性能考虑"）。即使推理是事后编造的，具体事实引用是可独立验证的。
 
 ### ask user question / request user assistance 的时序问题
 
-progress report 是异步可选阅读的——用户可能不在线、没看。模型按照错误假设一路推导到 ask user question 时，progress report 中的错误推导没有被用户拦截。
+working log 是异步可选阅读的——用户可能不在线、没看。模型按照错误假设一路推导到 ask user question 时，working log 中的错误推导没有被用户拦截。
 
-当前的缓解：要求 ask user question 自包含完整推导上下文，不依赖用户是否已读之前的 progress report。但如果推导本身有错误假设，ask user question 中展示的推导同样会包含该错误——这需要用户在阅读 ask user question 时自行发现。
+当前的缓解：要求 ask user question 自包含完整推导上下文，不依赖用户是否已读之前的 working log。但如果推导本身有错误假设，ask user question 中展示的推导同样会包含该错误——这需要用户在阅读 ask user question 时自行发现。

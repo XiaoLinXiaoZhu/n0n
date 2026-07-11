@@ -51,5 +51,5 @@ tool-usage 定义工具的"是什么"和"基本用法"。interaction-protocol �
 
 ## 待讨论
 
-- [拆分为progress-usage] progress 的详细格式说明放 tool-usage（基础定义）还是单独成为一个 init skill？
+- [拆分为show-usage] progress 的详细格式说明放 tool-usage（基础定义）还是单独成为一个 init skill？
 - [拆分为三个init-skill，也就是说三个skill：progress、observe/reason/act、write&edit] observe/reason/act 的示例是否需要缩减（空壳中已有最简定义）？

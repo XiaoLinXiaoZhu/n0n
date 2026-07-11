@@ -168,8 +168,8 @@ export async function runHeadless(
 				};
 			}
 
-			if (ir.type === "progress report") {
-				// progress report 状态：自动继续
+			if (ir.type === "working log") {
+				// working log 状态：自动继续
 				history.push({
 					type: "user_input",
 					content: "",

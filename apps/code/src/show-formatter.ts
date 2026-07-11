@@ -8,7 +8,7 @@ export function formatShowResult(result: CodeShowResult): string {
 	switch (result.type) {
 		case "final report":
 			return `# ✅ 任务完成\n\n${result.content}\n`;
-		case "progress report":
+		case "working log":
 			return `# ⏳ 进行中\n\n${result.content}\n`;
 		case "ask user question":
 			return `# ❓ 需要确认\n\n${result.content}\n`;

@@ -2,7 +2,7 @@
  * Code Agent show 工具配置
  *
  * 定义 code agent 的四种 show type。
- * 行为指南（何时使用、内容质量标准）由 progress-usage skill 承载，
+ * 行为指南（何时使用、内容质量标准）由 show-usage skill 承载，
  * 此处仅提供简洁的 API 契约供模型理解工具接口。
  */
 
@@ -10,7 +10,7 @@ import type { ShowTypeConfig } from "@n0n/tools";
 
 export const showConfig: ShowTypeConfig[] = [
 	{
-		value: "progress report",
+		value: "working log",
 		typeDesc:
 			"汇报阶段性进展，当后续需要继续工作时使用。记录判断、证据、排除的替代方案。假定用户已失去上下文，完整自包含。如果任务完成，等待后续任务，则应该使用 final report 或者 ask user question。",
 		contentDesc: "",

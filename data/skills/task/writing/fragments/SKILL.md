@@ -62,5 +62,5 @@ fragment 之间用 `---` 分隔。无标题、无标签、无排序。
 
 这是一个对话式 skill。核心是持续提问、持续追加。
 
-- 不需要频繁 `show(progress report)`——碎片的积累是连续的，没有明确的步骤
+- 不需要频繁 `show(working log)`——碎片的积累是连续的，没有明确的步骤
 - 会话结束时 `show(final report)` 报告 fragment 数量和文件路径

@@ -33,7 +33,7 @@ activation: manual
 
 ## progress 协议
 
-**`show(progress report)`** — 探索过程中持续暴露观察和判断：
+**`show(working log)`** — 探索过程中持续暴露观察和判断：
 - 每 3-4 次 observe 提交一次小结
 - 记录摩擦点、删除测试结果、初步判断
 
@@ -80,9 +80,9 @@ activation: manual
 
 对怀疑为浅模块的目标应用**删除测试**（用 `reason` 具象化推演）：删掉它会集中复杂度，还是只是移动复杂度？"集中"是你想要的信号。
 
-**显性遍历原则**：每读 3-4 个文件后提交一次 `show(progress report)` 小结。
+**显性遍历原则**：每读 3-4 个文件后提交一次 `show(working log)` 小结。
 
-**退出 → 提交 `show(progress report)`，格式：**
+**退出 → 提交 `show(working log)`，格式：**
 
 ```
 【阶段】架构探索
@@ -124,7 +124,7 @@ activation: manual
 **工具联动**：
 - `observe`：追踪具体依赖链、调用模式、现有测试
 - `reason`：推演设计权衡，将抽象讨论落地为具体类型和数据流
-- `show(progress report)`：持续暴露设计决策点
+- `show(working log)`：持续暴露设计决策点
 
 设计过程中的关注点：
 - 约束、依赖、深化模块的形状

@@ -46,5 +46,5 @@
 ## 待决事项
 
 - [可以拓展，而且建议改为中文版本，应该说所有的提示词都应该改为中文版本。] zoom-out 是否扩展为三视角版本
-- [step作为一个init-skill，重新组织，skill主题大概为progress-usage] step 的核心约束是否应合并进 system prompt
+- [step作为一个init-skill，重新组织，skill主题大概为show-usage] step 的核心约束是否应合并进 system prompt
 - [grill-me作为独立skill，因为频繁的盘问并非常见的对话场景，这里是作为开始任务前的初始化用的（类似plan-before-act）] grill-me 是否需要做成独立 skill，还是作为通用 blocked 使用模式

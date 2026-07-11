@@ -50,7 +50,7 @@ data/skills/
 │   ├── workflow/         (10) 任务执行原则
 │   ├── observe-reason-act/ (20) 三工具详则
 │   ├── write-and-edit/   (25) 文件操作工具
-│   ├── progress-usage/   (30) progress 使用规范
+│   ├── show-usage/   (30) progress 使用规范
 │   ├── coding/           (40) 编码实践
 │   ├── safety/           (50) 安全操作
 │   ├── communication/    (60) 沟通规范
@@ -101,7 +101,7 @@ data/skills/
 | git-guardrails-claude-code / setup-pre-commit 不采纳 | Claude Code 特有 / 与我们场景无关 |
 | TDD 采用 AI TDD 模式 | 严格 Red-Green-Refactor 在 AI 场景下浪费上下文 |
 | "禁止修改已有测试"写入 coding standard | 防止 AI 通过改测试"修复"失败 |
-| step 核心约束融入 progress-usage standard skill | step 作为 directive 保留"加强版"角色 |
+| step 核心约束融入 show-usage standard skill | step 作为 directive 保留"加强版"角色 |
 | communication 定位为中文用户 | 未来拓展时按用户语言切换，现在不做提前工作 |
 
 ## 建议下一个 session 使用的 skill

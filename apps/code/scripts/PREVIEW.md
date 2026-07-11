@@ -42,7 +42,7 @@
 | 230 | coding-style |
 | 240 | test-standard |
 | 310 | git |
-| 410 | progress-usage |
+| 410 | show-usage |
 | 420 | workflow |
 | 430 | observe-reason-act |
 
@@ -731,7 +731,7 @@ export const mockUserRepo = (): UserRepository => ({
 - 遇到网络问题时尝试代理端口 7897：`set https_proxy=http://127.0.0.1:7897&& `（`&&` 前无空格）。
 </git>
 
-<progress-usage>
+<show-usage>
 %% This is a skill %%
 
 # show 使用规范
@@ -760,17 +760,17 @@ show 是用户能看到的**唯一输出通道**。你的内部推理对用户�
 
 ## 使用节奏
 
-- progress 可以与其他工具调用同批发出——所有工具正常执行，然后循环重启。调用 `show(progress report)` 不额外消耗轮次。有有意义的状态就汇报。
-- "不必要的往返"指的是空等确定性工具结果——不是指 `show(progress report)`。汇报进展是有价值的，不是浪费。
-- 每个独立的推理步骤（提出假设、检查证据、排除/确认、转向）都应该通过 `show(progress report)` 声明。不要等整个阶段结束才汇报。
-- `show(ask user question)` 之前应该有若干个 `show(progress report)`——在请求用户介入之前，先做完所有自己能做的探索。
+- progress 可以与其他工具调用同批发出——所有工具正常执行，然后循环重启。调用 `show(working log)` 不额外消耗轮次。有有意义的状态就汇报。
+- "不必要的往返"指的是空等确定性工具结果——不是指 `show(working log)`。汇报进展是有价值的，不是浪费。
+- 每个独立的推理步骤（提出假设、检查证据、排除/确认、转向）都应该通过 `show(working log)` 声明。不要等整个阶段结束才汇报。
+- `show(ask user question)` 之前应该有若干个 `show(working log)`——在请求用户介入之前，先做完所有自己能做的探索。
 
 ## 汇报质量
 
 - 每一步声明必须有明确依据——具体的文件名、行号、数值、命令输出，而非直觉。
 - working 中说清楚：当前方向是什么、依据是什么、下一步要做什么。
 - blocked 中说清楚：核心结论、自信程度、需要用户确认的具体决策点。
-</progress-usage>
+</show-usage>
 
 <workflow>
 %% This is a skill %%

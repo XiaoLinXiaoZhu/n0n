@@ -6,7 +6,7 @@
  *
  * 所有模板一致引导使用 show(final report)：
  * 空转状态下任务已结束，唯一正确的动作是完成汇报，
- * 而不是继续用 show(progress report) 拖下去。
+ * 而不是继续用 show(working log) 拖下去。
  */
 
 import type { IdleNudgeMessage } from "@n0n/types";

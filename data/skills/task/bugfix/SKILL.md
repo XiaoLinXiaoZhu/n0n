@@ -7,7 +7,7 @@ activation: manual
 
 ## 流程总则
 
-每一步的退出条件是：**能提交一份满足该步格式的 `show(progress report)` 报告**。
+每一步的退出条件是：**能提交一份满足该步格式的 `show(working log)` 报告**。
 
 如果你在整理报告时发现某个字段填不上（比如"排除了什么"想不出来、"依据"不充分），说明该步骤没做到位——回到上一步继续工作，直到能完整填写后重新提交。
 
@@ -26,7 +26,7 @@ activation: manual
 - 明确问题的实体和边界
 - 区分：这是 bug？设计缺陷？还是未满足的需求？
 
-**退出 → 提交 `show(progress report)`，格式：**
+**退出 → 提交 `show(working log)`，格式：**
 
 ```
 【阶段】格物定位
@@ -65,7 +65,7 @@ activation: manual
 
 **确实无法构建循环时**：停下来明确说。列出尝试过什么。用 `show(request user assistance)` 请求用户提供环境访问、日志转储、或临时插桩权限。不要在没有循环的情况下继续推进。
 
-**退出 → 提交 `show(progress report)`，格式：**
+**退出 → 提交 `show(working log)`，格式：**
 
 ```
 【阶段】构建反馈循环
@@ -86,7 +86,7 @@ activation: manual
 - 确定每个条件的观测方式
 - 如果涉及用户主观判断，用 `show(ask user question)` 请求确认
 
-**退出 → 提交 `show(progress report)`，格式：**
+**退出 → 提交 `show(working log)`，格式：**
 
 ```
 【阶段】对齐标准
@@ -109,7 +109,7 @@ activation: manual
 - 逐个验证假设——每次只改变一个变量
 - 如需插桩，debug log 使用 `[DEBUG-xxxx]` 唯一前缀标记，清理时 grep 即可
 
-**退出 → 提交 `show(progress report)`，格式：**
+**退出 → 提交 `show(working log)`，格式：**
 
 ```
 【阶段】追溯根源
@@ -133,7 +133,7 @@ activation: manual
 - 每一轮尽可能批量发出工具调用
 - 最小改动原则
 
-**退出 → 提交 `show(progress report)`，格式：**
+**退出 → 提交 `show(working log)`，格式：**
 
 ```
 【阶段】尝试修复
@@ -153,7 +153,7 @@ activation: manual
 - 用实际执行验证，不用臆想
 - 如实报告——绝不伪造通过或隐藏失败
 
-**退出 → 提交 `show(progress report)`，格式：**
+**退出 → 提交 `show(working log)`，格式：**
 
 ```
 【阶段】绿灯验证
@@ -177,7 +177,7 @@ activation: manual
 - 项目中相似的位置是否存在同类问题
 - 一旦发现一处，逐一排查并修复
 
-**退出 → 提交 `show(progress report)`，格式：**
+**退出 → 提交 `show(working log)`，格式：**
 
 ```
 【阶段】横向排查

@@ -1,6 +1,6 @@
 # Task Skill 重写计划
 
-本文档记录 `data/skills/task/` 下各 task skill 的重写方向。每组 task 基于评审讨论结论，结合我们已有的 init skill（progress-usage、observe-reason-act 等）和工具体系进行适配。
+本文档记录 `data/skills/task/` 下各 task skill 的重写方向。每组 task 基于评审讨论结论，结合我们已有的 init skill（show-usage、observe-reason-act 等）和工具体系进行适配。
 
 **通用重写原则**：
 - 读者是 agent，用祈使句下指令，不写面向人类的解释

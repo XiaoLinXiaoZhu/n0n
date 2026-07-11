@@ -61,7 +61,7 @@ export function handleShowResult(
 			playNotifySound(notifyConfig);
 			return { action: "prompt", userInput: "" };
 		}
-		case "progress report": {
+		case "working log": {
 			writeln(`${style.cyan("⏳")} 进行中: ${ir.content}`);
 			writeln();
 			history.push(makeUserInput("", WORKING_NUDGE_TEXT));

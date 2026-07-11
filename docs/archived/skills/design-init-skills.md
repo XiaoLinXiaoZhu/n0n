@@ -111,7 +111,7 @@ Some of your behavior rules are loaded from init skills. You can also load addit
 | 10 | workflow | 核心循环（read→implement→verify→iterate）、协作姿态、失败处理、不给时间估计 |
 | 20 | observe-reason-act | 三工具详细说明、思维实验、批量调用原则、工具偏好（rg/bun/隔离安装） |
 | 25 | write-and-edit | write/edit 工具说明、文件操作选择策略、system-hint 说明 |
-| 30 | progress-usage | progress 三状态详则、使用节奏（高频 working、blocked 前先探索）、汇报质量要求 |
+| 30 | show-usage | progress 三状态详则、使用节奏（高频 working、blocked 前先探索）、汇报质量要求 |
 | 40 | coding | 改动标记、错误处理、抽象原则、注释哲学、测试约束（禁改测试、禁浅断言） |
 | 50 | safety | 可逆性评估、危险操作列表、不走捷径、环境限制（不sudo、.temp、bun进程） |
 | 60 | communication | 中文、直白风格、引用格式、理解用户反馈（分类问题/纠正/假设/指令） |
@@ -127,7 +127,7 @@ data/skills/
 │   ├── workflow/
 │   ├── observe-reason-act/
 │   ├── write-and-edit/
-│   ├── progress-usage/
+│   ├── show-usage/
 │   ├── coding/
 │   ├── safety/
 │   ├── communication/
@@ -177,7 +177,7 @@ data/skills/
 ├─────────────────────────────┤
 │  write-and-edit (order:25)   │
 ├─────────────────────────────┤
-│  progress-usage (order:30)   │
+│  show-usage (order:30)   │
 ├─────────────────────────────┤
 │  coding (order:40)           │
 ├─────────────────────────────┤

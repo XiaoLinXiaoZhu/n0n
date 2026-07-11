@@ -3,7 +3,7 @@
  *
  * 与 cli REPL 的区别：
  * - System prompt 为 code.md（代码 agent 而非 workflow builder）
- * - Show schema 为 CodeShowSchema（progress report / ask user question / request user assistance / final report）
+ * - Show schema 为 CodeShowSchema（working log / ask user question / request user assistance / final report）
  * - Context 注入项目结构和 git 状态，而非 workflow 列表
  */
 

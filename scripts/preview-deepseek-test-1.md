@@ -69,7 +69,7 @@
 | 311 | git-workflow |
 | 312 | git-commit-from-file |
 | 313 | git-proxy |
-| 410 | progress-usage |
+| 410 | show-usage |
 | 420 | workflow |
 | 431 | exec-observe |
 | 432 | exec-reason |
@@ -721,8 +721,8 @@ act:
 <!-- end of skill git-proxy -->
 </skill>
 
-<skill name="progress-usage">
-<!-- begin of skill progress-usage -->
+<skill name="show-usage">
+<!-- begin of skill show-usage -->
 
 progress 是用户能看到的**唯一输出通道**。你的内部推理对用户完全不可见——他们经常不在电脑前。因此每次 show 调用都必须提供清晰、完整、自包含的报告。
 
@@ -748,10 +748,10 @@ progress 是用户能看到的**唯一输出通道**。你的内部推理对用�
 
 ## 使用节奏
 
-- progress 可以与其他工具调用同批发出——所有工具正常执行，然后循环重启。调用 `show(progress report)` 不额外消耗轮次。有有意义的状态就汇报。
-- "不必要的往返"指的是空等确定性工具结果——不是指 `show(progress report)`。汇报进展是有价值的，不是浪费。
-- 每个独立的推理步骤（提出假设、检查证据、排除/确认、转向）都应该通过 `show(progress report)` 声明。不要等整个阶段结束才汇报。
-- `show(ask user question)` 之前应该有若干个 `show(progress report)`——在请求用户介入之前，先做完所有自己能做的探索。
+- progress 可以与其他工具调用同批发出——所有工具正常执行，然后循环重启。调用 `show(working log)` 不额外消耗轮次。有有意义的状态就汇报。
+- "不必要的往返"指的是空等确定性工具结果——不是指 `show(working log)`。汇报进展是有价值的，不是浪费。
+- 每个独立的推理步骤（提出假设、检查证据、排除/确认、转向）都应该通过 `show(working log)` 声明。不要等整个阶段结束才汇报。
+- `show(ask user question)` 之前应该有若干个 `show(working log)`——在请求用户介入之前，先做完所有自己能做的探索。
 
 ## 汇报质量
 
@@ -759,7 +759,7 @@ progress 是用户能看到的**唯一输出通道**。你的内部推理对用�
 - working 中说清楚：当前方向是什么、依据是什么、下一步要做什么。
 - blocked 中说清楚：核心结论、自信程度、需要用户确认的具体决策点。
 
-<!-- end of skill progress-usage -->
+<!-- end of skill show-usage -->
 </skill>
 
 <skill name="workflow">
