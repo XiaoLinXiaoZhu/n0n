@@ -27,7 +27,7 @@
 - 是一组并行生效的约束/准则
 - 通常应该始终激活（auto），甚至可以考虑并入 system prompt
 
-**与系统的关系**：作为 init skill 启动时自动加载（activation: init），约束模型在使用 write/act 时的行为——写什么样的代码、如何操作 git、如何处理错误。不编排工具使用顺序，不定义 progress 格式。
+**与系统的关系**：作为 init skill 启动时自动加载（activation: init），约束模型在使用 write/act 时的行为——写什么样的代码、如何操作 git、如何处理错误。不编排工具使用顺序，不定义 show 格式。
 
 **典型代表**：coding（编码实践）、git（工作流规范）
 
@@ -43,7 +43,7 @@
 - 有明确的起点和终点（任务完成即结束）
 - 将重复出现的任务抽取为可复用的标准化流程
 
-**与系统的关系**：编排 observe/reason/act 三个工具的使用顺序。每个步骤天然映射到某种工具类型。每个步骤的退出条件对应一个 `show(working log)` 报告。
+**与系统的关系**：编排 observe/reason/act 三个工具的使用顺序。每个步骤天然映射到某种工具类型。每个中间步骤通过 `show(working log)` 记录进展，最终步骤通过 `show(final report)` 交付。
 
 **典型代表**：bugfix（修 bug）、refactor（重构）、review（代码审查）、disk-cleanup（清理磁盘）、triage（分诊 issue）、to-prd（生成 PRD）、handoff（生成交接文档）
 
@@ -59,10 +59,10 @@
 - 可以与任何 task 堆叠使用
 
 **两个子方向**：
-- **Progress 调制器**：改变 progress 的使用频率和内容格式（research、step）
+- **Show 调制器**：改变 working log 的使用频率和内容格式（research、step）
 - **视角/模式调制器**：改变模型的输出视角或交互角色（zoom-out 上升抽象层、grill-me 反转为提问者）
 
-**与系统的关系**：调制 progress 的频率和格式，或约束 observe/reason/act 的使用范围。
+**与系统的关系**：调制 working log 的频率和格式，或约束 observe/reason/act 的使用范围。
 
 **典型代表**：research（高频汇报+证据链条）、step（通用高频汇报）、zoom-out（上升抽象层）、grill-me（穷举式提问）
 

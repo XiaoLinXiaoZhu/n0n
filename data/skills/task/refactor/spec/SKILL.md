@@ -37,9 +37,9 @@ activation: manual
 
 ---
 
-## progress 协议
+## show 协议
 
-每一步的退出条件是：**能提交一份满足该步格式的 `show(working log)` 报告**。
+每一步的完成标志是：**能提交一份满足该步格式的 `show(working log)`**。
 
 如果你在整理报告时发现某个字段填不上，说明该步骤没做到位——回退继续工作，直到能完整填写后重新提交。
 
@@ -62,7 +62,7 @@ activation: manual
 - 理解为什么当前代码长这样——可能有历史原因（observe：`git log`）
 - **每 3-4 次观察提交一次小结**，不要攒到最后
 
-**退出 → 提交 `show(working log)`，格式：**
+→ 提交 `show(working log)`，格式：
 
 ```
 【阶段】理解现状
@@ -86,7 +86,7 @@ activation: manual
 
 **删除测试**：想象删掉这个模块——复杂度消失（说明它是透传层），还是复杂度散落到 N 个调用方（说明它在发挥作用）？这个检验帮你快速判断"值不值得重构"。
 
-**退出 → 提交 `show(working log)`，格式：**
+→ 提交 `show(working log)`，格式：
 
 ```
 【阶段】定义目标
@@ -110,7 +110,7 @@ activation: manual
 - 判断是否需要先补测试（reason：权衡补测试成本 vs 风险）
 - 确认 TypeScript 类型系统能捕获哪些错误
 
-**退出 → 提交 `show(working log)`，格式：**
+→ 提交 `show(working log)`，格式：
 
 ```
 【阶段】建立安全网
@@ -130,9 +130,9 @@ activation: manual
 
 **实验优先**：直接尝试重构（act），然后看效果（observe）。出错了 `git checkout` 回来重试（act）。比纯 reason 推演更高效。
 
-本步骤可能包含多轮小改动，不需要每轮都提交 progress。在整体改造完成后提交一次。
+本步骤可能包含多轮小改动，不需要每轮都提交 working log。在整体改造完成后提交一次。
 
-**退出 → 提交 `show(working log)`，格式：**
+→ 提交 `show(working log)`，格式：
 
 ```
 【阶段】执行重构
@@ -151,7 +151,7 @@ activation: manual
 - 手动检查 git diff 确认没有行为变更（observe：`git diff`）
 - 公开接口变更时搜索所有消费者确认兼容（observe：`rg`）
 
-**退出 → 提交 `show(working log)`，格式：**
+→ 提交 `show(working log)`，格式：
 
 ```
 【阶段】验证等价

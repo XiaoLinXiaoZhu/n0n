@@ -31,7 +31,7 @@ activation: manual
 
 ---
 
-## progress 协议
+## show 协议
 
 **`show(working log)`** — 探索过程中持续暴露观察和判断：
 - 每 3-4 次 observe 提交一次小结
@@ -82,7 +82,7 @@ activation: manual
 
 **显性遍历原则**：每读 3-4 个文件后提交一次 `show(working log)` 小结。
 
-**退出 → 提交 `show(working log)`，格式：**
+→ 提交 `show(working log)`，格式：
 
 ```
 【阶段】架构探索

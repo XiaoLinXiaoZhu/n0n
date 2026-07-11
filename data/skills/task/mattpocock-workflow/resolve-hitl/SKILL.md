@@ -61,7 +61,7 @@ activation: manual
 
 ### 5. 报告转换结果
 
-**退出 → 提交 `progress(blocked/working)`：**
+**退出 → 提交 `show(final report)`：**
 
 ```
 【阶段】Resolve HITL
@@ -75,4 +75,4 @@ activation: manual
 【下一步】继续 resolve 其他 HITL / 回到 dispatch
 ```
 
-如果仍有未解决的阻塞，保持 `show(ask user question)` 继续质询。只有所有阻塞都解决或明确放弃时，提交 `show(working log)` 并退出。
+如果仍有未解决的阻塞，保持 `show(ask user question)` 继续质询。只有所有阻塞都解决或明确放弃时，提交 `show(final report)` 并退出。

@@ -63,7 +63,7 @@ skill-name/
 ### 3. 内容原则
 
 - 读者是 agent——用祈使句下指令，不写面向人类的解释。
-- 每个步骤明确关联工具（observe/reason/act）和 progress 状态。
+- 每个步骤明确关联工具（observe/reason/act）和 show type。
 - 退出条件用 `show(final report)` 格式模板定义。
 - 使用中文。
 
@@ -81,7 +81,7 @@ skill-name/
 - [ ] description 包含触发条件，覆盖用户场景
 - [ ] activation 字段正确（init 需配 order，manual 需配触发词在 description 中）
 - [ ] 无时间敏感信息（日期、版本号等容易过期的内容）
-- [ ] 有具体的 progress 格式模板（何时 working、何时 blocked、何时 completed）
+- [ ] 有正确的 show type 使用（中间步骤用 working log，最终步骤用 final report，需要用户决策时用 ask user question）
 - [ ] 引用只一层深，附件平铺在同级目录
 
 **退出 → 提交 `show(final report)`**，包含 skill 路径和概要。

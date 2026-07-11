@@ -41,7 +41,7 @@ git log <fixed-point>..HEAD --oneline
 
 ### 4. 产出概览
 
-**退出 → 提交 `show(working log)`，格式：**
+**退出 → 提交 `show(final report)`，格式：**
 
 ```
 【阶段】Review Init

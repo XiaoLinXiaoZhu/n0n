@@ -79,7 +79,7 @@ HITL 等待处理：MWF-03（HITL blocked）
 
 用户选择后继续循环。
 
-**退出 → 提交 `show(working log)`，格式：**
+**退出 → 提交 `show(final report)`，格式：**
 
 ```
 【阶段】Dispatch
