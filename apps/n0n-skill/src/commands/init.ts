@@ -1,8 +1,8 @@
 /**
  * init 命令：将 data/skills/ 中的 skill 按四个分类子目录写入 ~/.n0n/builtin-skills/
  *
- * 源目录结构：data/skills/{capability,directive,standard,task}/
- * 目标结构：~/.n0n/builtin-skills/{capability,directive,standard,task}/
+ * 源目录结构：data/skills/{capability,directive,self-function,task}/
+ * 目标结构：~/.n0n/builtin-skills/{capability,directive,self-function,task}/
  */
 
 import { existsSync, mkdirSync, rmSync } from "node:fs";
@@ -14,7 +14,7 @@ import { getBuiltinSkillsDir, getUserSkillsDir } from "../paths.ts";
 const BUILTIN_SOURCE = resolve(import.meta.dir, "../../../../data/skills");
 
 /** 四个分类子目录 */
-const CATEGORIES = ["capability", "directive", "standard", "task"] as const;
+const CATEGORIES = ["capability", "directive", "self-function", "task"] as const;
 
 export async function initCommand(): Promise<void> {
 	const targetDir = getBuiltinSkillsDir();

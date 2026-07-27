@@ -12,7 +12,7 @@ import { getUserSkillsDir } from "../paths.ts";
 const VALID_CATEGORIES = [
 	"capability",
 	"directive",
-	"standard",
+	"self-function",
 	"task",
 ] as const;
 
@@ -29,7 +29,7 @@ TODO - 在此编写方法论指令。
 export async function createCommand(input: string | undefined): Promise<void> {
 	if (!input) {
 		console.error("用法: n0n-skill create <category>/<name>");
-		console.error("  category: capability, directive, standard, task");
+		console.error("  category: capability, directive, self-function, task");
 		console.error("  name: 小写字母、数字和连字符");
 		console.error("  示例: n0n-skill create task/my-skill");
 		process.exit(1);
