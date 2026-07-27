@@ -3,7 +3,7 @@
  *
  * 职责：
  * - 扫描单个分类目录下的 skill
- * - 扫描单个根目录（五个分类子目录自动遍历）
+ * - 扫描单个根目录（四个分类子目录自动遍历）
  * - 扫描多个根目录（合并全部结果）
  *
  * 不负责解析 frontmatter 或加载内容，只返回元数据列表。
@@ -20,7 +20,6 @@ export const CATEGORIES: readonly SkillCategory[] = [
 	"capability",
 	"directive",
 	"self-function",
-	"standard",
 	"task",
 ] as const;
 
