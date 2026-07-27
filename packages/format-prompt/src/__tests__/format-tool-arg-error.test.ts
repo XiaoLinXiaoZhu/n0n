@@ -12,7 +12,7 @@
 
 import { describe, expect, it } from "bun:test";
 import type { TagAdapter, ToolArgErrorMessage } from "@n0n/types";
-import { formatToolArgError } from "../format-prompt/format-tool-arg-error.ts";
+import { formatToolArgError } from "../format-tool-arg-error.ts";
 
 // TagAdapter mock
 const tags: TagAdapter = {

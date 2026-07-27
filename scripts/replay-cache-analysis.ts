@@ -5,7 +5,8 @@
  * 贪心前缀匹配长度，计算缓存命中/未命中 token。
  */
 import { readFileSync } from "node:fs";
-import { createTagAdapter, formatPrompt } from "@n0n/shared";
+import { createTagAdapter } from "@n0n/shared";
+import { formatPrompt } from "@n0n/format-prompt";
 import {
   splitSkillsToUser,
   stripReasoningFromPromptMessages,

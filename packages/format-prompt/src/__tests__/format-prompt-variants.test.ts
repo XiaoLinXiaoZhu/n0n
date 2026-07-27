@@ -12,10 +12,10 @@
  */
 
 import { describe, expect, it } from "bun:test";
+import { createTagAdapter } from "@n0n/shared";
 import type { DomainMessage } from "@n0n/types";
-import { formatPrompt } from "../format-prompt";
-import { pick } from "../format-prompt/seed.ts";
-import { createTagAdapter } from "../tags.ts";
+import { formatPrompt } from "../index.ts";
+import { pick } from "../seed.ts";
 
 // ── 稳定性测试 ──
 

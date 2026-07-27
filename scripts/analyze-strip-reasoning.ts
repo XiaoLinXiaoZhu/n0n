@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
-import { createTagAdapter, formatPrompt } from "@n0n/shared";
+import { createTagAdapter } from "@n0n/shared";
+import { formatPrompt } from "@n0n/format-prompt";
 import {
   splitSkillsToUser,
   stripReasoningFromPromptMessages,

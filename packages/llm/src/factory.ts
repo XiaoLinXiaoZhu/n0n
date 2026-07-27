@@ -7,11 +7,9 @@
  * 3. 将闭包注入 Client — Client 不感知 formatPrompt 的存在
  */
 
-import {
-	createTagAdapter,
-	type FormatOptions,
-	formatPrompt,
-} from "@n0n/shared";
+import type { FormatOptions } from "@n0n/format-prompt";
+import { formatPrompt } from "@n0n/format-prompt";
+import { createTagAdapter } from "@n0n/shared";
 import type { DomainMessage, LLMClient, PromptMessage } from "@n0n/types";
 import { AnthropicClient } from "./anthropic-client";
 import type { LLMConfig } from "./config.ts";

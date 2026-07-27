@@ -14,7 +14,12 @@ import { getBuiltinSkillsDir, getUserSkillsDir } from "../paths.ts";
 const BUILTIN_SOURCE = resolve(import.meta.dir, "../../../../data/skills");
 
 /** 四个分类子目录 */
-const CATEGORIES = ["capability", "directive", "self-function", "task"] as const;
+const CATEGORIES = [
+	"capability",
+	"directive",
+	"self-function",
+	"task",
+] as const;
 
 export async function initCommand(): Promise<void> {
 	const targetDir = getBuiltinSkillsDir();

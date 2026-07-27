@@ -20,7 +20,8 @@ console.log("=".repeat(70));
 
 // ── 导入依赖 ──
 
-import { createTagAdapter, formatPrompt, formatSkills } from "@n0n/shared";
+import { createTagAdapter } from "@n0n/shared";
+import { formatPrompt, formatSkills } from "@n0n/format-prompt";
 import type { DomainMessage, PromptMessage, TagAdapter } from "@n0n/types";
 import { splitSkillsToUser, stripReasoningFromPromptMessages } from "../packages/llm/src/deepseek-test-1-client";
 import triggerPromptRaw from "../packages/llm/src/deepseek-test-1-client/trigger-prompt.md" with { type: "text" };

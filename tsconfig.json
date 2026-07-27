@@ -47,6 +47,9 @@
 			"@n0n/skills": [
 				"./packages/skills/src/index.ts"
 			],
+			"@n0n/format-prompt": [
+				"./packages/format-prompt/src/index.ts"
+			]
 		},
 		"jsx": "react-jsx",
 		"jsxImportSource": "react"

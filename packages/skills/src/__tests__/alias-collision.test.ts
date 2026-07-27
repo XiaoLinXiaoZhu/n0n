@@ -52,12 +52,12 @@ describe("findSkillsByNameOrAlias", () => {
 		it("两个同名的 skill 都应返回", () => {
 			const skills = [
 				makeSkill({ name: "my-skill", category: "task" }),
-				makeSkill({ name: "my-skill", category: "standard" }),
+				makeSkill({ name: "my-skill", category: "directive" }),
 			];
 			const matched = findSkillsByNameOrAlias(skills, "my-skill");
 			expect(matched).toHaveLength(2);
 			expect(matched.map((s) => s.category).sort()).toEqual([
-				"standard",
+				"directive",
 				"task",
 			]);
 		});
@@ -65,7 +65,7 @@ describe("findSkillsByNameOrAlias", () => {
 		it("一个同名、一个不同名 → 只返回同名者", () => {
 			const skills = [
 				makeSkill({ name: "shared-name", category: "task" }),
-				makeSkill({ name: "other", category: "standard" }),
+				makeSkill({ name: "other", category: "directive" }),
 			];
 			expect(findSkillsByNameOrAlias(skills, "shared-name")).toHaveLength(1);
 		});

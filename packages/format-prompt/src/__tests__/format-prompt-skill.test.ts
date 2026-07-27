@@ -7,9 +7,9 @@
  */
 
 import { describe, expect, test } from "bun:test";
+import { createTagAdapter } from "@n0n/shared";
 import type { DomainMessage, Skill } from "@n0n/types";
-import { formatPrompt } from "../format-prompt";
-import { createTagAdapter } from "../tags.ts";
+import { formatPrompt } from "../index.ts";
 
 const tags = createTagAdapter("default");
 

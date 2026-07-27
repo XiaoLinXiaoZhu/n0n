@@ -18,7 +18,11 @@ export type SkillActivation = "auto" | "manual" | "init";
  * - directive: 改变交互行为模式，不定义任务。可与其他类型堆叠。
  * - capability: 赋予使用特定工具/API/外部系统的操作能力，通常包含脚本。
  */
-export type SkillCategory = "capability" | "directive" | "self-function" | "task";
+export type SkillCategory =
+	| "capability"
+	| "directive"
+	| "self-function"
+	| "task";
 
 /** Skill 元数据（从 SKILL.md frontmatter + 目录结构解析） */
 export interface SkillMeta {

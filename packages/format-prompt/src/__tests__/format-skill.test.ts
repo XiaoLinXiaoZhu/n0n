@@ -10,9 +10,9 @@
  */
 
 import { describe, expect, test } from "bun:test";
+import { createTagAdapter } from "@n0n/shared";
 import type { Skill } from "@n0n/types";
-import { formatSkills } from "../format-prompt/format-skill.ts";
-import { createTagAdapter } from "../tags.ts";
+import { formatSkills } from "../format-skill.ts";
 
 const tags = createTagAdapter("default");
 

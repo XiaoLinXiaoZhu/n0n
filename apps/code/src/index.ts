@@ -16,13 +16,9 @@ import { homedir } from "node:os";
 import { dirname, resolve } from "node:path";
 import { style, writeln } from "@n0n/cli-ui";
 import { buildToolsConfig } from "@n0n/core";
+import type { FormatOptions } from "@n0n/format-prompt";
 import { createLLMClient } from "@n0n/llm";
-import {
-	ensureDirs,
-	type FormatOptions,
-	parseWorkspaceArg,
-	resolveBasePaths,
-} from "@n0n/shared";
+import { ensureDirs, parseWorkspaceArg, resolveBasePaths } from "@n0n/shared";
 import {
 	DEFAULT_TOML,
 	displayCodeConfig,

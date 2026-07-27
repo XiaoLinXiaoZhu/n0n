@@ -3,6 +3,8 @@
  *
  * 不依赖任何配置或运行时状态。
  * 所有函数都是纯函数，通过参数接收所需上下文。
+ *
+ * 注意：format-prompt 已迁移至独立包 @n0n/format-prompt。
  */
 
 // AGENTS.md
@@ -19,10 +21,6 @@ export {
 } from "./conversation-log";
 // Deep parse JSON strings
 export { deepParseJsonStrings } from "./deep-parse-json-strings.ts";
-// Format Prompt
-export type { FormatOptions } from "./format-prompt";
-export { formatPrompt } from "./format-prompt";
-export { formatSkills } from "./format-prompt/format-skill.ts";
 // Frontmatter
 export type { RawFrontmatter, TypedFrontmatter } from "./frontmatter.ts";
 export {

@@ -10,7 +10,8 @@ import { readFileSync } from "fs";
 const log = JSON.parse(readFileSync("n0n-conversation-20260606-014008.json", "utf-8"));
 const history = log.history;
 
-import { createTagAdapter, formatPrompt } from "@n0n/shared";
+import { createTagAdapter } from "@n0n/shared";
+import { formatPrompt } from "@n0n/format-prompt";
 import type { DomainMessage, PromptMessage } from "@n0n/types";
 import { splitSkillsToUser, stripReasoningFromPromptMessages } from "../packages/llm/src/deepseek-test-1-client";
 import triggerPromptRaw from "../packages/llm/src/deepseek-test-1-client/trigger-prompt.md" with { type: "text" };

@@ -332,3 +332,5 @@ export function formatPrompt(
 
 	return mergeConsecutiveSystem(result);
 }
+
+export { formatSkills } from "./format-skill.ts";

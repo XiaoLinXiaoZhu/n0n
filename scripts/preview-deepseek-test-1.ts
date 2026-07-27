@@ -13,10 +13,8 @@
 
 import { resolve } from "node:path";
 import { writeFileSync, existsSync, mkdirSync } from "node:fs";
-import {
-  createTagAdapter,
-  formatPrompt,
-} from "@n0n/shared";
+import { createTagAdapter } from "@n0n/shared";
+import { formatPrompt } from "@n0n/format-prompt";
 import { loadInitSkills, toSkill } from "@n0n/skill";
 import type { DomainMessage, PromptMessage, ToolCallPart, TagAdapter } from "@n0n/types";
 import { splitSkillsToUser } from "../packages/llm/src/deepseek-test-1-client";
