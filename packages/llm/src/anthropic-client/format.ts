@@ -74,12 +74,12 @@ export function toAnthropicFormat(
 
 			case "assistant": {
 				const content: AnthropicContent[] = [];
-				// 只有同时具备 reasoning 和 signature 才回传 thinking block
-				// Anthropic 要求 thinking block 必须有 signature 字段
-				if (msg.reasoning && msg.reasoningSignature) {
+				// 只要有 signature 就回传 thinking block（reasoning 可能因 display 设置而为空）
+				// Anthropic 要求 thinking block 完整回传，含空 thinking 文本和 signature
+				if (msg.reasoningSignature) {
 					content.push({
 						type: "thinking",
-						thinking: msg.reasoning,
+						thinking: msg.reasoning ?? "",
 						signature: msg.reasoningSignature,
 					});
 				}

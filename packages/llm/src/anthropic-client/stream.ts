@@ -203,8 +203,8 @@ export async function* anthropicStream(
 						const block = event.content_block;
 						if (block.type === "text" && block.text) {
 							yield { type: "content", text: block.text };
-						} else if (block.type === "thinking" && block.thinking) {
-							yield { type: "thinking", text: block.thinking };
+						} else if (block.type === "thinking") {
+							yield { type: "thinking", text: block.thinking ?? "" };
 						} else if (block.type === "tool_use") {
 							const idx = toolCallIndex++;
 							toolBlocks.set(event.index, {
