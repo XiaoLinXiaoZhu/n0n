@@ -6,6 +6,8 @@
  * - content_block_start(type=thinking) + content_block_delta(thinking_delta) → StreamEvent.thinking
  * - content_block_start(type=tool_use) + content_block_delta(input_json_delta) → StreamEvent.tool_call_delta
  * - message_delta(stop_reason) → StreamEvent.done
+ *
+ * thinking / output_config 等厂商特定参数通过 extra_body 透传。
  */
 
 import {
@@ -17,10 +19,7 @@ import {
 import type { AnthropicProviderConfig } from "../config.ts";
 import { isAbortError } from "../errors.ts";
 import type { FormatFn } from "../factory.ts";
-import {
-	DEFAULT_STREAM_MAX_TOKENS,
-	THINKING_OUTPUT_BUFFER,
-} from "./constants.ts";
+import { DEFAULT_STREAM_MAX_TOKENS } from "./constants.ts";
 import { toAnthropicFormat, toAnthropicTools } from "./format.ts";
 import type {
 	AnthropicRequest,
@@ -72,15 +71,9 @@ export async function* anthropicStream(
 		body.tool_choice = { type: tc === "required" ? "any" : tc };
 	}
 
-	if (ctx.pc.thinking) {
-		const budget = ctx.pc.thinking.budget_tokens;
-		body.thinking = { type: "enabled", budget_tokens: budget };
-		body.max_tokens = Math.max(
-			DEFAULT_STREAM_MAX_TOKENS,
-			budget + THINKING_OUTPUT_BUFFER,
-		);
-		// Anthropic requires temperature=1 when thinking is enabled
-		body.temperature = 1;
+	// extra_body 透传 — 可覆盖以上任意字段（含 thinking、output_config、max_tokens 等）
+	if (ctx.pc.extra_body) {
+		Object.assign(body, ctx.pc.extra_body);
 	}
 
 	let res: Response;

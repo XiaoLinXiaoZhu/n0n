@@ -11,7 +11,7 @@
  * parse, don't verify：有默认回退的字段在 parse 时填入默认值，
  * 消费方拿到的类型不含 optional，不存在不确定传播。
  *
- * enable_thinking / reasoning_effort 已移除——各厂商的 thinking 控制方式不同，
+ * enable_thinking / reasoning_effort / thinking 已移除——各厂商的 thinking 控制方式不同，
  * 不应在 schema 中固化。统一通过 extra_body 透传。
  */
 
@@ -47,12 +47,7 @@ export const AnthropicProviderConfigSchema = z.object({
 	model: z.string(),
 	base_url: z.string().default("https://api.anthropic.com"),
 	tag_style: tagStyleField,
-	thinking: z
-		.object({
-			type: z.literal("enabled"),
-			budget_tokens: z.number(),
-		})
-		.optional(),
+	extra_body: extraBodyField,
 });
 export type AnthropicProviderConfig = z.infer<
 	typeof AnthropicProviderConfigSchema

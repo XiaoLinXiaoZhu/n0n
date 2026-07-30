@@ -7,8 +7,8 @@
  * - Prompt caching：支持两种模式
  *   - 显式断点：DomainMessage 中的 cache_breakpoint 标记转换为 content block 级 cache_control
  *   - 自动缓存：请求顶层 cache_control（Anthropic 20 块回溯窗口），始终启用作为末尾兜底
- * - Thinking：构造请求时注入 thinking 参数
  * - system 消息拆离（Anthropic 格式要求 system 在消息体外）
+ * - thinking / output_config 等厂商特定参数通过 extra_body 透传
  *
  * 类型定义见 types.ts，格式转换见 format.ts，stream 逻辑见 stream.ts。
  */
@@ -90,6 +90,11 @@ export class AnthropicClient implements LLMClient {
 			body.temperature = request.temperature;
 		}
 
+		// extra_body 透传 — 可覆盖以上任意字段（含 thinking、output_config 等）
+		if (this.pc.extra_body) {
+			Object.assign(body, this.pc.extra_body);
+		}
+
 		const maxRetries = 3;
 		let lastError: Error | null = null;
 
@@ -143,7 +148,8 @@ export class AnthropicClient implements LLMClient {
 		const { system, messages: anthropicMessages } =
 			toAnthropicFormat(promptMessages);
 
-		// 构造与 stream() 完全一致的请求体，只覆盖 max_tokens 和 stream
+		// heartbeat 用于刷新提示词缓存：max_tokens=1 即可，
+		// 思考输出由 extra_body 中的 output_config.effort 统一控制。
 		const body: AnthropicRequest = {
 			model: this.modelId,
 			max_tokens: 1,
@@ -158,13 +164,12 @@ export class AnthropicClient implements LLMClient {
 			body.tool_choice = { type: tc === "required" ? "any" : tc };
 		}
 
-		if (this.pc.thinking) {
-			const budget = this.pc.thinking.budget_tokens;
-			body.thinking = { type: "enabled", budget_tokens: budget };
-			// thinking 模式下 max_tokens 必须 > budget_tokens
-			body.max_tokens = budget + 1;
-			body.temperature = 1;
+		// extra_body 透传 — 可覆盖以上任意字段
+		if (this.pc.extra_body) {
+			Object.assign(body, this.pc.extra_body);
 		}
+		// 确保 max_tokens=1 用于缓存刷新（extra_body 可能覆盖）
+		body.max_tokens = 1;
 
 		try {
 			const res = await fetch(messagesUrl(this.baseUrl), {

@@ -3,6 +3,9 @@
  *
  * 所有 Anthropic Messages API 协议相关的类型集中在此，
  * 供 format.ts 和 anthropic-client.ts 共用。
+ *
+ * thinking / output_config 等厂商特定参数通过 extra_body 透传，
+ * 不在请求类型中固化。
  */
 
 import { z } from "zod";
@@ -39,6 +42,7 @@ export interface AnthropicTool {
 	eager_input_streaming?: boolean;
 }
 
+/** Anthropic Messages API 请求体 — 最小字段集，其余通过 extra_body 透传 */
 export interface AnthropicRequest {
 	model: string;
 	max_tokens: number;
@@ -53,7 +57,6 @@ export interface AnthropicRequest {
 	tools?: AnthropicTool[];
 	tool_choice?: { type: "auto" | "none" | "any" };
 	stream?: boolean;
-	thinking?: { type: "enabled"; budget_tokens: number };
 	temperature?: number;
 }
 
