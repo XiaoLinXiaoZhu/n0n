@@ -17,8 +17,7 @@ import type { StreamingResult } from "./streaming.ts";
 import {
 	type PartialToolCall,
 	type RecoveryResult,
-	recoverPartialCalls,
-	type TryRecoverFn,
+	type RecoverPartialFn,
 } from "./tool-recovery.ts";
 
 // ── 截断恢复 ──
@@ -26,7 +25,7 @@ import {
 /** 从 streaming 结果中提取未完成的工具调用，委托 tool-recovery 模块恢复并执行 */
 export async function recoverTruncatedCalls(
 	result: StreamingResult,
-	tryRecover?: TryRecoverFn,
+	recover: RecoverPartialFn,
 ): Promise<RecoveryResult> {
 	const partials: PartialToolCall[] = [];
 	const acc = result.accumulator;
@@ -42,7 +41,11 @@ export async function recoverTruncatedCalls(
 		});
 	}
 
-	return recoverPartialCalls(partials, tryRecover);
+	const pairs = [];
+	for (const partial of partials) {
+		pairs.push(await recover(partial));
+	}
+	return { pairs };
 }
 
 // ── 消息构建 ──

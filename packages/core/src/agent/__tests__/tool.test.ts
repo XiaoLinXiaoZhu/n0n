@@ -1,6 +1,6 @@
 // biome-ignore-all lint/style/noNonNullAssertion lint/suspicious/noExplicitAny: test assertions on known-shape results
 /**
- * executeToolStream 单元测试
+ * ToolRuntime 单元测试
  *
  * 验证工具调用的流式执行：
  * - 未知工具 → yield ToolArgErrorMessage with kind: "unknown_tool"
@@ -8,15 +8,19 @@
  */
 
 import { describe, expect, it } from "bun:test";
-import type { ToolEntry } from "@n0n/tools";
-import type { ToolArgErrorMessage, ToolCallRecord } from "@n0n/types";
-import { executeToolStream, type GetToolEntry } from "../tool.ts";
+import type { ToolEntry, Toolkit } from "@n0n/tools";
+import type {
+	ToolArgErrorMessage,
+	ToolCallRecord,
+} from "@n0n/types";
+import type { PartialToolCall } from "../tool-recovery.ts";
+import { createToolRuntime } from "../tool.ts";
 
 // ── 辅助 ──
 
-async function collectStream(tc: ToolCallRecord, getEntry?: GetToolEntry) {
+async function collectStream(tc: ToolCallRecord, toolkit: Toolkit) {
 	const events: unknown[] = [];
-	for await (const e of executeToolStream(tc, undefined, getEntry)) {
+	for await (const e of createToolRuntime(toolkit).execute(tc)) {
 		events.push(e);
 	}
 	return events;
@@ -37,23 +41,31 @@ function mockExecEntry(): ToolEntry {
 				required: ["script"],
 			},
 		},
-		stream: false,
-		execute: async (_tc: any) => ({
-			type: "tool_result" as const,
-			tool: "observe" as const,
-			call: _tc,
-			status: "completed" as const,
-			exitCode: 0,
-			stdout: "mock output",
-			stderr: "",
-			durationMs: 1,
-		}),
+		execute: async function* (_tc: any) {
+			yield {
+				type: "tool_result" as const,
+				tool: "observe" as const,
+				call: _tc,
+				status: "completed" as const,
+				exitCode: 0,
+				stdout: "mock output",
+				stderr: "",
+				durationMs: 1,
+			};
+		},
 	};
 }
 
 // ── 测试 ──
 
-describe("executeToolStream", () => {
+function makeToolkit(entry?: ToolEntry): Toolkit {
+	return {
+		tools: entry ? [entry.definition] : [],
+		getEntry: (name) => (name === entry?.definition.name ? entry : undefined),
+	};
+}
+
+describe("ToolRuntime", () => {
 	describe("未知工具", () => {
 		it("应 yield ToolArgErrorMessage with kind: unknown_tool", async () => {
 			const tc: ToolCallRecord = {
@@ -62,7 +74,7 @@ describe("executeToolStream", () => {
 				args: { path: "/tmp/test" },
 			} as unknown as ToolCallRecord;
 
-			const events = await collectStream(tc);
+			const events = await collectStream(tc, makeToolkit());
 
 			// 不应出现 tool_result
 			const results = events.filter((e: any) => e.type === "tool_result");
@@ -85,7 +97,7 @@ describe("executeToolStream", () => {
 				args: {},
 			} as unknown as ToolCallRecord;
 
-			const events = await collectStream(tc);
+			const events = await collectStream(tc, makeToolkit());
 			const err = events[0] as ToolArgErrorMessage;
 
 			expect(err.error.kind).toBe("unknown_tool");
@@ -103,15 +115,47 @@ describe("executeToolStream", () => {
 			} as unknown as ToolCallRecord;
 
 			const mockEntry = mockExecEntry();
-			const getEntry: GetToolEntry = (name) =>
-				name === "observe" ? mockEntry : undefined;
-			const events = await collectStream(tc, getEntry);
+			const events = await collectStream(tc, makeToolkit(mockEntry));
 
 			const argErrors = events.filter((e: any) => e.type === "tool_arg_error");
 			expect(argErrors).toHaveLength(0);
 
 			const results = events.filter((e: any) => e.type === "tool_result");
 			expect(results).toHaveLength(1);
+		});
+	});
+
+	describe("截断恢复", () => {
+		const partial: PartialToolCall = {
+			index: 0,
+			toolCallId: "call_partial",
+			toolName: "observe",
+			partialInput: '{"script":"ec',
+		};
+
+		it("未知工具 → unknown_tool", async () => {
+			const result = await createToolRuntime(makeToolkit()).recover({
+				...partial,
+				toolName: "read",
+			});
+
+			expect(result.status).toBe("unrecoverable");
+			expect(result.result.type).toBe("tool_arg_error");
+			expect((result.result as ToolArgErrorMessage).error.kind).toBe(
+				"unknown_tool",
+			);
+		});
+
+		it("已知工具但无恢复器 → truncated_recovery", async () => {
+			const result = await createToolRuntime(
+				makeToolkit(mockExecEntry()),
+			).recover(partial);
+
+			expect(result.status).toBe("unrecoverable");
+			expect(result.result.type).toBe("tool_arg_error");
+			expect((result.result as ToolArgErrorMessage).error.kind).toBe(
+				"truncated_recovery",
+			);
 		});
 	});
 });

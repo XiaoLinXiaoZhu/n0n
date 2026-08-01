@@ -2,7 +2,7 @@
  * 工具调用解析与执行 — agentLoop 的工具层
  */
 
-import { REGISTERED_TOOLS, type ToolEntry } from "@n0n/tools";
+import type { ToolEntry, Toolkit } from "@n0n/tools";
 import type {
 	AssistantToolCallPart,
 	ToolArgErrorMessage,
@@ -11,9 +11,17 @@ import type {
 } from "@n0n/types";
 import { ExecArgsSchema, ShowArgsSchema, WriteArgsSchema } from "@n0n/types";
 import { ZodError } from "zod";
+import {
+	makeUnrecoverablePair,
+	type PartialToolCall,
+	type RecoveredPair,
+} from "./tool-recovery.ts";
 
-/** 工具查找函数类型 — 由 Toolkit 提供 */
-export type GetToolEntry = (name: string) => ToolEntry | undefined;
+/** Agent 运行时使用的统一工具接缝。 */
+export interface ToolRuntime {
+	execute(tc: ToolCallRecord): AsyncGenerator<ToolStreamEvent>;
+	recover(partial: PartialToolCall): Promise<RecoveredPair>;
+}
 
 // ── 参数键序归一化 ──
 
@@ -83,59 +91,95 @@ export function parseToolCalls(raw: AssistantToolCallPart[]): ToolCallRecord[] {
 			tool: tc.toolName,
 			args,
 			// NOTE: tool 是运行时 string，无法在 parse 阶段收窄为字面量联合。
-			// 执行阶段的 Zod schema 校验（executeToolStream）在入口处兜底。
+			// 执行阶段的 ToolRuntime 会在入口处完成工具查找和 schema 校验。
 		} as ToolCallRecord;
 	});
 }
 
-/** 校验工具名已注册且参数解析成功 */
-export function isValidToolCall(tc: ToolCallRecord): boolean {
-	return REGISTERED_TOOLS.has(tc.tool) && !("_parseError" in tc.args);
-}
-
 // ── 执行 ──
 
-export async function* executeToolStream(
+function unknownToolError(tc: ToolCallRecord): ToolArgErrorMessage {
+	return {
+		type: "tool_arg_error",
+		callId: tc.id,
+		tool: tc.tool,
+		error: { kind: "unknown_tool" },
+	};
+}
+
+function invalidArgsError(
+	tc: ToolCallRecord,
+	entry: ToolEntry,
+	err: ZodError,
+): ToolArgErrorMessage {
+	return {
+		type: "tool_arg_error",
+		callId: tc.id,
+		tool: tc.tool,
+		error: {
+			kind: "invalid_args",
+			issues: err.issues.map((i) => ({
+				path: i.path.join("."),
+				message: i.message,
+			})),
+			schema: entry.definition.parameters,
+		},
+	};
+}
+
+async function* executeEntry(
+	entry: ToolEntry,
 	tc: ToolCallRecord,
 	confirmFn?: (question: string) => Promise<string>,
-	getEntry?: GetToolEntry,
 ): AsyncGenerator<ToolStreamEvent> {
-	const resolve = getEntry ?? ((_name: string) => undefined);
-	const entry = resolve(tc.tool);
-	if (!entry) {
-		yield {
-			type: "tool_arg_error",
-			callId: tc.id,
-			tool: tc.tool,
-			error: { kind: "unknown_tool" },
-		} satisfies ToolArgErrorMessage;
-		return;
-	}
-
 	try {
-		if (entry.stream) {
-			yield* entry.execute(tc, confirmFn);
-		} else {
-			yield await entry.execute(tc, confirmFn);
-		}
+		yield* entry.execute(tc, confirmFn);
 	} catch (err) {
 		if (err instanceof ZodError) {
-			const argError: ToolArgErrorMessage = {
-				type: "tool_arg_error",
-				callId: tc.id,
-				tool: tc.tool,
-				error: {
-					kind: "invalid_args",
-					issues: err.issues.map((i) => ({
-						path: i.path.join("."),
-						message: i.message,
-					})),
-					schema: entry.definition?.parameters,
-				},
-			};
-			yield argError;
+			yield invalidArgsError(tc, entry, err);
 			return;
 		}
 		throw err;
 	}
+}
+
+async function recoverPartial(
+	toolkit: Toolkit,
+	partial: PartialToolCall,
+): Promise<RecoveredPair> {
+	const entry = toolkit.getEntry(partial.toolName);
+	if (!entry) {
+		return makeUnrecoverablePair(partial, "unknown_tool");
+	}
+
+	try {
+		const recovered = await entry.recoverAndExecute?.(
+			partial.toolCallId,
+			partial.partialInput,
+		);
+		if (recovered) {
+			return { status: "recovered", ...recovered };
+		}
+	} catch {
+		// recoverAndExecute 抛异常视同恢复失败。
+	}
+
+	return makeUnrecoverablePair(partial, "truncated_recovery");
+}
+
+export function createToolRuntime(
+	toolkit: Toolkit,
+	confirmFn?: (question: string) => Promise<string>,
+): ToolRuntime {
+	return {
+		execute: async function* (tc) {
+			const entry = toolkit.getEntry(tc.tool);
+			if (!entry) {
+				yield unknownToolError(tc);
+				return;
+			}
+			yield* executeEntry(entry, tc, confirmFn);
+		},
+		recover: (partial) => recoverPartial(toolkit, partial),
+	};
 }

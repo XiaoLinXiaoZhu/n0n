@@ -12,7 +12,6 @@
  * 输出统一为 (call, result) 对的列表。loop 不需要关心具体工具类型。
  */
 
-import { REGISTERED_TOOLS } from "@n0n/tools";
 import type {
 	DomainMessage,
 	PartialToolCallRecord,
@@ -53,80 +52,28 @@ export interface RecoveryResult {
 	pairs: RecoveredPair[];
 }
 
-/**
- * 截断恢复函数签名（由工具注册表提供）。
- * 恢复+执行，返回 {call, result} 或 null（恢复失败）。
- */
-export type TryRecoverFn = (
-	toolName: string,
-	toolCallId: string,
-	partialJson: string,
-) => Promise<{ call: ToolCallRecord; result: DomainMessage } | null>;
+/** 单个截断调用的恢复行为。 */
+export type RecoverPartialFn = (
+	partial: PartialToolCall,
+) => Promise<RecoveredPair>;
 
-/**
- * 恢复截断的工具调用，逐一尝试恢复并执行。
- *
- * 对每个截断工具：
- * - 有 tryRecover 且恢复成功 → 使用恢复后的 call + result
- * - 恢复失败或无 tryRecover → 生成占位 call + tool_arg_error result
- *
- * @param partials 未完整的工具调用列表
- * @param tryRecover 可选的恢复函数，由工具注册表提供
- */
-export async function recoverPartialCalls(
-	partials: PartialToolCall[],
-	tryRecover?: TryRecoverFn,
-): Promise<RecoveryResult> {
-	const pairs: RecoveredPair[] = [];
-
-	for (const partial of partials) {
-		if (!partial.toolCallId || !partial.toolName) continue;
-
-		let recovered:
-			| { call: ToolCallRecord; result: DomainMessage }
-			| null
-			| undefined;
-		try {
-			recovered = await tryRecover?.(
-				partial.toolName,
-				partial.toolCallId,
-				partial.partialInput,
-			);
-		} catch {
-			// recoverAndExecute 抛异常视同恢复失败，走 unrecoverable 分支
-			recovered = null;
-		}
-
-		if (recovered) {
-			// recover 成功：拿到 call + result（工具已执行）
-			pairs.push({ status: "recovered", ...recovered });
-		} else {
-			// recover 失败：生成占位 call + tool_arg_error result
-			// 占位 call 仅用于保持 assistant_tool_call 消息结构完整性。
-			// 对应的 tool_arg_error result 会告知模型此调用失败。
-			const placeholderCall: PartialToolCallRecord = {
-				id: partial.toolCallId,
-				tool: partial.toolName,
-				args: {},
-			};
-
-			const isKnownTool = REGISTERED_TOOLS.has(partial.toolName);
-			const error = isKnownTool
-				? { kind: "truncated_recovery" as const }
-				: { kind: "unknown_tool" as const };
-
-			pairs.push({
-				status: "unrecoverable",
-				call: placeholderCall,
-				result: {
-					type: "tool_arg_error",
-					callId: partial.toolCallId,
-					tool: partial.toolName,
-					error,
-				},
-			});
-		}
-	}
-
-	return { pairs };
+/** 为无法恢复的调用构造占位结果。 */
+export function makeUnrecoverablePair(
+	partial: PartialToolCall,
+	kind: "unknown_tool" | "truncated_recovery",
+): UnrecoverableCall {
+	return {
+		status: "unrecoverable",
+		call: {
+			id: partial.toolCallId,
+			tool: partial.toolName,
+			args: {},
+		},
+		result: {
+			type: "tool_arg_error",
+			callId: partial.toolCallId,
+			tool: partial.toolName,
+			error: { kind },
+		},
+	};
 }

@@ -18,7 +18,6 @@ import type {
 	ShowToolCall,
 	ToolCallRecord,
 	ToolDefinition,
-	ToolResult,
 	ToolStreamEvent,
 	WriteToolCall,
 } from "@n0n/types";
@@ -40,15 +39,10 @@ import {
 
 // ── 执行器类型 ──
 
-type StreamExecutor = (
+type ToolExecutor = (
 	tc: ToolCallRecord,
 	confirmFn?: (question: string) => Promise<string>,
 ) => AsyncGenerator<ToolStreamEvent>;
-
-type SyncExecutor = (
-	tc: ToolCallRecord,
-	confirmFn?: (question: string) => Promise<string>,
-) => Promise<ToolResult> | ToolResult;
 
 /** 截断恢复结果：恢复后的工具调用 + 执行结果 */
 export interface RecoverResult {
@@ -69,15 +63,13 @@ export type RecoverFn = (
 	partialJson: string,
 ) => Promise<RecoverResult | null>;
 
-/** 工具注册表条目 — stream 字段决定 execute 类型，recoverAndExecute 与 stream 无关 */
+/** 工具注册表条目 — 所有工具统一为异步事件流。 */
 export type ToolEntry = {
 	definition: ToolDefinition;
 	recoverAndExecute?: RecoverFn;
 	canStart?: CanStartFn;
-} & (
-	| { stream: true; execute: StreamExecutor }
-	| { stream: false; execute: SyncExecutor }
-);
+	execute: ToolExecutor;
+};
 
 // ── 基础注册表构建 ──
 
@@ -111,7 +103,6 @@ function buildBaseRegistry(
 	// 每个工具使用统一的 execToolStream 后端，透传实际工具名作为执行角色。
 	const makeExecEntry = (role: ExecRole): ToolEntry => ({
 		definition: makeExecToolDefinition(toolsConfig.platform, role),
-		stream: true,
 		execute: (tc, confirmFn) => {
 			const call = {
 				id: tc.id,
@@ -128,15 +119,14 @@ function buildBaseRegistry(
 		),
 		write: {
 			definition: WRITE_TOOL_DEFINITION,
-			stream: false,
 			canStart: pathExclusiveCanStart,
-			execute: (tc) => {
+			execute: async function* (tc) {
 				const call: WriteToolCall = {
 					id: tc.id,
 					tool: "write" as const,
 					args: WriteArgsSchema.parse(tc.args),
 				};
-				return writeTool(call, toolsConfig.workspace);
+				yield await writeTool(call, toolsConfig.workspace);
 			},
 			recoverAndExecute: makeWriteRecover(toolsConfig.workspace),
 		},
@@ -150,14 +140,6 @@ export interface Toolkit {
 	tools: ToolDefinition[];
 	getEntry(name: string): ToolEntry | undefined;
 }
-
-export const REGISTERED_TOOLS = new Set([
-	"observe",
-	"reason",
-	"act",
-	"write",
-	"show",
-]);
 
 /**
  * 构建完整的工具集（含 show）。
@@ -173,10 +155,9 @@ export function makeToolkit(
 ): Toolkit {
 	const showEntry: ToolEntry = {
 		definition: makeShowTool(showConfig),
-		stream: false,
 		canStart: () => true,
-		execute: (tc) => {
-			return showTool(tc as ShowToolCall);
+		execute: async function* (tc) {
+			yield showTool(tc as ShowToolCall);
 		},
 	};
 

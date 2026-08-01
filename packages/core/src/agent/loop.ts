@@ -29,7 +29,7 @@ import {
 } from "./round.ts";
 import { ExecutionScheduler } from "./scheduler.ts";
 import { parseStream, type StreamingResult } from "./streaming.ts";
-import { executeToolStream } from "./tool.ts";
+import { createToolRuntime } from "./tool.ts";
 
 // ── 结果类型 ──
 
@@ -64,6 +64,7 @@ export async function agentLoop<T = unknown>(
 	const renderer: Renderer = options.renderer ?? new PlainRenderer();
 	const client = options.client;
 	const toolkit = options.toolkit;
+	const toolRuntime = createToolRuntime(toolkit, options.confirmFn);
 	const messages: DomainMessage[] = [...history];
 	let idleCount = 0;
 
@@ -87,7 +88,7 @@ export async function agentLoop<T = unknown>(
 
 		// ── 1. 流式解析 + 并行执行（交织进行） ──
 		const scheduler = new ExecutionScheduler(
-			(tc) => executeToolStream(tc, options.confirmFn, toolkit.getEntry),
+			toolRuntime.execute,
 			{
 				onRegister: (tc) => renderer.toolExecStart(tc.id, tc),
 				onChunk: (tcId, tool, chunk) =>
@@ -224,17 +225,7 @@ export async function agentLoop<T = unknown>(
 		idleCount = 0;
 
 		// ── 3. 截断恢复 + seal ──
-		const tryRecover = async (
-			toolName: string,
-			toolCallId: string,
-			partialJson: string,
-		) => {
-			const entry = toolkit.getEntry(toolName);
-			return (
-				(await entry?.recoverAndExecute?.(toolCallId, partialJson)) ?? null
-			);
-		};
-		const truncation = await recoverTruncatedCalls(result, tryRecover);
+		const truncation = await recoverTruncatedCalls(result, toolRuntime.recover);
 		scheduler.seal();
 
 		const allCalls: (ToolCallRecord | PartialToolCallRecord)[] = [

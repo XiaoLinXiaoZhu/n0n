@@ -57,11 +57,23 @@ describe("recoverTruncatedCalls", () => {
 			args: { script: "ls" },
 		} as ToolCallRecord);
 
-		const result = await recoverTruncatedCalls({
-			accumulator: acc,
-			readyTools,
-			interrupt: null,
-		});
+		const result = await recoverTruncatedCalls(
+			{
+				accumulator: acc,
+				readyTools,
+				interrupt: null,
+			},
+			async () => ({
+				status: "unrecoverable",
+				call: { id: "unused", tool: "unused", args: {} },
+				result: {
+					type: "tool_arg_error",
+					callId: "unused",
+					tool: "unused",
+					error: { kind: "unknown_tool" },
+				},
+			}),
+		);
 
 		expect(result.pairs).toHaveLength(0);
 	});
@@ -71,11 +83,23 @@ describe("recoverTruncatedCalls", () => {
 			{ index: 0, id: "tc_1", name: "observe", input: '{"scri' },
 		]);
 
-		const result = await recoverTruncatedCalls({
-			accumulator: acc,
-			readyTools: new Map(),
-			interrupt: "length",
-		});
+		const result = await recoverTruncatedCalls(
+			{
+				accumulator: acc,
+				readyTools: new Map(),
+				interrupt: "length",
+			},
+			async () => ({
+				status: "unrecoverable",
+				call: { id: "tc_1", tool: "observe", args: {} },
+				result: {
+					type: "tool_arg_error",
+					callId: "tc_1",
+					tool: "observe",
+					error: { kind: "truncated_recovery" },
+				},
+			}),
+		);
 
 		expect(result.pairs).toHaveLength(1);
 		expect(result.pairs[0]!.status).toBe("unrecoverable");
@@ -95,15 +119,13 @@ describe("recoverTruncatedCalls", () => {
 		]);
 
 		// 模拟 recover：恢复参数 + 执行 → 返回 {call, result}
-		const tryRecover = async (
-			toolName: string,
-			toolCallId: string,
-			_partialJson: string,
-		) => {
-			if (toolName !== "write") return null;
+		const recover = async (partial: {
+			toolName: string;
+			toolCallId: string;
+		}) => {
 			const call = {
-				id: toolCallId,
-				tool: "write",
+				id: partial.toolCallId,
+				tool: partial.toolName,
 				args: { path: "test.ts", content: "partial con" },
 			} as ToolCallRecord;
 			const result: DomainMessage = {
@@ -112,7 +134,7 @@ describe("recoverTruncatedCalls", () => {
 				call: call as any,
 				status: "recovered",
 			} as any;
-			return { call, result };
+			return { status: "recovered" as const, call, result };
 		};
 
 		const result = await recoverTruncatedCalls(
@@ -121,7 +143,7 @@ describe("recoverTruncatedCalls", () => {
 				readyTools: new Map(),
 				interrupt: "length",
 			},
-			tryRecover,
+			recover,
 		);
 
 		expect(result.pairs).toHaveLength(1);
