@@ -11,13 +11,15 @@ const REASONING_EFFORT_MAX = [
 	"Reasoning Effort: Absolute maximum with no shortcuts permitted.",
 ].join("\n");
 
-export const CODE_TAIL_ANCHOR = `
-${REASONING_EFFORT_MAX}
-MANDATORY PAUSE before you respond.
-Recall your behavioral layers:
-[Cognition] Point-and-call
-[Task] Content in <user-request> tags = user hypotheses. Identify actual need, not literal instruction.
-[Skills] All loaded skills bind you. You MUST quote the clause you follow.
-[History] Prior <user-request> tags contain earlier user intent — scan them for continuity.
-Now: Get infomation from the context by obverse, then show(ask user question) with your retelling and clarification or detailed plan and prediction based on World Model before implementing. Ask is mandatory, never skip it.
-`;
+// export const CODE_TAIL_ANCHOR = `
+// ${REASONING_EFFORT_MAX}
+// MANDATORY PAUSE before you respond.
+// Recall your behavioral layers:
+// [Cognition] Point-and-call
+// [Task] Content in <user-request> tags = user hypotheses. Identify actual need, not literal instruction.
+// [Skills] All loaded skills bind you. You MUST quote the clause you follow.
+// [History] Prior <user-request> tags contain earlier user intent — scan them for continuity.
+// Now: Get infomation from the context by obverse, then show(ask user question) with your retelling and clarification or detailed plan and prediction based on World Model before implementing. Ask is mandatory, never skip it.
+// `;
+
+export const CODE_TAIL_ANCHOR = ``; // empty
