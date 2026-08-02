@@ -4,6 +4,7 @@
  * Mock ToolCallRecord / ToolResult / PipelineJob 工厂函数。
  */
 
+import type { ToolJob } from "@n0n/tools";
 import type { ToolCallRecord, ToolResult } from "@n0n/types";
 import type { PipelineJob } from "../scheduler.ts";
 
@@ -70,20 +71,30 @@ export function mockCompletedJob(
 	tc: ToolCallRecord,
 	result: ToolResult,
 ): PipelineJob {
+	const job: ToolJob = {
+		call: tc,
+		canStart: () => true,
+		run: async function* () {
+			yield result;
+		},
+	};
 	return {
 		status: "completed",
-		tc,
-		canStart: () => true,
+		job,
 		result,
-	} as PipelineJob;
+	};
 }
 
 // biome-ignore lint/suspicious/noExplicitAny: test mock flexibility
 export function mockFailedJob(tc: ToolCallRecord, argError: any): PipelineJob {
+	const job: ToolJob = {
+		call: tc,
+		canStart: () => true,
+		run: async function* () {},
+	};
 	return {
 		status: "failed",
-		tc,
-		canStart: () => true,
+		job,
 		argError,
-	} as PipelineJob;
+	};
 }

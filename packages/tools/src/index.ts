@@ -14,11 +14,8 @@
 
 import type {
 	CanStartFn,
-	DomainMessage,
 	ShowToolCall,
-	ToolCallRecord,
 	ToolDefinition,
-	ToolStreamEvent,
 	WriteToolCall,
 } from "@n0n/types";
 import type { ToolsConfig } from "./config.ts";
@@ -29,6 +26,11 @@ import {
 	execToolStream,
 	makeExecToolDefinition,
 } from "./exec";
+import {
+	createToolkitSession,
+	type ToolEntry,
+	type ToolkitSession,
+} from "./session.ts";
 import { makeShowTool, type ShowTypeConfig, showTool } from "./show.ts";
 import {
 	makeWriteRecover,
@@ -36,40 +38,6 @@ import {
 	WriteArgsSchema,
 	writeTool,
 } from "./write.ts";
-
-// ── 执行器类型 ──
-
-type ToolExecutor = (
-	tc: ToolCallRecord,
-	confirmFn?: (question: string) => Promise<string>,
-) => AsyncGenerator<ToolStreamEvent>;
-
-/** 截断恢复结果：恢复后的工具调用 + 执行结果 */
-export interface RecoverResult {
-	call: ToolCallRecord;
-	result: DomainMessage;
-}
-
-/**
- * 截断恢复+执行函数：尝试从不完整的 JSON 参数中恢复并执行，返回 call+result 对。
- *
- * 始终为非流式（返回 Promise），与 execute 的 stream 模式无关。原因：
- * 截断恢复的结果不经过 scheduler/renderBuffer 流式管线，
- * 而是由 tool-recovery 模块直接产出 (call, result) 对追加到 history。
- * 截断场景下参数不完整，不适合做正常的流式执行。
- */
-export type RecoverFn = (
-	toolCallId: string,
-	partialJson: string,
-) => Promise<RecoverResult | null>;
-
-/** 工具注册表条目 — 所有工具统一为异步事件流。 */
-export type ToolEntry = {
-	definition: ToolDefinition;
-	recoverAndExecute?: RecoverFn;
-	canStart?: CanStartFn;
-	execute: ToolExecutor;
-};
 
 // ── 基础注册表构建 ──
 
@@ -128,7 +96,7 @@ function buildBaseRegistry(
 				};
 				yield await writeTool(call, toolsConfig.workspace);
 			},
-			recoverAndExecute: makeWriteRecover(toolsConfig.workspace),
+			recover: makeWriteRecover(toolsConfig.workspace),
 		},
 	};
 }
@@ -138,7 +106,7 @@ function buildBaseRegistry(
 export interface Toolkit {
 	/** ToolDefinition 列表 — 供 client.stream() 使用 */
 	tools: ToolDefinition[];
-	getEntry(name: string): ToolEntry | undefined;
+	bind(confirmFn?: (question: string) => Promise<string>): ToolkitSession;
 }
 
 /**
@@ -176,7 +144,11 @@ export function makeToolkit(
 	const activeTools = new Set<string>(TOOL_ORDER);
 	return {
 		tools,
-		getEntry: (name) => (activeTools.has(name) ? registry[name] : undefined),
+		bind: (confirmFn) => {
+			const resolve = (name: string) =>
+				activeTools.has(name) ? registry[name] : undefined;
+			return createToolkitSession(resolve, confirmFn);
+		},
 	};
 }
 
@@ -186,5 +158,11 @@ export type { CanStartFn } from "@n0n/types";
 export type { ToolsConfig } from "./config.ts";
 
 export type { ExecRole } from "./exec";
-
+export type {
+	PartialToolCall,
+	RecoveredPair,
+	ToolRecover,
+	UnrecoverableCall,
+} from "./recovery.ts";
+export type { ToolJob, ToolkitSession } from "./session.ts";
 export type { ShowTypeConfig } from "./show.ts";

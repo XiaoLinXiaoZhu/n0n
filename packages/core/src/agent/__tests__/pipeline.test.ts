@@ -9,6 +9,7 @@
  */
 
 import { describe, expect, it } from "bun:test";
+import type { ToolJob } from "@n0n/tools";
 import type { CanStartFn, ToolCallRecord, ToolStreamEvent } from "@n0n/types";
 import { ExecutionScheduler, type SchedulerEvents } from "../scheduler.ts";
 import {
@@ -34,6 +35,18 @@ const pathExclusive: CanStartFn = (self, active) => {
 
 /** show: 无条件并行 */
 const always: CanStartFn = () => true;
+
+function makeJob(
+	executor: (tc: ToolCallRecord) => AsyncGenerator<ToolStreamEvent>,
+	tc: ToolCallRecord,
+	canStart: CanStartFn = (_self, active) => active.length === 0,
+): ToolJob {
+	return {
+		call: tc,
+		canStart: (active) => canStart(tc, active),
+		run: () => executor(tc),
+	};
+}
 
 /** 创建一个可控的异步执行器：通过 resolve 回调手动控制完成时机 */
 function createControllableExecutor() {
@@ -130,8 +143,10 @@ describe("ExecutionScheduler", () => {
 	describe("基本调度", () => {
 		it("单个工具正常执行", async () => {
 			const { executor, log } = createInstantExecutor();
-			const scheduler = new ExecutionScheduler(executor);
-			scheduler.enqueue(mockWriteTC("w1", "a.ts"), pathExclusive);
+			const scheduler = new ExecutionScheduler();
+			scheduler.enqueue(
+				makeJob(executor, mockWriteTC("w1", "a.ts"), pathExclusive),
+			);
 			scheduler.seal();
 			await scheduler.run();
 			expect(log).toEqual(["exec:w1"]);
@@ -142,11 +157,17 @@ describe("ExecutionScheduler", () => {
 
 		it("多个不冲突的 write 并行执行", async () => {
 			const { executor, log, resolve } = createControllableExecutor();
-			const scheduler = new ExecutionScheduler(executor);
+			const scheduler = new ExecutionScheduler();
 
-			scheduler.enqueue(mockPathExclusiveTC("e1", "a.ts"), pathExclusive);
-			scheduler.enqueue(mockPathExclusiveTC("e2", "b.ts"), pathExclusive);
-			scheduler.enqueue(mockWriteTC("w1", "c.ts"), pathExclusive);
+			scheduler.enqueue(
+				makeJob(executor, mockPathExclusiveTC("e1", "a.ts"), pathExclusive),
+			);
+			scheduler.enqueue(
+				makeJob(executor, mockPathExclusiveTC("e2", "b.ts"), pathExclusive),
+			);
+			scheduler.enqueue(
+				makeJob(executor, mockWriteTC("w1", "c.ts"), pathExclusive),
+			);
 			scheduler.seal();
 
 			const runPromise = scheduler.run();
@@ -168,10 +189,14 @@ describe("ExecutionScheduler", () => {
 
 		it("相同路径的 write 串行执行", async () => {
 			const { executor, log, resolve } = createControllableExecutor();
-			const scheduler = new ExecutionScheduler(executor);
+			const scheduler = new ExecutionScheduler();
 
-			scheduler.enqueue(mockWriteTC("w1", "a.ts"), pathExclusive);
-			scheduler.enqueue(mockPathExclusiveTC("e1", "a.ts"), pathExclusive);
+			scheduler.enqueue(
+				makeJob(executor, mockWriteTC("w1", "a.ts"), pathExclusive),
+			);
+			scheduler.enqueue(
+				makeJob(executor, mockPathExclusiveTC("e1", "a.ts"), pathExclusive),
+			);
 			scheduler.seal();
 
 			const runPromise = scheduler.run();
@@ -192,10 +217,12 @@ describe("ExecutionScheduler", () => {
 	describe("exec barrier 行为", () => {
 		it("exec 等待所有 active 完成", async () => {
 			const { executor, log, resolve } = createControllableExecutor();
-			const scheduler = new ExecutionScheduler(executor);
+			const scheduler = new ExecutionScheduler();
 
-			scheduler.enqueue(mockPathExclusiveTC("e1", "a.ts"), pathExclusive);
-			scheduler.enqueue(mockExecTC("x1"));
+			scheduler.enqueue(
+				makeJob(executor, mockPathExclusiveTC("e1", "a.ts"), pathExclusive),
+			);
+			scheduler.enqueue(makeJob(executor, mockExecTC("x1")));
 			scheduler.seal();
 
 			const runPromise = scheduler.run();
@@ -214,10 +241,12 @@ describe("ExecutionScheduler", () => {
 
 		it("exec 阻塞后续工具", async () => {
 			const { executor, log, resolve } = createControllableExecutor();
-			const scheduler = new ExecutionScheduler(executor);
+			const scheduler = new ExecutionScheduler();
 
-			scheduler.enqueue(mockExecTC("x1"));
-			scheduler.enqueue(mockPathExclusiveTC("e1", "a.ts"), pathExclusive);
+			scheduler.enqueue(makeJob(executor, mockExecTC("x1")));
+			scheduler.enqueue(
+				makeJob(executor, mockPathExclusiveTC("e1", "a.ts"), pathExclusive),
+			);
 			scheduler.seal();
 
 			const runPromise = scheduler.run();
@@ -236,11 +265,15 @@ describe("ExecutionScheduler", () => {
 
 		it("write 在有 exec active 时被阻塞", async () => {
 			const { executor, log, resolve } = createControllableExecutor();
-			const scheduler = new ExecutionScheduler(executor);
+			const scheduler = new ExecutionScheduler();
 
-			scheduler.enqueue(mockExecTC("x1"));
-			scheduler.enqueue(mockWriteTC("w1", "a.ts"), pathExclusive);
-			scheduler.enqueue(mockPathExclusiveTC("e1", "b.ts"), pathExclusive);
+			scheduler.enqueue(makeJob(executor, mockExecTC("x1")));
+			scheduler.enqueue(
+				makeJob(executor, mockWriteTC("w1", "a.ts"), pathExclusive),
+			);
+			scheduler.enqueue(
+				makeJob(executor, mockPathExclusiveTC("e1", "b.ts"), pathExclusive),
+			);
 			scheduler.seal();
 
 			const runPromise = scheduler.run();
@@ -263,10 +296,12 @@ describe("ExecutionScheduler", () => {
 	describe("show 无条件执行", () => {
 		it("show 可与任何工具并行", async () => {
 			const { executor, log, resolve } = createControllableExecutor();
-			const scheduler = new ExecutionScheduler(executor);
+			const scheduler = new ExecutionScheduler();
 
-			scheduler.enqueue(mockPathExclusiveTC("e1", "a.ts"), pathExclusive);
-			scheduler.enqueue(mockShowTC("r1"), always);
+			scheduler.enqueue(
+				makeJob(executor, mockPathExclusiveTC("e1", "a.ts"), pathExclusive),
+			);
+			scheduler.enqueue(makeJob(executor, mockShowTC("r1"), always));
 			scheduler.seal();
 
 			const runPromise = scheduler.run();
@@ -284,15 +319,19 @@ describe("ExecutionScheduler", () => {
 	describe("流式入队（模拟 streaming）", () => {
 		it("streaming 过程中逐个入队，调度器实时启动", async () => {
 			const { executor, log, resolve } = createControllableExecutor();
-			const scheduler = new ExecutionScheduler(executor);
+			const scheduler = new ExecutionScheduler();
 
 			const runPromise = scheduler.run();
 
-			scheduler.enqueue(mockPathExclusiveTC("e1", "a.ts"), pathExclusive);
+			scheduler.enqueue(
+				makeJob(executor, mockPathExclusiveTC("e1", "a.ts"), pathExclusive),
+			);
 			await new Promise((r) => setTimeout(r, 10));
 			expect(log).toContain("start:e1");
 
-			scheduler.enqueue(mockPathExclusiveTC("e2", "b.ts"), pathExclusive);
+			scheduler.enqueue(
+				makeJob(executor, mockPathExclusiveTC("e2", "b.ts"), pathExclusive),
+			);
 			await new Promise((r) => setTimeout(r, 10));
 			expect(log).toContain("start:e2");
 
@@ -307,10 +346,14 @@ describe("ExecutionScheduler", () => {
 		it("按正确时机发射 onRegister / onEnd 事件", async () => {
 			const { executor, resolve } = createControllableExecutor();
 			const { events, log: eventLog } = createEventLog();
-			const scheduler = new ExecutionScheduler(executor, events);
+			const scheduler = new ExecutionScheduler(events);
 
-			scheduler.enqueue(mockPathExclusiveTC("e1", "a.ts"), pathExclusive);
-			scheduler.enqueue(mockPathExclusiveTC("e2", "b.ts"), pathExclusive);
+			scheduler.enqueue(
+				makeJob(executor, mockPathExclusiveTC("e1", "a.ts"), pathExclusive),
+			);
+			scheduler.enqueue(
+				makeJob(executor, mockPathExclusiveTC("e2", "b.ts"), pathExclusive),
+			);
 			scheduler.seal();
 
 			const runPromise = scheduler.run();
@@ -334,10 +377,12 @@ describe("ExecutionScheduler", () => {
 		it("chunk 事件在执行过程中触发", async () => {
 			const { executor, resolve, setChunks } = createChunkExecutor();
 			const { events, log: eventLog } = createEventLog();
-			const scheduler = new ExecutionScheduler(executor, events);
+			const scheduler = new ExecutionScheduler(events);
 
 			setChunks("e1", ["hello", "world"]);
-			scheduler.enqueue(mockPathExclusiveTC("e1", "a.ts"), pathExclusive);
+			scheduler.enqueue(
+				makeJob(executor, mockPathExclusiveTC("e1", "a.ts"), pathExclusive),
+			);
 			scheduler.seal();
 
 			const runPromise = scheduler.run();
@@ -353,11 +398,17 @@ describe("ExecutionScheduler", () => {
 		it("事件无序到达（乱序完成）", async () => {
 			const { executor, resolve } = createControllableExecutor();
 			const { events, log: eventLog } = createEventLog();
-			const scheduler = new ExecutionScheduler(executor, events);
+			const scheduler = new ExecutionScheduler(events);
 
-			scheduler.enqueue(mockPathExclusiveTC("e1", "a.ts"), pathExclusive);
-			scheduler.enqueue(mockPathExclusiveTC("e2", "b.ts"), pathExclusive);
-			scheduler.enqueue(mockWriteTC("w1", "c.ts"), pathExclusive);
+			scheduler.enqueue(
+				makeJob(executor, mockPathExclusiveTC("e1", "a.ts"), pathExclusive),
+			);
+			scheduler.enqueue(
+				makeJob(executor, mockPathExclusiveTC("e2", "b.ts"), pathExclusive),
+			);
+			scheduler.enqueue(
+				makeJob(executor, mockWriteTC("w1", "c.ts"), pathExclusive),
+			);
 			scheduler.seal();
 
 			const runPromise = scheduler.run();
@@ -382,8 +433,10 @@ describe("ExecutionScheduler", () => {
 
 		it("无 events 时 scheduler 正常工作", async () => {
 			const { executor, log } = createInstantExecutor();
-			const scheduler = new ExecutionScheduler(executor);
-			scheduler.enqueue(mockWriteTC("w1", "a.ts"), pathExclusive);
+			const scheduler = new ExecutionScheduler();
+			scheduler.enqueue(
+				makeJob(executor, mockWriteTC("w1", "a.ts"), pathExclusive),
+			);
 			scheduler.seal();
 			await scheduler.run();
 			expect(log).toEqual(["exec:w1"]);

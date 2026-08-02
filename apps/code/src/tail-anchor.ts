@@ -7,7 +7,7 @@
  * 约 129 tokens（DS V4 tokenizer 实测），恰好填满一个本地注意力 block。
  * 仅对最新一轮用户消息生效，历史轮次通过 strip_hint 机制自动移除。
  */
-const REASONING_EFFORT_MAX = [
+const _REASONING_EFFORT_MAX = [
 	"Reasoning Effort: Absolute maximum with no shortcuts permitted.",
 ].join("\n");
 

@@ -24,7 +24,7 @@ function renderAttrs(attrs?: Record<string, string>): string {
 	if (!attrs) return "";
 	const entries = Object.entries(attrs);
 	if (entries.length === 0) return "";
-	return " " + entries.map(([k, v]) => `${k}="${v}"`).join(" ");
+	return ` ${entries.map(([k, v]) => `${k}="${v}"`).join(" ")}`;
 }
 
 /** 生成开标签 */

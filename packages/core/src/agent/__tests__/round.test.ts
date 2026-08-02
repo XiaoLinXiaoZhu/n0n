@@ -4,7 +4,7 @@
  * round 纯函数单元测试
  *
  * 验证单轮后处理的各函数：
- * - recoverTruncatedCalls：从 streaming 结果中识别截断工具，委托 tool-recovery 模块恢复并执行
+ * - recoverTruncatedCalls：从 streaming 结果中识别截断工具，委托工具恢复函数处理
  * - buildToolCallMessage：构建 assistant_tool_call 消息
  * - collectJobMessages：从 scheduler jobs 收集 domain messages
  
@@ -12,6 +12,7 @@
 
 import { describe, expect, it } from "bun:test";
 import { StreamAccumulator } from "@n0n/shared";
+import type { ToolRecover } from "@n0n/tools";
 import type { DomainMessage, ToolCallRecord } from "@n0n/types";
 import {
 	buildToolCallMessage,
@@ -43,6 +44,26 @@ function makeAccWithToolCalls(
 	return acc;
 }
 
+function makeUnrecoverable(
+	partial: Parameters<ToolRecover>[0],
+	kind: "unknown_tool" | "truncated_recovery",
+) {
+	return {
+		status: "unrecoverable" as const,
+		call: {
+			id: partial.toolCallId,
+			tool: partial.toolName,
+			args: {},
+		} as any,
+		result: {
+			type: "tool_arg_error" as const,
+			callId: partial.toolCallId,
+			tool: partial.toolName,
+			error: { kind },
+		} as any,
+	};
+}
+
 // ── recoverTruncatedCalls ──
 
 describe("recoverTruncatedCalls", () => {
@@ -63,19 +84,11 @@ describe("recoverTruncatedCalls", () => {
 				readyTools,
 				interrupt: null,
 			},
-			async () => ({
-				status: "unrecoverable",
-				call: { id: "unused", tool: "unused", args: {} },
-				result: {
-					type: "tool_arg_error",
-					callId: "unused",
-					tool: "unused",
-					error: { kind: "unknown_tool" },
-				},
-			}),
+			(async (partial) =>
+				makeUnrecoverable(partial, "unknown_tool")) satisfies ToolRecover,
 		);
 
-		expect(result.pairs).toHaveLength(0);
+		expect(result).toHaveLength(0);
 	});
 
 	it("截断的非 write 工具（无 recover）→ 占位 call + tool_arg_error", async () => {
@@ -89,23 +102,15 @@ describe("recoverTruncatedCalls", () => {
 				readyTools: new Map(),
 				interrupt: "length",
 			},
-			async () => ({
-				status: "unrecoverable",
-				call: { id: "tc_1", tool: "observe", args: {} },
-				result: {
-					type: "tool_arg_error",
-					callId: "tc_1",
-					tool: "observe",
-					error: { kind: "truncated_recovery" },
-				},
-			}),
+			(async (partial) =>
+				makeUnrecoverable(partial, "truncated_recovery")) satisfies ToolRecover,
 		);
 
-		expect(result.pairs).toHaveLength(1);
-		expect(result.pairs[0]!.status).toBe("unrecoverable");
-		expect(result.pairs[0]!.call.tool).toBe("observe");
-		expect(result.pairs[0]!.call.args as any).toEqual({});
-		expect(result.pairs[0]!.result.type).toBe("tool_arg_error");
+		expect(result).toHaveLength(1);
+		expect(result[0]!.status).toBe("unrecoverable");
+		expect(result[0]!.call.tool).toBe("observe");
+		expect(result[0]!.call.args as any).toEqual({});
+		expect(result[0]!.result.type).toBe("tool_arg_error");
 	});
 
 	it("截断的 write 工具（有 recover）→ 恢复+执行", async () => {
@@ -119,10 +124,7 @@ describe("recoverTruncatedCalls", () => {
 		]);
 
 		// 模拟 recover：恢复参数 + 执行 → 返回 {call, result}
-		const recover = async (partial: {
-			toolName: string;
-			toolCallId: string;
-		}) => {
+		const recover: ToolRecover = async (partial) => {
 			const call = {
 				id: partial.toolCallId,
 				tool: partial.toolName,
@@ -146,11 +148,11 @@ describe("recoverTruncatedCalls", () => {
 			recover,
 		);
 
-		expect(result.pairs).toHaveLength(1);
-		expect(result.pairs[0]!.status).toBe("recovered");
-		expect(result.pairs[0]!.call.tool).toBe("write");
-		expect((result.pairs[0]!.call.args as any).path).toBe("test.ts");
-		expect(result.pairs[0]!.result.type).toBe("tool_result");
+		expect(result).toHaveLength(1);
+		expect(result[0]!.status).toBe("recovered");
+		expect(result[0]!.call.tool).toBe("write");
+		expect((result[0]!.call.args as any).path).toBe("test.ts");
+		expect(result[0]!.result.type).toBe("tool_result");
 	});
 });
 

@@ -359,8 +359,8 @@ function isNameBlacklisted(name: string, config: PathToolsConfig): boolean {
 
 /** 取数组首个元素，空数组时抛出（调用者保证非空） */
 function mustFirst<T>(xs: T[]): T {
-	if (xs.length === 0) throw new Error("invariant: empty array");
-	return xs[0]!;
+	if (xs.length === 0 || !xs[0]) throw new Error("invariant: empty array");
+	return xs[0];
 }
 
 /** 弹出数组末元素，空数组时抛出（调用者保证非空） */

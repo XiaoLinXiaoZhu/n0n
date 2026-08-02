@@ -15,8 +15,6 @@
 import { existsSync, mkdirSync } from "node:fs";
 import { dirname, isAbsolute, resolve } from "node:path";
 import type {
-	DomainMessage,
-	ToolCallRecord,
 	ToolDefinition,
 	WriteToolCall,
 	WriteToolResult,
@@ -27,6 +25,7 @@ import {
 	WriteParamDefs,
 	withDescriptions,
 } from "@n0n/types";
+import type { PartialToolCall } from "./recovery.ts";
 import { paramsFromDefs } from "./zod-to-parameters.ts";
 
 export { WriteArgsSchema };
@@ -105,14 +104,13 @@ async function writeFile(
  */
 export function makeWriteRecover(workspace: string) {
 	return async (
-		toolCallId: string,
-		partialJson: string,
-	): Promise<{ call: ToolCallRecord; result: DomainMessage } | null> => {
-		const extracted = tryExtractPartialWrite(partialJson);
+		partial: PartialToolCall,
+	): Promise<{ call: WriteToolCall; result: WriteToolResult } | null> => {
+		const extracted = tryExtractPartialWrite(partial.partialInput);
 		if (!extracted) return null;
 
 		const call: WriteToolCall = {
-			id: toolCallId,
+			id: partial.toolCallId,
 			tool: "write",
 			args: { path: extracted.path, content: extracted.content },
 		};

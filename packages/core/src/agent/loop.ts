@@ -29,7 +29,6 @@ import {
 } from "./round.ts";
 import { ExecutionScheduler } from "./scheduler.ts";
 import { parseStream, type StreamingResult } from "./streaming.ts";
-import { createToolRuntime } from "./tool.ts";
 
 // ── 结果类型 ──
 
@@ -64,7 +63,7 @@ export async function agentLoop<T = unknown>(
 	const renderer: Renderer = options.renderer ?? new PlainRenderer();
 	const client = options.client;
 	const toolkit = options.toolkit;
-	const toolRuntime = createToolRuntime(toolkit, options.confirmFn);
+	const toolSession = toolkit.bind(options.confirmFn);
 	const messages: DomainMessage[] = [...history];
 	let idleCount = 0;
 
@@ -87,15 +86,11 @@ export async function agentLoop<T = unknown>(
 		);
 
 		// ── 1. 流式解析 + 并行执行（交织进行） ──
-		const scheduler = new ExecutionScheduler(
-			toolRuntime.execute,
-			{
-				onRegister: (tc) => renderer.toolExecStart(tc.id, tc),
-				onChunk: (tcId, tool, chunk) =>
-					renderer.toolExecChunk(tcId, tool, chunk),
-				onEnd: (tcId, outcome) => renderer.toolExecEnd(tcId, outcome),
-			},
-		);
+		const scheduler = new ExecutionScheduler({
+			onRegister: (tc) => renderer.toolExecStart(tc.id, tc),
+			onChunk: (tcId, tool, chunk) => renderer.toolExecChunk(tcId, tool, chunk),
+			onEnd: (tcId, outcome) => renderer.toolExecEnd(tcId, outcome),
+		});
 		const runPromise = scheduler.run(options.signal);
 
 		let streamResult: StreamingResult | null = null;
@@ -134,10 +129,7 @@ export async function agentLoop<T = unknown>(
 					break;
 				case "tool_ready":
 					renderer.toolCallArgEnd(event.index, event.tc);
-					scheduler.enqueue(
-						event.tc,
-						toolkit.getEntry(event.tc.tool)?.canStart,
-					);
+					scheduler.enqueue(toolSession.createJob(event.tc));
 					break;
 				case "done":
 					streamResult = event.result;
@@ -225,12 +217,12 @@ export async function agentLoop<T = unknown>(
 		idleCount = 0;
 
 		// ── 3. 截断恢复 + seal ──
-		const truncation = await recoverTruncatedCalls(result, toolRuntime.recover);
+		const truncation = await recoverTruncatedCalls(result, toolSession.recover);
 		scheduler.seal();
 
 		const allCalls: (ToolCallRecord | PartialToolCallRecord)[] = [
 			...result.readyTools.values(),
-			...truncation.pairs.map((p) => p.call),
+			...truncation.map((p) => p.call),
 		];
 
 		if (allCalls.length === 0) {
@@ -247,7 +239,7 @@ export async function agentLoop<T = unknown>(
 
 		// ── 6. 收集结果消息 ──
 		messages.push(...collectJobMessages(scheduler.orderedJobs()));
-		for (const pair of truncation.pairs) {
+		for (const pair of truncation) {
 			messages.push(pair.result);
 		}
 

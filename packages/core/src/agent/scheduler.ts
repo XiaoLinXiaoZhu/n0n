@@ -7,13 +7,12 @@
  * 通过 SchedulerEvents 回调发射 raw 无序事件，排序职责由消费者（Renderer）自行决定。
  */
 
+import type { ToolJob } from "@n0n/tools";
 import type {
-	CanStartFn,
 	ToolArgErrorMessage,
 	ToolCallRecord,
 	ToolExecOutcome,
 	ToolResult,
-	ToolStreamEvent,
 } from "@n0n/types";
 
 // ── 事件回调接口 ──
@@ -24,16 +23,10 @@ export interface SchedulerEvents {
 	onEnd(tcId: string, outcome: ToolExecOutcome): void;
 }
 
-// ── 默认并行策略 ──
-
-/** 默认策略：等所有 active 完成后才启动（最保守） */
-const defaultCanStart: CanStartFn = (_self, active) => active.length === 0;
-
 // ── PipelineJob — discriminated union ──
 
 interface JobBase {
-	tc: ToolCallRecord;
-	canStart: CanStartFn;
+	job: ToolJob;
 }
 
 export interface PendingJob extends JobBase {
@@ -65,12 +58,6 @@ class JobSlot {
 	}
 }
 
-// ── 工具执行函数类型 ──
-
-export type ToolExecutor = (
-	tc: ToolCallRecord,
-) => AsyncGenerator<ToolStreamEvent>;
-
 // ── ExecutionScheduler ──
 
 export class ExecutionScheduler {
@@ -81,22 +68,15 @@ export class ExecutionScheduler {
 	private notify: (() => void) | null = null;
 	private readonly events: SchedulerEvents | null;
 
-	constructor(
-		private readonly executor: ToolExecutor,
-		events?: SchedulerEvents,
-	) {
+	constructor(events?: SchedulerEvents) {
 		this.events = events ?? null;
 	}
 
-	enqueue(tc: ToolCallRecord, canStart?: CanStartFn): void {
-		const slot = new JobSlot({
-			status: "pending",
-			tc,
-			canStart: canStart ?? defaultCanStart,
-		});
+	enqueue(job: ToolJob): void {
+		const slot = new JobSlot({ status: "pending", job });
 		this.slots.push(slot);
 		this.pendingQueue.push(slot);
-		this.events?.onRegister(tc);
+		this.events?.onRegister(job.call);
 		this.notify?.();
 	}
 
@@ -114,7 +94,7 @@ export class ExecutionScheduler {
 			const head = this.pendingQueue[0];
 			if (head) {
 				const job = head.state;
-				if (job.canStart(job.tc, this.activeTCs())) {
+				if (job.job.canStart(this.activeTCs())) {
 					this.pendingQueue.shift();
 					this.startJob(head);
 					continue;
@@ -139,64 +119,63 @@ export class ExecutionScheduler {
 	}
 
 	private activeTCs(): ToolCallRecord[] {
-		return [...this.activeSet].map((s) => s.state.tc);
+		return [...this.activeSet].map((s) => s.state.job.call);
 	}
 
 	// ── 执行启动 ──
 
 	private startJob(slot: JobSlot): void {
-		const { tc, canStart } = slot.state;
-		slot.state = { status: "running", tc, canStart };
+		const { job } = slot.state;
+		slot.state = { status: "running", job };
 		this.activeSet.add(slot);
+		this.runJob(slot, job);
+	}
 
-		const run = async () => {
-			let result: ToolResult | null = null;
-			let argError: ToolArgErrorMessage | null = null;
+	private async runJob(slot: JobSlot, job: ToolJob): Promise<void> {
+		const tc = job.call;
+		let result: ToolResult | null = null;
+		let argError: ToolArgErrorMessage | null = null;
 
-			try {
-				for await (const event of this.executor(tc)) {
-					if (event.type === "tool_output_chunk") {
-						this.events?.onChunk(tc.id, event.tool, event.chunk);
-					} else if (event.type === "tool_arg_error") {
-						argError = event;
-					} else {
-						result = event;
-					}
-				}
-			} catch (err) {
-				if (!result && !argError) {
-					argError = {
-						type: "tool_arg_error",
-						callId: tc.id,
-						tool: tc.tool,
-						error: {
-							kind: "internal_error",
-							message: `Internal execution error: ${err instanceof Error ? err.message : String(err)}`,
-						},
-					};
-				}
-			} finally {
-				if (argError) {
-					slot.state = { status: "failed", tc, canStart, argError };
+		try {
+			for await (const event of job.run()) {
+				if (event.type === "tool_output_chunk") {
+					this.events?.onChunk(tc.id, event.tool, event.chunk);
+				} else if (event.type === "tool_arg_error") {
+					argError = event;
 				} else {
-					slot.state = {
-						status: "completed",
-						tc,
-						canStart,
-						result: result as ToolResult,
-					};
+					result = event;
 				}
-				this.activeSet.delete(slot);
-				this.events?.onEnd(
-					tc.id,
-					argError
-						? { status: "arg_error" }
-						: { status: "completed", result: result as ToolResult },
-				);
-				this.notify?.();
 			}
-		};
-
-		run();
+		} catch (err) {
+			if (!result && !argError) {
+				argError = {
+					type: "tool_arg_error",
+					callId: tc.id,
+					tool: tc.tool,
+					error: {
+						kind: "internal_error",
+						message: `Internal execution error: ${err instanceof Error ? err.message : String(err)}`,
+					},
+				};
+			}
+		} finally {
+			if (argError) {
+				slot.state = { status: "failed", job, argError };
+			} else {
+				slot.state = {
+					status: "completed",
+					job,
+					result: result as ToolResult,
+				};
+			}
+			this.activeSet.delete(slot);
+			this.events?.onEnd(
+				tc.id,
+				argError
+					? { status: "arg_error" }
+					: { status: "completed", result: result as ToolResult },
+			);
+			this.notify?.();
+		}
 	}
 }
