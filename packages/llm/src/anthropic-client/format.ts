@@ -26,6 +26,27 @@ export interface AnthropicConversionResult {
 	messages: AnthropicMessage[];
 }
 
+function hasAnthropicContent(content: AnthropicMessage["content"]): boolean {
+	if (typeof content === "string") return content.trim().length > 0;
+
+	return content.some((block) => {
+		switch (block.type) {
+			case "text":
+				return block.text.trim().length > 0;
+			case "thinking":
+				// 空 thinking 文本仍可通过 signature 还原原始思考。
+				return Boolean(block.signature);
+			case "tool_use":
+			case "tool_result":
+				return true;
+			default: {
+				const _exhaustive: never = block;
+				return _exhaustive;
+			}
+		}
+	});
+}
+
 // ── PromptMessage → Anthropic Message 转换 ──
 
 export function toAnthropicFormat(
@@ -73,6 +94,14 @@ export function toAnthropicFormat(
 				break;
 
 			case "assistant": {
+				// Anthropic 的 thinking 文本只是展示用的摘要，只有 signature
+				// 才能在下一轮请求中还原原始思考。中断时可能只留下
+				// reasoning/content，却没有 signature；这条 assistant 消息
+				// 不能安全地回传，直接丢弃。
+				if (msg.reasoning !== undefined && !msg.reasoningSignature) {
+					continue;
+				}
+
 				const content: AnthropicContent[] = [];
 				// 只要有 signature 就回传 thinking block（reasoning 可能因 display 设置而为空）
 				// Anthropic 要求 thinking block 完整回传，含空 thinking 文本和 signature
@@ -96,9 +125,9 @@ export function toAnthropicFormat(
 						});
 					}
 				}
-				if (content.length === 0) {
-					content.push({ type: "text", text: "" });
-				}
+				// 不构造空文本块。没有文本、thinking 或工具调用的 assistant
+				// 消息不应发送给 Anthropic。
+				if (content.length === 0) continue;
 				if (msg.cacheBreakpoint) {
 					for (let i = content.length - 1; i >= 0; i--) {
 						const block = content[i];
@@ -134,6 +163,14 @@ export function toAnthropicFormat(
 			}
 		}
 	}
+
+	// Anthropic 不接受没有实际内容的消息。这里同时覆盖 heartbeat
+	// 和 streaming 两条调用路径，避免仅由空字符串组成的 user 消息。
+	const nonEmptyMessages = messages.filter((msg) =>
+		hasAnthropicContent(msg.content),
+	);
+	messages.length = 0;
+	messages.push(...nonEmptyMessages);
 
 	// 自动 cache breakpoint：在最后一条可缓存的消息末尾注入 cache_control
 	let autoBreakpointSet = false;
