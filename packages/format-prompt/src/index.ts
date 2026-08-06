@@ -164,11 +164,13 @@ export function formatPrompt(
 
 			case "system_with_skill": {
 				const skillsText = formatSkills(msg.skills, tags);
-				const base = tags.adaptTags(msg.content);
 				result.push({
 					role: "system",
-					content: skillsText ? `${base}\n\n${skillsText}` : base,
+					content: tags.adaptTags(msg.content),
 				});
+				if (skillsText) {
+					result.push({ role: "user", content: skillsText });
+				}
 				break;
 			}
 

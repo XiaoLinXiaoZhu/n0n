@@ -84,29 +84,10 @@ export const DeepSeekProviderConfigSchema = z.object({
 	tag_style: z
 		.enum(["deepseek", "glm", "minimax", "default"])
 		.default("deepseek"),
-	system_tag_style: z
-		.enum(["deepseek", "glm", "minimax", "default"])
-		.default("deepseek"),
 	extra_body: extraBodyField,
 });
 export type DeepSeekProviderConfig = z.infer<
 	typeof DeepSeekProviderConfigSchema
->;
-
-export const DeepSeekTest1ProviderConfigSchema = z.object({
-	provider: z.literal("deepseek-test-1"),
-	api_key: z.string(),
-	model: z.string(),
-	base_url: z.string().default("https://api.deepseek.com"),
-	tag_style: z
-		.enum(["deepseek", "glm", "minimax", "default"])
-		.default("deepseek"),
-	strip_reasoning: z.boolean().default(false),
-	memory_tag: z.boolean().default(false),
-	extra_body: extraBodyField,
-});
-export type DeepSeekTest1ProviderConfig = z.infer<
-	typeof DeepSeekTest1ProviderConfigSchema
 >;
 
 export const ProviderConfigSchema = z.discriminatedUnion("provider", [
@@ -115,7 +96,6 @@ export const ProviderConfigSchema = z.discriminatedUnion("provider", [
 	GoogleProviderConfigSchema,
 	OpenAICompatibleProviderConfigSchema,
 	DeepSeekProviderConfigSchema,
-	DeepSeekTest1ProviderConfigSchema,
 ]);
 
 /** 统一的 LLM provider 配置 — discriminated union on `provider` */

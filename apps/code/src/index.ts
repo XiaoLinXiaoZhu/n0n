@@ -26,6 +26,7 @@ import {
 	loadCodeConfig,
 	resolveConfigPaths,
 } from "./config-loader/index.ts";
+import { withMemoryTags } from "./memory-tag.ts";
 import type { NotifyConfig } from "./notify-sound.ts";
 
 // ── 加载配置 ──
@@ -98,7 +99,12 @@ const formatOptions: FormatOptions = {
 
 const securityConfig = settings.security;
 
-const client = createLLMClient(llmConfig, formatOptions);
+// memory 标签原本是 DeepSeek test-1 的提示词策略；Anthropic 等 provider
+// 的 reasoning 可能带签名，不能由 app 任意改写。
+const client = withMemoryTags(
+	createLLMClient(llmConfig, formatOptions),
+	settings.memory_tag && llm.provider === "deepseek",
+);
 const toolsConfig = buildToolsConfig(settings.agent, securityConfig, {
 	workspace: paths.workspace,
 	tempDir: paths.temp,

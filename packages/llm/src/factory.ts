@@ -14,7 +14,6 @@ import type { DomainMessage, LLMClient, PromptMessage } from "@n0n/types";
 import { AnthropicClient } from "./anthropic-client";
 import type { LLMConfig } from "./config.ts";
 import { DeepSeekClient } from "./deepseek-client";
-import { DeepSeekTest1Client } from "./deepseek-test-1-client";
 import { GeminiClient } from "./gemini-client";
 import { OpenAIClient } from "./openai-client";
 import { OpenAICompatibleClient } from "./openai-compatible-client";
@@ -48,19 +47,7 @@ export function createLLMClient(
 		case "google":
 			return new GeminiClient(pc, format);
 		case "deepseek": {
-			const deepseekTags = createTagAdapter(pc.system_tag_style);
-			const systemFormat: FormatFn = (msgs) =>
-				formatPrompt(msgs, deepseekTags, formatOptions);
-			return new DeepSeekClient(pc, format, systemFormat);
-		}
-		case "deepseek-test-1": {
-			return new DeepSeekTest1Client(
-				pc,
-				format,
-				tags,
-				pc.strip_reasoning,
-				pc.memory_tag,
-			);
+			return new DeepSeekClient(pc, format);
 		}
 		default: {
 			const _exhaustive: never = pc;

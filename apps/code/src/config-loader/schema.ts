@@ -11,6 +11,7 @@ import { UserInputConfigSchema } from "../multiline-input/config.ts";
 export const codeConfigSchema = z.object({
 	settings: z.object({
 		strip_hint: z.boolean().default(true),
+		memory_tag: z.boolean().default(false),
 		notify_sound: z.boolean().default(false),
 		notify_sound_path: z.string().default(""),
 		agent: z.object({

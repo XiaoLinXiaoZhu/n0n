@@ -87,6 +87,9 @@ export function displayCodeConfig(config: LoadedConfig): void {
 		`    ${style.white("strip_hint")} = ${settings.strip_hint} ${sourceTag(trace["settings.strip_hint"]?.source ?? "")}`,
 	);
 	writeln(
+		`    ${style.white("memory_tag")} = ${settings.memory_tag} ${sourceTag(trace["settings.memory_tag"]?.source ?? "")}`,
+	);
+	writeln(
 		`    ${style.white("notify_sound")} = ${settings.notify_sound} ${sourceTag(trace["settings.notify_sound"]?.source ?? "")}`,
 	);
 

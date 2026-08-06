@@ -22,7 +22,6 @@
 export type {
 	AnthropicProviderConfig,
 	DeepSeekProviderConfig,
-	DeepSeekTest1ProviderConfig,
 	GoogleProviderConfig,
 	LLMConfig,
 	OpenAICompatibleProviderConfig,

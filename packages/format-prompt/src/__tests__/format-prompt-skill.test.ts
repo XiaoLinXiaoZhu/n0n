@@ -2,7 +2,7 @@
  * formatPrompt skill 注入集成测试
  *
  * 验证 skill 在两个注入点的拼装：
- * 1. system_with_skill — 主提示词 + 排序好的 init skills 拼成单条 system 消息
+ * 1. system_with_skill — 主提示词输出 system，排序好的 init skills 输出 user
  * 2. user_input.mentionedSkills — 用户引用的 skill 拼接到 user-request 之前、hint 之前
  */
 
@@ -18,7 +18,7 @@ function mkSkill(name: string, body: string): Skill {
 }
 
 describe("formatPrompt — system_with_skill", () => {
-	test("content 与 skills 拼成单条 system 消息", () => {
+	test("content 输出 system，skills 输出 user", () => {
 		const msgs: DomainMessage[] = [
 			{
 				type: "system_with_skill",
@@ -27,11 +27,16 @@ describe("formatPrompt — system_with_skill", () => {
 			},
 		];
 		const out = formatPrompt(msgs, tags);
-		expect(out).toHaveLength(1);
-		expect(out[0]?.role).toBe("system");
-		expect(out[0]?.content).toBe(
-			'You are an agent.\n\n<skill name="workflow">\n<!-- begin of skill workflow -->\n\nread → implement → verify\n\n<!-- end of skill workflow -->\n</skill>',
-		);
+		expect(out).toHaveLength(2);
+		expect(out[0]).toEqual({
+			role: "system",
+			content: "You are an agent.",
+		});
+		expect(out[1]).toEqual({
+			role: "user",
+			content:
+				'<skill name="workflow">\n<!-- begin of skill workflow -->\n\nread → implement → verify\n\n<!-- end of skill workflow -->\n</skill>',
+		});
 	});
 
 	test("skills 为空时只输出主提示词", () => {
@@ -51,10 +56,31 @@ describe("formatPrompt — system_with_skill", () => {
 			},
 		];
 		const out = formatPrompt(msgs, tags);
-		const content = out[0]?.content ?? "";
+		const content = out[1]?.content ?? "";
 		expect(content.indexOf('<skill name="a">')).toBeLessThan(
 			content.indexOf('<skill name="b">'),
 		);
+	});
+
+	test("skills user 与已有 user 保持连续且不合并", () => {
+		const msgs: DomainMessage[] = [
+			{
+				type: "system_with_skill",
+				content: "Sys.",
+				skills: [mkSkill("a", "AAA")],
+			},
+			{ type: "generic_user_text", content: "user request" },
+		];
+
+		expect(formatPrompt(msgs, tags)).toEqual([
+			{ role: "system", content: "Sys." },
+			{
+				role: "user",
+				content:
+					'<skill name="a">\n<!-- begin of skill a -->\n\nAAA\n\n<!-- end of skill a -->\n</skill>',
+			},
+			{ role: "user", content: "user request" },
+		]);
 	});
 });
 

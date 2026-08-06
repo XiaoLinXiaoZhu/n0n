@@ -1,7 +1,6 @@
 /**
  * PromptMessage → DeepSeek API Message 格式转换
  *
- * system 消息由 systemPromptAdapter 单独处理，此处跳过。
  * reasoning_content 始终保留（当存在时），不再由 enable_thinking 开关控制。
  */
 
@@ -12,16 +11,18 @@ import type {
 	DeepSeekToolDef,
 } from "./types.ts";
 
-/** 将 PromptMessage 数组转换为 DeepSeek API 消息格式（跳过 system） */
+/** 将 PromptMessage 数组转换为 DeepSeek API 消息格式 */
 export function toDeepSeekMessages(
 	promptMessages: PromptMessage[],
 ): DeepSeekMessage[] {
 	const result: DeepSeekMessage[] = [];
 
 	for (const msg of promptMessages) {
-		if (msg.role === "system") continue;
-
 		switch (msg.role) {
+			case "system":
+				result.push({ role: "system", content: msg.content });
+				break;
+
 			case "user":
 				result.push({ role: "user", content: msg.content });
 				break;

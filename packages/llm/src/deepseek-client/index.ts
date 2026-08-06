@@ -1,12 +1,9 @@
 /**
  * DeepSeek Client — DeepSeek 专用 LLM Client
  *
- * 基于 OpenAI Chat Completions 兼容协议，针对 DeepSeek 做专项适配：
- * - 系统提示词：通过 systemPromptAdapter 提取、合并、适配为 DeepSeek 原生 Markdown 风格
- * - Tag 风格：默认 "deepseek"（## tagname / ---）
- * - thinking / reasoning_effort 等厂商特定参数通过 extra_body 透传
+ * 基于 OpenAI Chat Completions 兼容协议实现。
  *
- * 走正常的 formatPrompt → TagAdapter 路线，不绕过 tag 适配体系。
+ * thinking / reasoning_effort 等厂商特定参数通过 extra_body 透传。
  */
 
 import type {
@@ -26,7 +23,6 @@ import { fetchWithRetry } from "../retry.ts";
 import { parseChatCompletionText } from "../schemas.ts";
 import { chunkToStreamEvents, runSSEStream } from "../sse-utils.ts";
 import { toDeepSeekMessages, toDeepSeekTools } from "./format.ts";
-import { systemPromptAdapter } from "./system-prompt-adapter.ts";
 import type { DeepSeekMessage, DeepSeekRequest } from "./types.ts";
 
 export { toDeepSeekMessages, toDeepSeekTools } from "./format.ts";
@@ -42,17 +38,11 @@ export class DeepSeekClient implements LLMClient {
 	private readonly pc: DeepSeekProviderConfig;
 	private readonly baseUrl: BaseUrl;
 	private readonly format: FormatFn;
-	private readonly systemFormat: FormatFn;
 
-	constructor(
-		pc: DeepSeekProviderConfig,
-		format: FormatFn,
-		systemFormat: FormatFn,
-	) {
+	constructor(pc: DeepSeekProviderConfig, format: FormatFn) {
 		this.pc = pc;
 		this.modelId = this.pc.model;
 		this.format = format;
-		this.systemFormat = systemFormat;
 
 		const result = parseBaseUrl(this.pc.base_url);
 		if (!result.ok) throw new Error(`无效的 base_url: ${result.error}`);
@@ -63,20 +53,14 @@ export class DeepSeekClient implements LLMClient {
 		request: StreamRequest,
 		signal?: AbortSignal,
 	): AsyncGenerator<StreamEvent> {
-		const adaptedSystemPrompt = systemPromptAdapter(request, this.systemFormat);
-
 		const promptMessages = this.format(request.messages);
 		const apiMessages = toDeepSeekMessages(promptMessages);
 
 		const filteredMessages = filterEmptyMessages(apiMessages);
 
-		const messages: DeepSeekMessage[] = adaptedSystemPrompt
-			? [{ role: "system", content: adaptedSystemPrompt }, ...filteredMessages]
-			: filteredMessages;
-
 		const body: DeepSeekRequest = {
 			model: this.modelId,
-			messages,
+			messages: filteredMessages,
 			stream: true,
 			stream_options: { include_usage: true },
 		};

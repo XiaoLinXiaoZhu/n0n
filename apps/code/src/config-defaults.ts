@@ -8,6 +8,7 @@
 export const DEFAULT_TOML = `
 [settings]
 strip_hint = true
+memory_tag = false
 notify_sound = false
 notify_sound_path = ""
 

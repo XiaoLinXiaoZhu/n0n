@@ -9,7 +9,7 @@ n0n 的提示词/skill 系统由以下层次组成：
 3. **task/directive skills**：用户通过 @name 或上下文触发的任务型/指令型 skill
 4. **agent loop**：流式解析 → 工具调度 → 结果收集 → show 检测 → 循环
 
-init skills 按 order 字段排序后，以 `<skill name="xxx">` XML 标签包裹注入 system prompt。每个 skill 是独立的 SKILL.md 文件，含 frontmatter 和 markdown body。
+init skills 按 order 字段排序后，以 `<skill name="xxx">` XML 标签包裹，作为独立 user 消息发送。每个 skill 是独立的 SKILL.md 文件，含 frontmatter 和 markdown body。
 
 ## 现有系统的问题诊断
 

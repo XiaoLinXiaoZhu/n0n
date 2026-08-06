@@ -122,7 +122,7 @@ F2.1 歧义追问 O=8 D=8
 1. `packages/skills/src/scanner.ts`：添加 `self-function` 到 CATEGORIES 常量
 2. `packages/skills/src/parser.ts`：`deriveNameFromPath` 需正确处理 `F0-user-requirements` 这种目录名（当前逻辑用 `-` 连接目录层级，需确认 F0 平级目录名不会产生冲突）
 3. 系统提示词基座：参照上文"系统提示词基座变更"
-4. `packages/llm/src/deepseek-test-1-client/trigger-prompt.md`：如果存在，更新以反映新的 self-function 组织
+4. `packages/format-prompt/src/index.ts`：将 `system_with_skill` 拆分为基础 system 与 skill user 消息
 5. F0 的动态填充：`user_input` 消息构建时，将加载的 task/directive/capability skill 注入 mentionedSkills（已有机製）
 
 ## 六、实施步骤
