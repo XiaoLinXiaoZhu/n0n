@@ -12,10 +12,8 @@
 
 import { resolve } from "node:path";
 import { writeFileSync, existsSync, mkdirSync } from "node:fs";
-import {
-	createTagAdapter,
-	formatPrompt,
-} from "@n0n/shared";
+import { formatPrompt } from "@n0n/format-prompt";
+import { createTagAdapter } from "@n0n/shared";
 import {
 	agentLoop,
 	buildToolsConfig,

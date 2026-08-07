@@ -14,13 +14,13 @@ export async function helpCommand(): Promise<void> {
 	const autoSkills = skills.filter((s) => s.activation === "auto");
 
 	if (skills.length === 0) {
-		console.log("没有可用的 skill。运行 `n0n-skill init` 安装内置 skill。");
+		console.log("没有可用的 skill。运行 `n0n skill init` 安装内置 skill。");
 		return;
 	}
 
 	if (autoSkills.length === 0) {
 		console.log(
-			"没有 auto 激活的 skill。运行 `n0n-skill list --all` 查看所有可用 skill。",
+			"没有 auto 激活的 skill。运行 `n0n skill list --all` 查看所有可用 skill。",
 		);
 		return;
 	}
@@ -33,6 +33,6 @@ export async function helpCommand(): Promise<void> {
 	}
 
 	console.log(
-		"\n---\n在响应用户请求前，检查是否有合适的 skill 可以加载。使用 `n0n-skill read <name>` 获取完整方法论。",
+		"\n---\n在响应用户请求前，检查是否有合适的 skill 可以加载。使用 `n0n skill read <name>` 获取完整方法论。",
 	);
 }

@@ -10,21 +10,12 @@ import { basename, resolve } from "node:path";
 import { Glob } from "bun";
 import { getUserSkillsDir } from "../paths.ts";
 
-export async function installCommand(
-	source: string | undefined,
-): Promise<void> {
-	if (!source) {
-		console.error("用法: n0n-skill install <path>");
-		console.error("  支持本地 skill 目录路径。");
-		process.exit(1);
-	}
-
+export async function installCommand(source: string): Promise<void> {
 	const absSource = resolve(source);
 	const skillMdPath = resolve(absSource, "SKILL.md");
 
 	if (!existsSync(skillMdPath)) {
-		console.error(`"${absSource}" 不是有效的 skill 目录（缺少 SKILL.md）。`);
-		process.exit(1);
+		throw new Error(`"${absSource}" 不是有效的 skill 目录（缺少 SKILL.md）。`);
 	}
 
 	const skillName = basename(absSource);

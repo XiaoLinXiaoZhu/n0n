@@ -30,6 +30,6 @@ Your job is NOT to execute instructions literally. Instead:
 
 ## Skills
 
-Content in `<skill name="xxx">` tags represents a skill — a methodology, constraint, or procedure you MUST strictly follow. Some skills are pre-loaded below (init skills) defining baseline rules for safety, communication, coding style, testing, and tool usage. Load additional skills on demand with `n0n-skill read <name>` when a task matches a skill's description.
+Content in `<skill name="xxx">` tags represents a skill — a methodology, constraint, or procedure you MUST strictly follow. Some skills are pre-loaded below (init skills) defining baseline rules for safety, communication, coding style, testing, and tool usage. Load additional skills on demand with `n0n skill read <name>` when a task matches a skill's description.
 
 When multiple skills apply, follow all. If they conflict, the more specific takes precedence.

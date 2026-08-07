@@ -1,18 +1,18 @@
 /**
  * context-env — 环境信息收集与格式化
  *
- * 执行 n0n-init / n0n-skill CLI 工具，将输出格式化为
+ * 执行统一 n0n CLI 的 scan / skill 子命令，将输出格式化为
  * UserInputMessage.context 字段的内容。
  *
  * 设计决策：使用 CLI 调用而非编程 API，使各模块可独立更新。
  * CLI 不可用时静默跳过，不影响 agent 启动。
  */
 
-import { execSync } from "node:child_process";
+import { execFileSync } from "node:child_process";
 
-function execCli(command: string, cwd: string): string | null {
+function execCli(args: readonly string[], cwd: string): string | null {
 	try {
-		return execSync(command, {
+		return execFileSync("n0n", args, {
 			encoding: "utf8",
 			timeout: 15_000,
 			cwd,
@@ -36,9 +36,9 @@ function formatSection(label: string, output: string | null): string {
  */
 export function buildEnvironmentContext(workspace: string): string {
 	const sections = [
-		formatSection("n0n-init global", execCli("n0n-init global", workspace)),
-		formatSection("n0n-init project", execCli("n0n-init project", workspace)),
-		formatSection("n0n-skill", execCli("n0n-skill", workspace)),
+		formatSection("n0n scan global", execCli(["scan", "global"], workspace)),
+		formatSection("n0n scan project", execCli(["scan", "project"], workspace)),
+		formatSection("n0n skill", execCli(["skill"], workspace)),
 	];
 
 	return sections.filter(Boolean).join("\n\n");

@@ -33,4 +33,4 @@ export type {
 	SkillLoadResult,
 	SkillMeta,
 } from "./types.ts";
-export { toSkill } from "./types.ts";
+export { SKILL_ACTIVATIONS, SKILL_CATEGORIES, toSkill } from "./types.ts";

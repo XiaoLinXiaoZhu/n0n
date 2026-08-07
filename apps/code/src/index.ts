@@ -1,24 +1,15 @@
 /**
- * Code Agent — 入口
+ * Code Agent runner。
  *
- * 代码编写场景的 agent，产出物为项目代码变更（而非 workflow）。
- * 默认以 cwd 为工作区（终端启动），macOS 双击时 fallback 到脚本所在目录。
- * 也可通过 --workspace 指定其他目录。
- *
- * 启动流程：
- * 1. 加载 TOML 配置（默认 → 全局 → 项目，后者覆盖前者）
- * 2. 从配置构造各组件
- * 3. 启动 REPL
+ * 只接受类型化 options，不读取命令行参数，也不终止进程。
  */
 
 import { existsSync, writeFileSync } from "node:fs";
-import { homedir } from "node:os";
-import { dirname, resolve } from "node:path";
 import { style, writeln } from "@n0n/cli-ui";
 import { buildToolsConfig } from "@n0n/core";
 import type { FormatOptions } from "@n0n/format-prompt";
 import { createLLMClient } from "@n0n/llm";
-import { ensureDirs, parseWorkspaceArg, resolveBasePaths } from "@n0n/shared";
+import { ensureDirs, resolveBasePaths } from "@n0n/shared";
 import {
 	DEFAULT_TOML,
 	displayCodeConfig,
@@ -29,118 +20,100 @@ import {
 import { withMemoryTags } from "./memory-tag.ts";
 import type { NotifyConfig } from "./notify-sound.ts";
 
-// ── 加载配置 ──
-
-const configPaths = resolveConfigPaths();
-const configResult = loadCodeConfig(configPaths);
-
-if (!configResult.success) {
-	writeln(style.red("配置加载失败："));
-	for (const err of configResult.errors) {
-		writeln(style.red(`  ${err.kind}: ${err.message}`));
-	}
-
-	// 如果全局 config.toml 不存在，提示创建
-	if (!existsSync(configPaths.globalTomlPath)) {
-		writeln();
-		writeln(style.yellow("未找到全局配置文件，正在创建默认配置…"));
-		writeFileSync(configPaths.globalTomlPath, `${DEFAULT_TOML.trimStart()}\n`, {
-			mode: 0o600,
-		});
-		writeln(style.green(`已创建: ${configPaths.globalTomlPath}`));
-		writeln(style.gray("请编辑此文件填入你的 API 密钥，然后重新启动。"));
-	}
-
-	process.exit(1);
+interface CodeRunBaseOptions {
+	workspace: string;
+	resumeFile?: string;
+	saveEveryLoop?: boolean;
+	promptVersion?: string;
+	expandExec?: boolean;
 }
 
-const config: LoadedConfig = configResult.config;
-const { settings } = config;
-const { llm } = settings;
+export type CodeRunOptions =
+	| (CodeRunBaseOptions & { mode: "interactive" })
+	| (CodeRunBaseOptions & { mode: "oneshot"; prompt: string });
 
-// ── 配置摘要 ──
+export async function runCode(options: CodeRunOptions): Promise<void> {
+	const workspace = options.workspace;
+	const configPaths = resolveConfigPaths(workspace);
+	const configResult = loadCodeConfig(configPaths);
 
-displayCodeConfig(config);
+	if (!configResult.success) {
+		writeln(style.red("配置加载失败："));
+		for (const error of configResult.errors) {
+			writeln(style.red(`  ${error.kind}: ${error.message}`));
+		}
 
-// ── CLI 选项 ──
+		if (!existsSync(configPaths.globalTomlPath)) {
+			writeln();
+			writeln(style.yellow("未找到全局配置文件，正在创建默认配置…"));
+			writeFileSync(
+				configPaths.globalTomlPath,
+				`${DEFAULT_TOML.trimStart()}\n`,
+				{ mode: 0o600 },
+			);
+			writeln(style.green(`已创建: ${configPaths.globalTomlPath}`));
+			writeln(style.gray("请编辑此文件填入你的 API 密钥，然后重新启动。"));
+		}
 
-const cliOpts = (globalThis as Record<string, unknown>).__n0n_cli_opts as
-	| {
-			resumeFile?: string;
-			saveEveryLoop?: boolean;
-			promptVersion?: string;
-			expandExec?: boolean;
-			filteredArgs?: string[];
-	  }
-	| undefined;
-const resumeFile = cliOpts?.resumeFile;
-const saveEveryLoop = cliOpts?.saveEveryLoop ?? false;
-const promptVersion = cliOpts?.promptVersion;
-const expandExec = cliOpts?.expandExec ?? false;
+		throw new Error("n0n 配置加载失败");
+	}
 
-const { workspace, remainingArgs } = parseWorkspaceArg(
-	cliOpts?.filteredArgs ?? process.argv.slice(2),
-	"N0N_CODE_WORKSPACE",
-	// macOS 双击打开时 cwd 为 home 目录，此时 fallback 到脚本所在目录
-	process.cwd() === homedir()
-		? dirname(resolve(process.argv[1] ?? "."))
-		: process.cwd(),
-);
+	await startConfiguredCode(configResult.config, workspace, options);
+}
 
-const paths = resolveBasePaths(workspace);
-ensureDirs(paths);
+async function startConfiguredCode(
+	config: LoadedConfig,
+	workspace: string,
+	options: CodeRunOptions,
+): Promise<void> {
+	const { settings } = config;
+	const { llm } = settings;
+	displayCodeConfig(config);
 
-// ── 从配置构造各组件 ──
+	const paths = resolveBasePaths(workspace);
+	ensureDirs(paths);
 
-const llmConfig = { providerConfig: llm };
-const formatOptions: FormatOptions = {
-	strip_hint: settings.strip_hint,
-};
+	const formatOptions: FormatOptions = {
+		strip_hint: settings.strip_hint,
+	};
+	const client = withMemoryTags(
+		createLLMClient({ providerConfig: llm }, formatOptions),
+		settings.memory_tag && llm.provider === "deepseek",
+	);
+	const toolsConfig = buildToolsConfig(settings.agent, settings.security, {
+		workspace: paths.workspace,
+		tempDir: paths.temp,
+	});
+	const notifyConfig: NotifyConfig = {
+		enabled: settings.notify_sound,
+		soundPath: settings.notify_sound_path || undefined,
+	};
 
-const securityConfig = settings.security;
+	const versionNote = options.promptVersion
+		? ` [v${options.promptVersion}]`
+		: "";
+	writeln(
+		style.bold("n0n code") +
+			style.gray(` — Code Agent [${paths.workspace}]${versionNote}`),
+	);
+	writeln(
+		style.gray('描述你的编码任务，AI 将直接修改项目代码。输入 "exit" 退出。'),
+	);
+	writeln(style.gray("支持多行输入 / 粘贴，按空行（回车）提交。"));
+	writeln();
 
-// memory 标签原本是 DeepSeek test-1 的提示词策略；Anthropic 等 provider
-// 的 reasoning 可能带签名，不能由 app 任意改写。
-const client = withMemoryTags(
-	createLLMClient(llmConfig, formatOptions),
-	settings.memory_tag && llm.provider === "deepseek",
-);
-const toolsConfig = buildToolsConfig(settings.agent, securityConfig, {
-	workspace: paths.workspace,
-	tempDir: paths.temp,
-});
-
-const notifyConfig: NotifyConfig = {
-	enabled: settings.notify_sound,
-	soundPath: settings.notify_sound_path || undefined,
-};
-
-const { startCodeRepl } = await import("./repl/index.ts");
-
-const initialInput =
-	remainingArgs.length > 0 ? remainingArgs.join(" ") : undefined;
-
-const versionNote = promptVersion ? ` [v${promptVersion}]` : "";
-writeln(
-	style.bold("n0n code") +
-		style.gray(` — Code Agent [${paths.workspace}]${versionNote}`),
-);
-writeln(
-	style.gray('描述你的编码任务，AI 将直接修改项目代码。输入 "exit" 退出。'),
-);
-writeln(style.gray("支持多行输入 / 粘贴，按空行（回车）提交。"));
-writeln();
-
-await startCodeRepl(paths, {
-	initialInput,
-	resumeFile,
-	saveEveryLoop,
-	promptVersion,
-	client,
-	toolsConfig,
-	agentConfig: settings.agent,
-	userInputConfig: settings.user_input,
-	notifyConfig,
-	expandExec,
-});
-process.exit(0);
+	const { startCodeRepl } = await import("./repl/index.ts");
+	await startCodeRepl(paths, {
+		initialInput: options.mode === "oneshot" ? options.prompt : undefined,
+		exitAfterInitialInput: options.mode === "oneshot",
+		resumeFile: options.resumeFile,
+		saveEveryLoop: options.saveEveryLoop ?? false,
+		promptVersion: options.promptVersion,
+		client,
+		toolsConfig,
+		agentConfig: settings.agent,
+		userInputConfig: settings.user_input,
+		notifyConfig,
+		expandExec: options.expandExec ?? false,
+	});
+}

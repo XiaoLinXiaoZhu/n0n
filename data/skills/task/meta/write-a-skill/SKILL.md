@@ -23,7 +23,7 @@ order: <加载顺序，仅 activation=init 时有效，可选>
 
 - **description**：必填。描述 "when to use"（什么场景触发）和 "what it can do"（能做什么）。不超过 1024 字符。第三人称。
 - **activation**：必填。`init` = 每次对话自动加载（需搭配 `order` 控制顺序），`manual` = 用户显式加载或匹配触发词时加载。默认 `manual`。
-- **alias**：可选。短别名，用于 `n0n-skill read <alias>`。
+- **alias**：可选。短别名，用于 `n0n skill read <alias>`。
 - **order**：可选。仅 `activation=init` 时有效，数字越小越先加载。
 
 ### 目录结构

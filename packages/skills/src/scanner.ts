@@ -13,19 +13,11 @@ import { existsSync } from "node:fs";
 import { resolve } from "node:path";
 import { Glob } from "bun";
 import { parseSkillMeta } from "./parser.ts";
-import type { SkillCategory, SkillMeta } from "./types.ts";
-
-/** 有效的分类目录名 */
-export const CATEGORIES: readonly SkillCategory[] = [
-	"capability",
-	"directive",
-	"self-function",
-	"task",
-] as const;
-
-function _isCategory(s: string): s is SkillCategory {
-	return (CATEGORIES as readonly string[]).includes(s);
-}
+import {
+	SKILL_CATEGORIES,
+	type SkillCategory,
+	type SkillMeta,
+} from "./types.ts";
 
 /**
  * 扫描单个分类目录下的所有 skill
@@ -69,7 +61,7 @@ export async function discoverSkills(baseDir: string): Promise<SkillMeta[]> {
 
 	const skills: SkillMeta[] = [];
 
-	for (const cat of CATEGORIES) {
+	for (const cat of SKILL_CATEGORIES) {
 		const catDir = resolve(absBase, cat);
 		const catSkills = await discoverSkillsInCategory(catDir, cat);
 		skills.push(...catSkills);

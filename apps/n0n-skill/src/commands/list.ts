@@ -10,13 +10,24 @@
  */
 
 import type { Styler } from "@n0n/cli-ui";
-import type { SkillMeta } from "@n0n/skills";
-import { discoverSkillsMultiDir } from "@n0n/skills";
+import {
+	discoverSkillsMultiDir,
+	SKILL_ACTIVATIONS,
+	type SkillActivation,
+	type SkillMeta,
+} from "@n0n/skills";
 import { getSkillDirs } from "../paths.ts";
 
-export async function listCommand(rawArgs: string[]): Promise<void> {
-	const showAll = rawArgs.includes("--all");
-	const useColor = rawArgs.includes("--color");
+export interface ListCommandOptions {
+	all?: boolean;
+	color?: boolean;
+}
+
+export async function listCommand(
+	options: ListCommandOptions = {},
+): Promise<void> {
+	const showAll = options.all ?? false;
+	const useColor = options.color ?? false;
 
 	// 动态加载 style（避免未使用时引入 picocolors）
 	const c = useColor ? await loadStyler() : null;
@@ -24,7 +35,7 @@ export async function listCommand(rawArgs: string[]): Promise<void> {
 	const skills = await discoverSkillsMultiDir(getSkillDirs());
 
 	if (skills.length === 0) {
-		console.log("没有可用的 skill。运行 `n0n-skill init` 安装内置 skill。");
+		console.log("没有可用的 skill。运行 `n0n skill init` 安装内置 skill。");
 		return;
 	}
 
@@ -36,7 +47,7 @@ export async function listCommand(rawArgs: string[]): Promise<void> {
 		console.log(
 			showAll
 				? "没有 skill。"
-				: "没有 auto 类型的 skill。使用 `n0n-skill list --all` 查看全部。",
+				: "没有 auto 类型的 skill。使用 `n0n skill list --all` 查看全部。",
 		);
 		return;
 	}
@@ -52,7 +63,7 @@ export async function listCommand(rawArgs: string[]): Promise<void> {
 		if (!catSkills)
 			throw new Error(`unreachable: no group for category ${cat}`);
 		const byActivation = groupBy(catSkills, (s) => s.activation);
-		for (const actType of ["auto", "manual", "init"] as const) {
+		for (const actType of SKILL_ACTIVATIONS) {
 			const actSkills = byActivation[actType];
 			if (!actSkills || actSkills.length === 0) continue;
 			actSkills.sort((a, b) => a.name.localeCompare(b.name));
@@ -76,7 +87,7 @@ export async function listCommand(rawArgs: string[]): Promise<void> {
 		const count = c ? c.bold(String(filtered.length)) : String(filtered.length);
 		console.log(`\n总计: ${count} auto skill`);
 		console.log(
-			"提示: 使用 `n0n-skill list --all` 查看全部 skill（含 auto/manual/init）。",
+			"提示: 使用 `n0n skill list --all` 查看全部 skill（含 auto/manual/init）。",
 		);
 	}
 }
@@ -104,7 +115,7 @@ function formatSkillLine(
 }
 
 function colorByActivation(
-	activation: string,
+	activation: SkillActivation,
 	text: string,
 	c: Styler,
 ): string {
@@ -115,8 +126,6 @@ function colorByActivation(
 			return c.yellow(text);
 		case "init":
 			return c.gray(text);
-		default:
-			return text;
 	}
 }
 

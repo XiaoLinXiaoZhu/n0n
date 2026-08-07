@@ -8,8 +8,11 @@
  * - display.ts — 终端显示
  */
 
-// 向后兼容：DEFAULT_TOML 重新导出
-export { DEFAULT_TOML } from "../config-defaults.ts";
+export {
+	DEFAULT_CODE_SETTINGS,
+	DEFAULT_OPEN_COMMAND,
+	DEFAULT_TOML,
+} from "../config-defaults.ts";
 export { displayCodeConfig } from "./display.ts";
 export {
 	type ConfigLoadError,

@@ -7,6 +7,7 @@
  */
 
 import { z } from "zod";
+import { DEFAULT_CODE_SETTINGS } from "../config-defaults.ts";
 
 /** 菜单/输入框对齐位置 */
 export type EditorAlign = "left" | "center" | "right";
@@ -24,13 +25,18 @@ export interface UserInputConfig {
 /** 把 TOML 的 -1（或 ≤0）转为 null（无限制），正数原样保留 */
 const limitField = z
 	.number()
-	.default(-1)
+	.default(DEFAULT_CODE_SETTINGS.user_input.max_width)
 	.transform((n) => (n > 0 ? n : null));
 
 const fields = z.object({
 	max_width: limitField,
-	max_height: limitField,
-	align: z.enum(["left", "center", "right"]).default("left"),
+	max_height: z
+		.number()
+		.default(DEFAULT_CODE_SETTINGS.user_input.max_height)
+		.transform((n) => (n > 0 ? n : null)),
+	align: z
+		.enum(["left", "center", "right"])
+		.default(DEFAULT_CODE_SETTINGS.user_input.align),
 });
 
 /**

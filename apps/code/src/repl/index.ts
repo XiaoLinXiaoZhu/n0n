@@ -40,6 +40,7 @@ import { createHeartbeatKeeper } from "./heartbeat.ts";
 
 export interface CodeReplOptions {
 	initialInput?: string;
+	exitAfterInitialInput?: boolean;
 	resumeFile?: string;
 	saveEveryLoop?: boolean;
 	promptVersion?: string;
@@ -74,6 +75,7 @@ export async function startCodeRepl(
 ): Promise<void> {
 	const {
 		initialInput,
+		exitAfterInitialInput = false,
 		resumeFile,
 		saveEveryLoop = false,
 		promptVersion,
@@ -110,206 +112,208 @@ export async function startCodeRepl(
 	const keeper = createHeartbeatKeeper(client);
 	// stdin Ctrl+P 暂停心跳
 	if (stdin && keeper) {
-		stdin.onPause = () => {
+		stdin.setPauseHandler(() => {
 			if (keeper.state === HeartbeatState.TICKING) {
 				keeper.stop();
 				writeln(style.gray("⏸ 缓存保活已停止。下次提交消息后会自动恢复。"));
 			}
-		};
+		});
 	}
 
-	// ── 初始化 history ──
+	const promptNext = async (): Promise<string | null> =>
+		exitAfterInitialInput ? null : await prompter.prompt();
 
-	let history: DomainMessage[];
-	let userInput: string | null;
-	let isFirstInput: boolean;
-	let envContext: string | null = null;
+	try {
+		// ── 初始化 history ──
 
-	if (resumeFile) {
-		try {
-			const log = loadConversation(resumeFile);
-			history = log.history;
-			writeln(
-				style.green("✓") +
-					style.gray(
-						` 已从 ${resumeFile} 恢复对话（${log.history.length} 条消息）`,
-					),
-			);
-			writeln();
-			isFirstInput = false;
-			userInput = await prompter.prompt();
-		} catch (err) {
-			const message =
-				err instanceof Error ? err.message : String(err ?? "未知错误");
-			writeln(`${style.red("✗")} 恢复对话失败: ${message}`);
-			writeln(style.gray("  将以全新对话启动。"));
-			writeln();
+		let history: DomainMessage[];
+		let userInput: string | null;
+		let isFirstInput: boolean;
+		let envContext: string | null = null;
+
+		if (resumeFile) {
+			try {
+				const log = loadConversation(resumeFile);
+				history = log.history;
+				writeln(
+					style.green("✓") +
+						style.gray(
+							` 已从 ${resumeFile} 恢复对话（${log.history.length} 条消息）`,
+						),
+				);
+				writeln();
+				isFirstInput = false;
+				userInput = initialInput ?? (await prompter.prompt());
+			} catch (err) {
+				const message =
+					err instanceof Error ? err.message : String(err ?? "未知错误");
+				writeln(`${style.red("✗")} 恢复对话失败: ${message}`);
+				writeln(style.gray("  将以全新对话启动。"));
+				writeln();
+				isFirstInput = true;
+				envContext = buildEnvironmentContext(paths.workspace);
+				history = [systemMessage, { type: "cache_breakpoint" }];
+				userInput = initialInput ?? (await prompter.prompt());
+			}
+		} else {
 			isFirstInput = true;
 			envContext = buildEnvironmentContext(paths.workspace);
 			history = [systemMessage, { type: "cache_breakpoint" }];
 			userInput = initialInput ?? (await prompter.prompt());
 		}
-	} else {
-		isFirstInput = true;
-		envContext = buildEnvironmentContext(paths.workspace);
-		history = [systemMessage, { type: "cache_breakpoint" }];
-		userInput = initialInput ?? (await prompter.prompt());
-	}
 
-	let autoResume = false;
+		let autoResume = false;
 
-	// ── 主循环 ──
+		// ── 主循环 ──
 
-	while (true) {
-		if (userInput === null) break;
-		if (userInput.trim().toLowerCase() === "exit") break;
-		if (userInput.trim() === "") {
-			userInput = await prompter.prompt();
-			continue;
-		}
+		while (true) {
+			if (userInput === null) break;
+			if (userInput.trim().toLowerCase() === "exit") break;
+			if (userInput.trim() === "") {
+				userInput = await promptNext();
+				continue;
+			}
 
-		// `log` 命令
-		if (userInput.trim().toLowerCase() === "log") {
-			try {
-				const filePath = saveConversation(
-					history,
-					paths.workspace,
-					paths.workspace,
+			// `log` 命令
+			if (userInput.trim().toLowerCase() === "log") {
+				try {
+					const filePath = saveConversation(
+						history,
+						paths.workspace,
+						paths.workspace,
+					);
+					writeln(`${style.green("✓")} 对话已保存到 ${style.cyan(filePath)}`);
+				} catch (err) {
+					const message =
+						err instanceof Error ? err.message : String(err ?? "未知错误");
+					writeln(`${style.red("✗")} 保存对话失败: ${message}`);
+				}
+				writeln();
+				userInput = await promptNext();
+				continue;
+			}
+
+			// `pause` 命令
+			if (userInput.trim().toLowerCase() === "pause") {
+				if (keeper && keeper.state === HeartbeatState.TICKING) {
+					keeper.stop();
+					writeln(style.gray("⏸ 缓存保活已停止。下次提交消息后会自动恢复。"));
+				} else {
+					writeln(style.gray("当前没有活跃的缓存保活。"));
+				}
+				writeln();
+				userInput = await promptNext();
+				continue;
+			}
+
+			// ── 推入用户输入 ──
+
+			if (autoResume) {
+				autoResume = false;
+				keeper?.stop();
+			} else {
+				keeper?.stop();
+				const skillResult = await parseAndInjectSkills(userInput);
+				if (skillResult.notFound.length > 0) {
+					writeln(
+						style.yellow("?") +
+							` skill 未找到: ${skillResult.notFound.join(", ")}`,
+					);
+				}
+				const finalText = skillResult.cleanedText || userInput;
+				const context = isFirstInput ? envContext : null;
+				isFirstInput = false;
+				history.push(
+					makeUserInput(
+						finalText,
+						skillResult.mentionedSkills ?? [],
+						CODE_TAIL_ANCHOR,
+						context,
+					),
 				);
-				writeln(`${style.green("✓")} 对话已保存到 ${style.cyan(filePath)}`);
+			}
+
+			// ── Agent 运行 ──
+
+			const agentSignal = stdin?.beginAgent();
+
+			let agentResult: Awaited<ReturnType<typeof agentLoop<CodeShowResult>>>;
+			try {
+				agentResult = await agentLoop<CodeShowResult>(history, {
+					client,
+					toolkit,
+					max_iterations: agentConfig.max_iterations,
+					max_idle_rounds: agentConfig.max_idle_rounds,
+					renderer,
+					confirmFn: (question) => prompter.confirm(question),
+					signal: agentSignal,
+				});
 			} catch (err) {
+				writeln();
+				writeln(`${style.red("✗")} Agent 运行出错，已中止本轮对话。`);
 				const message =
 					err instanceof Error ? err.message : String(err ?? "未知错误");
-				writeln(`${style.red("✗")} 保存对话失败: ${message}`);
-			}
-			writeln();
-			userInput = await prompter.prompt();
-			continue;
-		}
-
-		// `pause` 命令
-		if (userInput.trim().toLowerCase() === "pause") {
-			if (keeper && keeper.state === HeartbeatState.TICKING) {
-				keeper.stop();
-				writeln(style.gray("⏸ 缓存保活已停止。下次提交消息后会自动恢复。"));
-			} else {
-				writeln(style.gray("当前没有活跃的缓存保活。"));
-			}
-			writeln();
-			userInput = await prompter.prompt();
-			continue;
-		}
-
-		// ── 推入用户输入 ──
-
-		if (autoResume) {
-			autoResume = false;
-			keeper?.stop();
-		} else {
-			keeper?.stop();
-			const skillResult = await parseAndInjectSkills(userInput);
-			if (skillResult.notFound.length > 0) {
-				writeln(
-					style.yellow("?") +
-						` skill 未找到: ${skillResult.notFound.join(", ")}`,
-				);
-			}
-			const finalText = skillResult.cleanedText || userInput;
-			const context = isFirstInput ? envContext : null;
-			isFirstInput = false;
-			history.push(
-				makeUserInput(
-					finalText,
-					skillResult.mentionedSkills ?? [],
-					CODE_TAIL_ANCHOR,
-					context,
-				),
-			);
-		}
-
-		// ── Agent 运行 ──
-
-		if (stdin) {
-			stdin.abortController = new AbortController();
-			stdin.phase = "agent";
-		}
-
-		let agentResult: Awaited<ReturnType<typeof agentLoop<CodeShowResult>>>;
-		try {
-			agentResult = await agentLoop<CodeShowResult>(history, {
-				client,
-				toolkit,
-				max_iterations: agentConfig.max_iterations,
-				max_idle_rounds: agentConfig.max_idle_rounds,
-				renderer,
-				confirmFn: (question) => prompter.confirm(question),
-				signal: stdin?.abortController.signal,
-			});
-		} catch (err) {
-			writeln();
-			writeln(`${style.red("✗")} Agent 运行出错，已中止本轮对话。`);
-			const message =
-				err instanceof Error ? err.message : String(err ?? "未知错误");
-			writeln(style.gray(`  ${message}`));
-			writeln();
-			userInput = await prompter.prompt();
-			continue;
-		} finally {
-			if (stdin) stdin.phase = "idle";
-		}
-
-		history = agentResult.history;
-		keeper?.start({
-			messages: history,
-			tools: agentResult.tools,
-			toolChoice: "auto",
-		});
-
-		if (saveEveryLoop) {
-			try {
-				saveConversation(
-					history,
-					paths.workspace,
-					paths.workspace,
-					"n0n-conversation-latest.json",
-				);
-			} catch {
-				// 自动保存失败不阻断 REPL
-			}
-		}
-
-		if (stdin?.abortController.signal.aborted) {
-			writeln();
-			userInput = await prompter.prompt();
-			continue;
-		}
-
-		const ir = agentResult.result;
-		writeln();
-
-		if (ir == null) {
-			writeln(`${style.red("✗")} Agent 异常终止`);
-			if (agentResult.report) writeln(style.gray(`  ${agentResult.report}`));
-			writeln();
-			userInput = await prompter.prompt();
-			continue;
-		}
-
-		const outcome = handleShowResult(ir, history, showWriter, notifyConfig);
-		switch (outcome.action) {
-			case "prompt":
-				userInput = await prompter.prompt();
-				break;
-			case "auto_resume":
-				autoResume = true;
+				writeln(style.gray(`  ${message}`));
+				writeln();
+				userInput = await promptNext();
 				continue;
-			case "continue":
-				userInput = await prompter.prompt();
-				break;
-		}
-	}
+			} finally {
+				stdin?.enterIdle();
+			}
 
-	keeper?.stop();
-	stdin?.dispose();
-	writeln(style.gray("Bye!"));
+			history = agentResult.history;
+			keeper?.start({
+				messages: history,
+				tools: agentResult.tools,
+				toolChoice: "auto",
+			});
+
+			if (saveEveryLoop) {
+				try {
+					saveConversation(
+						history,
+						paths.workspace,
+						paths.workspace,
+						"n0n-conversation-latest.json",
+					);
+				} catch {
+					// 自动保存失败不阻断 REPL
+				}
+			}
+
+			if (agentSignal?.aborted) {
+				writeln();
+				userInput = await promptNext();
+				continue;
+			}
+
+			const ir = agentResult.result;
+			writeln();
+
+			if (ir == null) {
+				writeln(`${style.red("✗")} Agent 异常终止`);
+				if (agentResult.report) writeln(style.gray(`  ${agentResult.report}`));
+				writeln();
+				userInput = await promptNext();
+				continue;
+			}
+
+			const outcome = handleShowResult(ir, history, showWriter, notifyConfig);
+			switch (outcome.action) {
+				case "prompt":
+					userInput = await promptNext();
+					break;
+				case "auto_resume":
+					autoResume = true;
+					continue;
+				case "continue":
+					userInput = await promptNext();
+					break;
+			}
+		}
+	} finally {
+		keeper?.stop();
+		stdin?.dispose();
+		writeln(style.gray("Bye!"));
+	}
 }

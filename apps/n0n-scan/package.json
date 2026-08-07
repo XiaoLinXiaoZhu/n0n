@@ -1,9 +1,9 @@
 {
-	"name": "@n0n/init",
+	"name": "@n0n/scan",
 	"version": "0.1.0",
 	"private": true,
 	"type": "module",
-	"bin": {
-		"n0n-init": "src/cli.ts"
+	"exports": {
+		".": "./src/index.ts"
 	}
 }

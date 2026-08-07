@@ -16,7 +16,11 @@ import {
 	parseFrontmatter as parseFM,
 } from "@n0n/shared";
 import { z } from "zod";
-import type { SkillCategory, SkillMeta } from "./types.ts";
+import {
+	SKILL_ACTIVATIONS,
+	type SkillCategory,
+	type SkillMeta,
+} from "./types.ts";
 
 // ── UID 生成 ──
 
@@ -48,7 +52,7 @@ export const SkillFrontmatterSchema = z.object({
 	description: z.string(),
 	license: z.string().optional(),
 	compatibility: z.string().optional(),
-	activation: z.enum(["auto", "manual", "init"]).default("auto"),
+	activation: z.enum(SKILL_ACTIVATIONS).default("auto"),
 	order: z.coerce.number().int().default(50),
 });
 

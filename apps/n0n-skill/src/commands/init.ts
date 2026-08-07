@@ -7,26 +7,18 @@
 
 import { existsSync, mkdirSync, rmSync } from "node:fs";
 import { resolve } from "node:path";
+import { SKILL_CATEGORIES } from "@n0n/skills";
 import { Glob } from "bun";
 import { getBuiltinSkillsDir, getUserSkillsDir } from "../paths.ts";
 
 /** skill 源目录：项目根 data/skills/ */
 const BUILTIN_SOURCE = resolve(import.meta.dir, "../../../../data/skills");
 
-/** 四个分类子目录 */
-const CATEGORIES = [
-	"capability",
-	"directive",
-	"self-function",
-	"task",
-] as const;
-
 export async function initCommand(): Promise<void> {
 	const targetDir = getBuiltinSkillsDir();
 
 	if (!existsSync(BUILTIN_SOURCE)) {
-		console.error("内置 skill 源目录不存在。安装可能不完整。");
-		process.exit(1);
+		throw new Error("内置 skill 源目录不存在。安装可能不完整。");
 	}
 
 	// 清除旧内容，避免残留已删除的 skill
@@ -36,7 +28,7 @@ export async function initCommand(): Promise<void> {
 
 	let count = 0;
 
-	for (const category of CATEGORIES) {
+	for (const category of SKILL_CATEGORIES) {
 		const srcCatDir = resolve(BUILTIN_SOURCE, category);
 		if (!existsSync(srcCatDir)) continue;
 
@@ -59,7 +51,7 @@ export async function initCommand(): Promise<void> {
 
 	// 确保 builtin 和 user 目录下四个分类子目录都存在（即使为空）
 	const userDir = getUserSkillsDir();
-	for (const category of CATEGORIES) {
+	for (const category of SKILL_CATEGORIES) {
 		const builtinCatDir = resolve(targetDir, category);
 		if (!existsSync(builtinCatDir))
 			mkdirSync(builtinCatDir, { recursive: true });

@@ -1,0 +1,15 @@
+{
+	"name": "@n0n/cli",
+	"version": "0.1.0",
+	"private": true,
+	"type": "module",
+	"bin": {
+		"n0n": "src/main.ts"
+	},
+	"dependencies": {
+		"@n0n/code": "workspace:*",
+		"@n0n/scan": "workspace:*",
+		"@n0n/skill": "workspace:*",
+		"commander": "^15.0.0"
+	}
+}

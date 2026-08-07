@@ -45,14 +45,7 @@ export class UserPrompter {
 			prompt: `${label.user()}`,
 			hint: style.gray("(Alt+Enter 提交)"),
 			editor: this.userInputConfig,
-			connectStdin: (handler) => {
-				s.dataHandler = handler;
-				s.phase = "input";
-				return () => {
-					s.dataHandler = null;
-					s.phase = "idle";
-				};
-			},
+			connectStdin: (handler) => s.connectInput(handler),
 		});
 		return result?.text ?? null;
 	}
@@ -85,23 +78,21 @@ export class UserPrompter {
 			process.stderr.write(question);
 			let line = "";
 
-			s.dataHandler = (data: string) => {
+			const disconnect = s.connectInput((data: string) => {
 				for (let i = 0; i < data.length; i++) {
 					const code = data.charCodeAt(i);
 					if (code === 17) {
 						// Ctrl+Q → abort
 						process.stderr.write("\n");
-						s.dataHandler = null;
-						s.phase = "agent";
-						s.abortController.abort();
+						s.abortAgent();
+						disconnect();
 						resolve("n");
 						return;
 					}
 					if (code === 13) {
 						// Enter
 						process.stderr.write("\n");
-						s.dataHandler = null;
-						s.phase = "agent";
+						disconnect();
 						resolve(line);
 						return;
 					}
@@ -118,8 +109,7 @@ export class UserPrompter {
 						process.stderr.write(data[i] as string);
 					}
 				}
-			};
-			s.phase = "input";
+			});
 		});
 	}
 }

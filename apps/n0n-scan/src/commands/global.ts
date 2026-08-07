@@ -5,7 +5,7 @@
  * --detail：使用黑名单过滤，展示更完整的工具列表
  */
 
-import { execSync } from "node:child_process";
+import { execFileSync, execSync } from "node:child_process";
 import { readdirSync } from "node:fs";
 import { resolvePlatform } from "@n0n/shared";
 import { loadPathToolsConfig, type PathToolsConfig } from "../config/load.ts";
@@ -183,7 +183,7 @@ function probeRuntime(def: RuntimeDef): ProbeResult {
 	}
 
 	try {
-		const output = execSync(`${def.cmd} ${def.args.join(" ")}`, {
+		const output = execFileSync(def.cmd, def.args, {
 			encoding: "utf8",
 			timeout: 5000,
 			stdio: ["pipe", "pipe", "pipe"],
@@ -216,7 +216,10 @@ function runtimesSection(): string {
 			.sort((a, b) => a.def.priority - b.def.priority);
 
 		if (groupResults.length > 0) {
-			const first = mustFirst(groupResults);
+			const [first] = groupResults;
+			if (first === undefined) {
+				throw new Error("invariant: non-empty runtime group has no first item");
+			}
 			preferredByGroup.set(group, first.def.name);
 		}
 
@@ -279,7 +282,7 @@ function pathToolsWhitelist(config: PathToolsConfig): string {
 	}
 
 	lines.push(
-		"(not exhaustive — use `n0n-init global --detail` for blacklist-filtered full list)",
+		"(not exhaustive — use `n0n scan global --detail` for blacklist-filtered full list)",
 	);
 
 	return lines.join("\n");
@@ -323,14 +326,11 @@ function pathToolsDetailed(config: PathToolsConfig): string {
 
 function normalizeName(entry: string): string | null {
 	if (IS_WINDOWS) {
-		const parts = entry.split(".");
-		if (parts.length > 1) {
-			const rawExt = mustPop(parts);
-			const ext = rawExt.toLowerCase();
-			if (!EXE_EXTENSIONS?.has(ext)) return null;
-			return parts.join(".").toLowerCase();
-		}
-		return null;
+		const extensionIndex = entry.lastIndexOf(".");
+		if (extensionIndex <= 0) return null;
+		const ext = entry.slice(extensionIndex + 1).toLowerCase();
+		if (!EXE_EXTENSIONS?.has(ext)) return null;
+		return entry.slice(0, extensionIndex).toLowerCase();
 	}
 	// Unix: any file in PATH is potentially executable
 	return entry.toLowerCase();
@@ -355,17 +355,4 @@ function isNameBlacklisted(name: string, config: PathToolsConfig): boolean {
 	}
 
 	return false;
-}
-
-/** 取数组首个元素，空数组时抛出（调用者保证非空） */
-function mustFirst<T>(xs: T[]): T {
-	if (xs.length === 0 || !xs[0]) throw new Error("invariant: empty array");
-	return xs[0];
-}
-
-/** 弹出数组末元素，空数组时抛出（调用者保证非空） */
-function mustPop<T>(xs: T[]): T {
-	const v = xs.pop();
-	if (v === undefined) throw new Error("invariant: empty array");
-	return v;
 }

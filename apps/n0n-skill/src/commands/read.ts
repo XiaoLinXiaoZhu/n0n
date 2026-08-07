@@ -11,19 +11,13 @@ import {
 } from "@n0n/skills";
 import { getSkillDirs } from "../paths.ts";
 
-export async function readCommand(name: string | undefined): Promise<void> {
-	if (!name) {
-		console.error("用法: n0n-skill read <name>");
-		process.exit(1);
-	}
-
+export async function readCommand(name: string): Promise<void> {
 	const skills = await discoverSkillsMultiDir(getSkillDirs());
 	const matched = findSkillsByNameOrAlias(skills, name);
 
 	if (matched.length === 0) {
 		const available = skills.map((s) => s.name).join(", ");
-		console.error(`skill "${name}" 不存在。可用: ${available || "(无)"}`);
-		process.exit(1);
+		throw new Error(`skill "${name}" 不存在。可用: ${available || "(无)"}`);
 	}
 
 	for (const skill of matched) {

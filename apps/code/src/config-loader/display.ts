@@ -7,6 +7,15 @@
 import { existsSync } from "node:fs";
 import { style, writeln } from "@n0n/cli-ui";
 import type { LoadedConfig } from "./loader.ts";
+import type { CodeSettings } from "./schema.ts";
+
+type ConfigTrace = LoadedConfig["trace"];
+type DisplayedSettingKey = Extract<
+	keyof CodeSettings,
+	"strip_hint" | "memory_tag" | "notify_sound"
+>;
+
+const LLM_TRACE_PREFIX = "settings.llm";
 
 function maskSecret(value: string): string {
 	if (value.length <= 8) return "****";
@@ -35,14 +44,13 @@ function formatValue(key: string, value: unknown): string {
 }
 
 function displayProvider(
-	trace: Record<string, { source: string }>,
+	trace: ConfigTrace,
 	label: string,
-	pc: Record<string, unknown>,
-	prefix: string,
+	providerConfig: object,
 ): void {
 	writeln(`  ${style.dim("──")} ${style.cyan(label)}`);
-	for (const [key, value] of Object.entries(pc)) {
-		const src = trace[`${prefix}.${key}`]?.source;
+	for (const [key, value] of Object.entries(providerConfig)) {
+		const src = trace[`${LLM_TRACE_PREFIX}.${key}`]?.source;
 		writeln(
 			`    ${style.white(key)} = ${formatValue(key, value)}${src ? ` ${sourceTag(src)}` : ""}`,
 		);
@@ -74,26 +82,25 @@ export function displayCodeConfig(config: LoadedConfig): void {
 
 	writeln(`${style.cyan("i")} ${style.bold("当前配置:")}`);
 	writeln();
-	displayProvider(
-		trace,
-		"LLM",
-		llm as unknown as Record<string, unknown>,
-		"settings.llm",
-	);
+	displayProvider(trace, "LLM", llm);
 
 	writeln();
 	writeln(`  ${style.dim("──")} ${style.cyan("设置")}`);
 	writeln(
-		`    ${style.white("strip_hint")} = ${settings.strip_hint} ${sourceTag(trace["settings.strip_hint"]?.source ?? "")}`,
+		`    ${style.white("strip_hint")} = ${settings.strip_hint} ${sourceTag(settingSource(trace, "strip_hint"))}`,
 	);
 	writeln(
-		`    ${style.white("memory_tag")} = ${settings.memory_tag} ${sourceTag(trace["settings.memory_tag"]?.source ?? "")}`,
+		`    ${style.white("memory_tag")} = ${settings.memory_tag} ${sourceTag(settingSource(trace, "memory_tag"))}`,
 	);
 	writeln(
-		`    ${style.white("notify_sound")} = ${settings.notify_sound} ${sourceTag(trace["settings.notify_sound"]?.source ?? "")}`,
+		`    ${style.white("notify_sound")} = ${settings.notify_sound} ${sourceTag(settingSource(trace, "notify_sound"))}`,
 	);
 
 	writeln();
 	writeln(`${style.green("✓")} 配置加载完成`);
 	writeln();
+}
+
+function settingSource(trace: ConfigTrace, key: DisplayedSettingKey): string {
+	return trace[`settings.${key}`]?.source ?? "";
 }
