@@ -9,6 +9,7 @@ interface CodeSettingsDefaults {
 		max_iterations: number;
 		max_idle_rounds: number;
 		default_exec_waitfor: number;
+		max_exec_output_tokens: number;
 	};
 	security: {
 		blocked_commands: string[];
@@ -32,6 +33,7 @@ export const DEFAULT_CODE_SETTINGS: CodeSettingsDefaults = {
 		max_iterations: 50,
 		max_idle_rounds: 5,
 		default_exec_waitfor: 120,
+		max_exec_output_tokens: 32_000,
 	},
 	security: {
 		blocked_commands: [],
@@ -59,6 +61,7 @@ notify_sound_path = ${JSON.stringify(DEFAULT_CODE_SETTINGS.notify_sound_path)}
 max_iterations = ${DEFAULT_CODE_SETTINGS.agent.max_iterations}
 max_idle_rounds = ${DEFAULT_CODE_SETTINGS.agent.max_idle_rounds}
 default_exec_waitfor = ${DEFAULT_CODE_SETTINGS.agent.default_exec_waitfor}
+max_exec_output_tokens = ${DEFAULT_CODE_SETTINGS.agent.max_exec_output_tokens}
 
 [settings.security]
 blocked_commands = ${JSON.stringify(DEFAULT_CODE_SETTINGS.security.blocked_commands)}

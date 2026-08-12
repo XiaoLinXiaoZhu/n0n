@@ -14,7 +14,7 @@ import {
 	writeFileSync,
 } from "node:fs";
 import { isAbsolute, join, resolve } from "node:path";
-import { estimateTokens, tailByTokens } from "@n0n/shared";
+import { headTailByTokens } from "@n0n/shared";
 import type {
 	ExecArgs,
 	ExecToolResult,
@@ -37,8 +37,7 @@ export interface ExecCall {
 	args: ExecArgs;
 }
 
-const TRUNCATION_THRESHOLD_TOKENS = 5_000;
-const TAIL_TOKENS = 2_000;
+const DEFAULT_OUTPUT_TOKENS = 5_000;
 
 interface ArtifactResult {
 	version: 1;
@@ -56,6 +55,8 @@ interface ArtifactResult {
 	stderrBytes: number;
 	stdoutLines: number;
 	stderrLines: number;
+	stdoutEstimatedTokens: number;
+	stderrEstimatedTokens: number;
 }
 
 interface ArtifactContext {
@@ -102,6 +103,8 @@ function createArtifact(sessionDir: string, pidHint: string): ArtifactContext {
 			stderrBytes: 0,
 			stdoutLines: 0,
 			stderrLines: 0,
+			stdoutEstimatedTokens: 0,
+			stderrEstimatedTokens: 0,
 		},
 	};
 }
@@ -122,6 +125,37 @@ function updateCaptureStats(
 	context.result.stderrBytes = stderr.byteLength;
 	context.result.stdoutLines = stdout.charLength === 0 ? 0 : stdout.lines;
 	context.result.stderrLines = stderr.charLength === 0 ? 0 : stderr.lines;
+	context.result.stdoutEstimatedTokens = stdout.estimatedTokens;
+	context.result.stderrEstimatedTokens = stderr.estimatedTokens;
+}
+
+function allocateBudgets(
+	totalBudget: number,
+	stdoutTokens: number,
+	stderrTokens: number,
+): { stdout: number; stderr: number } {
+	if (stderrTokens === 0) return { stdout: totalBudget, stderr: 0 };
+	if (stdoutTokens === 0) return { stdout: 0, stderr: totalBudget };
+	const totalTokens = stdoutTokens + stderrTokens;
+	const stdout = Math.max(
+		1,
+		Math.min(
+			totalBudget - 1,
+			Math.round(totalBudget * (stdoutTokens / totalTokens)),
+		),
+	);
+	return { stdout, stderr: totalBudget - stdout };
+}
+
+function capturePreview(capture: StreamCapture, budget: number): string {
+	if (budget <= 0 || capture.charLength === 0) return "";
+	if (capture.complete) return headTailByTokens(capture.content, budget);
+	const overlap = Math.max(
+		0,
+		capture.head.length + capture.tail.length - capture.charLength,
+	);
+	const nonOverlappingTail = capture.tail.slice(overlap);
+	return headTailByTokens(`${capture.head}${nonOverlappingTail}`, budget);
 }
 
 function removeArtifact(context: ArtifactContext): void {
@@ -177,6 +211,7 @@ export async function* execToolStream(
 		sessionDir: string;
 		blocked_commands: string[];
 		default_exec_waitfor: number;
+		max_exec_output_tokens: number;
 		platform: "win32" | "darwin" | "linux";
 		bgSyncIntervalMs?: number;
 	},
@@ -193,6 +228,9 @@ export async function* execToolStream(
 		call.args.waitfor ?? toolsConfig.default_exec_waitfor,
 		240,
 	);
+	const outputTokenBudget =
+		call.args.output_tokens ??
+		Math.min(DEFAULT_OUTPUT_TOKENS, toolsConfig.max_exec_output_tokens);
 	const start = Date.now();
 
 	const blockedCmd = findBlockedCommand(
@@ -241,6 +279,7 @@ export async function* execToolStream(
 			tool: call.tool,
 			stdoutFile: artifact.ref.stdoutFile,
 			stderrFile: artifact.ref.stderrFile,
+			maxCaptureTokens: toolsConfig.max_exec_output_tokens,
 		});
 
 		switch (result.outcome) {
@@ -254,6 +293,11 @@ export async function* execToolStream(
 					tmpFile,
 					toolsConfig.bgSyncIntervalMs,
 				);
+				const budgets = allocateBudgets(
+					outputTokenBudget,
+					result.stdout.estimatedTokens,
+					result.stderr.estimatedTokens,
+				);
 				yield {
 					type: "tool_result",
 					tool: call.tool,
@@ -261,8 +305,8 @@ export async function* execToolStream(
 					status: "backgrounded",
 					pid: result.pid,
 					artifact: artifact.ref,
-					stdoutSoFar: tailByTokens(result.stdout.tail, TAIL_TOKENS),
-					stderrSoFar: tailByTokens(result.stderr.tail, TAIL_TOKENS),
+					stdoutSoFar: capturePreview(result.stdout, budgets.stdout),
+					stderrSoFar: capturePreview(result.stderr, budgets.stderr),
 					durationMs: result.durationMs,
 				} satisfies ExecToolResult;
 				return;
@@ -282,11 +326,12 @@ export async function* execToolStream(
 			}
 			case "completed": {
 				const { stdout, stderr, exitCode, durationMs } = result;
+				const totalEstimatedTokens =
+					stdout.estimatedTokens + stderr.estimatedTokens;
 				const isTruncated =
 					!stdout.complete ||
 					!stderr.complete ||
-					estimateTokens(stdout.content + stderr.content) >
-						TRUNCATION_THRESHOLD_TOKENS;
+					totalEstimatedTokens > outputTokenBudget;
 				if (!isTruncated) {
 					yield {
 						type: "tool_result",
@@ -313,26 +358,28 @@ export async function* execToolStream(
 				updateCaptureStats(artifact, stdout, stderr);
 				writeArtifactResult(artifact);
 
-				const stdoutTail = tailByTokens(stdout.tail, TAIL_TOKENS);
-				const stderrTail = tailByTokens(stderr.tail, TAIL_TOKENS);
-				const totalLines =
-					(stdout.charLength === 0 ? 0 : stdout.lines) +
-					(stderr.charLength === 0 ? 0 : stderr.lines);
-				const tailLines =
-					stdoutTail.length === 0 ? 0 : stdoutTail.split("\n").length;
+				const budgets = allocateBudgets(
+					outputTokenBudget,
+					stdout.estimatedTokens,
+					stderr.estimatedTokens,
+				);
 				yield {
 					type: "tool_result",
 					tool: call.tool,
 					call,
 					status: "truncated",
 					exitCode,
-					stdoutTail,
-					stderrTail,
+					stdoutPreview: capturePreview(stdout, budgets.stdout),
+					stderrPreview: capturePreview(stderr, budgets.stderr),
 					artifact: artifact.ref,
 					stdoutLength: stdout.charLength,
 					stderrLength: stderr.charLength,
-					totalLines,
-					tailStartLine: Math.max(1, stdout.lines - tailLines + 1),
+					stdoutLines: stdout.charLength === 0 ? 0 : stdout.lines,
+					stderrLines: stderr.charLength === 0 ? 0 : stderr.lines,
+					outputTokenBudget,
+					stdoutEstimatedTokens: stdout.estimatedTokens,
+					stderrEstimatedTokens: stderr.estimatedTokens,
+					totalEstimatedTokens,
 					durationMs,
 				} satisfies ExecToolResult;
 				return;

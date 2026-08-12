@@ -32,20 +32,23 @@ export interface ExecCompleted extends MakeResult<ExecToolName, "completed"> {
 /** 正常完成，输出超长被截断并写入文件 */
 export interface ExecTruncated extends MakeResult<ExecToolName, "truncated"> {
 	exitCode: number;
-	/** stdout 末尾截断内容 */
-	stdoutTail: string;
-	/** stderr 末尾截断内容 */
-	stderrTail: string;
+	/** stdout 在分配预算内的头尾预览 */
+	stdoutPreview: string;
+	/** stderr 在分配预算内的头尾预览 */
+	stderrPreview: string;
 	/** 完整输出文件路径 */
 	artifact: ExecutionArtifactRef;
 	/** 原始 stdout 总字符数 */
 	stdoutLength: number;
 	/** 原始 stderr 总字符数 */
 	stderrLength: number;
-	/** 原始输出总行数（stdout + stderr） */
-	totalLines: number;
-	/** 截断展示内容起始行号（从第几行开始展示） */
-	tailStartLine: number;
+	stdoutLines: number;
+	stderrLines: number;
+	/** 本次调用要求的模型输出预算 */
+	outputTokenBudget: number;
+	stdoutEstimatedTokens: number;
+	stderrEstimatedTokens: number;
+	totalEstimatedTokens: number;
 	durationMs: number;
 }
 

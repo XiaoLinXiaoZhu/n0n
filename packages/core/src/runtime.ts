@@ -14,6 +14,7 @@ export interface AgentConfig {
 	max_iterations: number;
 	max_idle_rounds: number;
 	default_exec_waitfor: number;
+	max_exec_output_tokens: number;
 }
 
 export interface SecurityConfig {

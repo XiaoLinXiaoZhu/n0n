@@ -56,7 +56,7 @@ const backgroundedFactTemplates = [
 
 /** backgrounded hint 模板：操作建议（隔轮后不需要） */
 const backgroundedHintTemplates = [
-	"The execution artifact updates while the process runs — inspect result.json and use `n0n read` or rg on stdout/stderr anytime.\nBefore continuing other tasks, decide whether this process still needs to run in the background. If not, kill it by PID — do not leave it running unattended.",
+	"The execution artifact updates while the process runs — inspect result.json, then use rg/jq or bounded standard commands on stdout/stderr.\nBefore continuing other tasks, decide whether this process still needs to run in the background. If not, kill it by PID — do not leave it running unattended.",
 	"The artifact files update as output arrives — check result.json and read stdout/stderr for progress.\nBefore moving on, judge whether you still need this process running. If not, terminate it by PID rather than leaving it idle.",
 	"Execution artifacts update while the process runs; inspect them for progress.\nDecide now: does this process need to keep running? If not, kill it by PID. Do not leave background processes running without purpose.",
 ];
@@ -74,19 +74,19 @@ function artifactStreams(artifact: ExecutionArtifactRef): {
 
 /** truncated fact 模板：输出产物路径（持久有效） */
 const truncatedFactTemplates = [
-	(totalLines: number, streams: string) =>
-		`Full output (${totalLines} lines) saved as execution artifacts:\n${streams}`,
-	(totalLines: number, streams: string) =>
-		`${totalLines} lines captured in execution artifacts:\n${streams}`,
-	(totalLines: number, streams: string) =>
-		`Complete output saved (${totalLines} lines):\n${streams}`,
+	(tokens: number, budget: number, lines: number, streams: string) =>
+		`Estimated output ${tokens} tokens / requested ${budget}; ${lines} lines. Full output saved as execution artifacts:\n${streams}`,
+	(tokens: number, budget: number, lines: number, streams: string) =>
+		`Output exceeded its ${budget}-token return budget (~${tokens} tokens, ${lines} lines). Complete streams:\n${streams}`,
+	(tokens: number, budget: number, lines: number, streams: string) =>
+		`Complete output saved (${lines} lines, ~${tokens} tokens; return budget ${budget}):\n${streams}`,
 ];
 
 /** truncated hint 模板：操作建议（隔轮后不需要） */
 const truncatedHintTemplates = [
-	`Filter first with ${IS_WINDOWS ? "Select-String/jq" : "rg/jq"}, or explore sequentially with \`n0n read <file>\` and repeat using the reported \`nextCursor\`. Do not dump the full file.`,
-	"Prefer rg/jq or a script for targeted extraction. When you do not yet know what to search for, use `n0n read <file>` for bounded sequential reads.",
-	"Use targeted filtering or `n0n read`; avoid re-dumping the full artifact.",
+	`Choose by semantics: filter the artifact with ${IS_WINDOWS ? "Select-String/jq" : "rg/jq"} or a script; read known bounded ranges; or, only for a cheap read-only command, rerun with a larger output_tokens value. Never rerun a state-changing act merely to obtain more output.`,
+	"Use the saved artifact for expensive or non-idempotent commands. For a cheap read-only command, a larger output_tokens value is also valid; otherwise filter or preprocess the artifact.",
+	"Do not blindly dump the artifact. Filter it, read explicit bounded ranges (independent ranges may be batched), or safely rerun a cheap read-only command with a sufficient output_tokens budget.",
 ];
 
 const diagnosticHintTemplates = [
@@ -158,17 +158,10 @@ export function formatExecResult(
 				),
 			];
 
-			if (msg.stdoutTail)
-				factParts.push(
-					tags.wrapTag(
-						stdoutTag,
-						`... (last ${msg.totalLines - msg.tailStartLine + 1} of ${msg.totalLines} lines)\n${msg.stdoutTail}`,
-					),
-				);
-			if (msg.stderrTail)
-				factParts.push(
-					tags.wrapTag(stderrTag, `... (truncated)\n${msg.stderrTail}`),
-				);
+			if (msg.stdoutPreview)
+				factParts.push(tags.wrapTag(stdoutTag, msg.stdoutPreview));
+			if (msg.stderrPreview)
+				factParts.push(tags.wrapTag(stderrTag, msg.stderrPreview));
 
 			// reason 的输出标注为内部思考
 			if (toolLabel === "reason") {
@@ -182,7 +175,15 @@ export function formatExecResult(
 			].join("\n");
 			const truncFactFn = pick(truncatedFactTemplates, msgIndex + 3);
 			factParts.push(
-				tags.wrapTag("output_info", truncFactFn(msg.totalLines, streamText)),
+				tags.wrapTag(
+					"output_info",
+					truncFactFn(
+						msg.totalEstimatedTokens,
+						msg.outputTokenBudget,
+						msg.stdoutLines + msg.stderrLines,
+						streamText,
+					),
+				),
 			);
 
 			// 操作建议：隔轮后不需要

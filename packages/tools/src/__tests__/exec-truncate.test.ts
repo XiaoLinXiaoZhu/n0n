@@ -4,7 +4,7 @@
  *
  * 验证 execToolStream 在输出超过阈值时：
  * - 返回 status: "truncated"
- * - stdoutTail 包含末尾内容
+ * - stdoutPreview 同时包含头部和末尾内容
  * - execution artifact 已创建且包含完整输出
  * - 短输出仍返回 status: "completed"
  *
@@ -17,7 +17,7 @@ import { describe, expect, test } from "bun:test";
 import { existsSync, mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { resolvePlatform } from "@n0n/shared";
+import { estimateTokens, resolvePlatform } from "@n0n/shared";
 import type { ExecToolResult } from "@n0n/types";
 import { ExecArgsSchema, execToolStream } from "../exec";
 
@@ -25,14 +25,28 @@ import { ExecArgsSchema, execToolStream } from "../exec";
 interface TestCall {
 	id: string;
 	tool: "observe";
-	args: { script: string; runtime?: string; cwd?: string; waitfor?: number };
+	args: {
+		script: string;
+		runtime?: string;
+		cwd?: string;
+		waitfor?: number;
+		output_tokens?: number;
+	};
 }
 
 const SESSION_DIR = mkdtempSync(join(tmpdir(), "n0n-exec-truncate-"));
 
 /** 收集 exec 结果 */
-async function collectResult(script: string, runtime?: string) {
-	const args = ExecArgsSchema.parse({ script, runtime });
+async function collectResult(
+	script: string,
+	runtime?: string,
+	outputTokens?: number,
+) {
+	const args = ExecArgsSchema.parse({
+		script,
+		runtime,
+		output_tokens: outputTokens,
+	});
 	const call: TestCall = { id: "trunc-test", tool: "observe", args };
 
 	for await (const event of execToolStream(call, undefined, {
@@ -41,6 +55,7 @@ async function collectResult(script: string, runtime?: string) {
 		sessionDir: SESSION_DIR,
 		blocked_commands: [],
 		default_exec_waitfor: 120,
+		max_exec_output_tokens: 32_000,
 		platform: resolvePlatform(),
 	})) {
 		if (event.type === "tool_result" && event.tool === "observe") {
@@ -70,8 +85,11 @@ describe("exec 输出截断", () => {
 
 		expect(result.status).toBe("truncated");
 		if (result.status === "truncated") {
-			expect(result.stdoutTail).toContain("line_500");
-			expect(result.stdoutTail.length).toBeLessThanOrEqual(8500);
+			expect(result.stdoutPreview).toContain("line_1");
+			expect(result.stdoutPreview).toContain("line_500");
+			expect(estimateTokens(result.stdoutPreview)).toBeLessThanOrEqual(
+				result.outputTokenBudget,
+			);
 
 			expect(result.artifact.kind).toBe("execution");
 			expect(existsSync(result.artifact.stdoutFile)).toBe(true);
@@ -79,6 +97,9 @@ describe("exec 输出截断", () => {
 			expect(existsSync(result.artifact.resultFile)).toBe(true);
 
 			expect(result.stdoutLength).toBeGreaterThan(8000);
+			expect(result.totalEstimatedTokens).toBeGreaterThan(
+				result.outputTokenBudget,
+			);
 			expect(result.exitCode).toBe(0);
 		}
 	});
@@ -93,8 +114,23 @@ describe("exec 输出截断", () => {
 
 		expect(result.status).toBe("truncated");
 		if (result.status === "truncated") {
-			expect(result.stderrTail).toContain("err_500");
+			expect(result.stderrPreview).toContain("err_1");
+			expect(result.stderrPreview).toContain("err_500");
 			expect(result.stderrLength).toBeGreaterThan(8000);
+		}
+	});
+
+	test("提高 output_tokens 后中等输出一次完整返回", async () => {
+		const script = [
+			"for (let i = 1; i <= 700; i++) {",
+			'  console.log(`full_${i}: ${"x".repeat(20)}`);',
+			"}",
+		].join("\n");
+		const result = await collectResult(script, "bun", 10_000);
+		expect(result.status).toBe("completed");
+		if (result.status === "completed") {
+			expect(result.stdout).toContain("full_1");
+			expect(result.stdout).toContain("full_700");
 		}
 	});
 

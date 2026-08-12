@@ -6,6 +6,7 @@
  */
 
 import { appendFileSync } from "node:fs";
+import { estimateTokens } from "@n0n/shared";
 import type { ToolOutputChunk } from "@n0n/types";
 
 export interface RunProcessOptions {
@@ -16,16 +17,19 @@ export interface RunProcessOptions {
 	tool: string;
 	stdoutFile: string;
 	stderrFile: string;
+	maxCaptureTokens: number;
 }
 
 export interface StreamCapture {
 	/** 仅当 complete=true 时包含完整流内容。 */
 	content: string;
 	complete: boolean;
+	head: string;
 	tail: string;
 	charLength: number;
 	byteLength: number;
 	lines: number;
+	estimatedTokens: number;
 }
 
 export interface RunProcessCompleted {
@@ -96,26 +100,40 @@ export function buildSpawnCmd(runtime: string, tmpFile: string): string[] {
 	}
 }
 
-const CAPTURE_LIMIT_CHARS = 256 * 1024;
-const TAIL_LIMIT_CHARS = 256 * 1024;
+const MIN_CAPTURE_CHARS = 256 * 1024;
+const CHARS_PER_TOKEN_CEILING = 16;
 
 class BoundedStreamCapture {
 	private content = "";
 	private complete = true;
+	private head = "";
 	private tail = "";
 	private charLength = 0;
 	private byteLength = 0;
 	private newlines = 0;
+	private estimatedTokens = 0;
+
+	constructor(
+		private readonly maxTokens: number,
+		private readonly maxChars = Math.max(
+			MIN_CAPTURE_CHARS,
+			maxTokens * CHARS_PER_TOKEN_CEILING,
+		),
+	) {}
 
 	push(text: string): void {
 		this.charLength += text.length;
 		this.byteLength += Buffer.byteLength(text, "utf8");
+		this.estimatedTokens += estimateTokens(text);
 		for (let i = 0; i < text.length; i++) {
 			if (text[i] === "\n") this.newlines++;
 		}
 
 		if (this.complete) {
-			if (this.content.length + text.length <= CAPTURE_LIMIT_CHARS) {
+			if (
+				this.estimatedTokens <= this.maxTokens &&
+				this.content.length + text.length <= this.maxChars
+			) {
 				this.content += text;
 			} else {
 				this.content = "";
@@ -123,17 +141,22 @@ class BoundedStreamCapture {
 			}
 		}
 
-		this.tail = (this.tail + text).slice(-TAIL_LIMIT_CHARS);
+		if (this.head.length < this.maxChars) {
+			this.head += text.slice(0, this.maxChars - this.head.length);
+		}
+		this.tail = (this.tail + text).slice(-this.maxChars);
 	}
 
 	snapshot(): StreamCapture {
 		return {
 			content: this.content,
 			complete: this.complete,
+			head: this.head,
 			tail: this.tail,
 			charLength: this.charLength,
 			byteLength: this.byteLength,
 			lines: this.newlines + 1,
+			estimatedTokens: this.estimatedTokens,
 		};
 	}
 }
@@ -141,8 +164,16 @@ class BoundedStreamCapture {
 export async function* runProcess(
 	opts: RunProcessOptions,
 ): AsyncGenerator<ToolOutputChunk, RunProcessResult> {
-	const { spawnCmd, cwd, waitforMs, callId, tool, stdoutFile, stderrFile } =
-		opts;
+	const {
+		spawnCmd,
+		cwd,
+		waitforMs,
+		callId,
+		tool,
+		stdoutFile,
+		stderrFile,
+		maxCaptureTokens,
+	} = opts;
 	const start = Date.now();
 
 	try {
@@ -156,8 +187,8 @@ export async function* runProcess(
 			throw new Error("Failed to capture process streams (stdout/stderr)");
 		}
 
-		const stdout = new BoundedStreamCapture();
-		const stderr = new BoundedStreamCapture();
+		const stdout = new BoundedStreamCapture(maxCaptureTokens);
+		const stderr = new BoundedStreamCapture(maxCaptureTokens);
 		const pending: ToolOutputChunk[] = [];
 		const MAX_PENDING_CHUNKS = 32;
 		let streamsDoneCount = 0;

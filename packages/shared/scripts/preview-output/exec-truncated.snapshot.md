@@ -11,17 +11,16 @@ toolName: observe
 (sh) . | exit 0 | 320ms | truncated to .temp/session-0001/exec/runs/tc_3
 </observe_meta>
 <output>
-... (last 4 of 850 lines)
 ./src/exec/executor.ts
 ./src/exec/security.ts
 ./src/types/domain.ts
 </output>
 <output_info>
-Full output (850 lines) saved as execution artifacts:
+Estimated output 8200 tokens / requested 5000; 850 lines. Full output saved as execution artifacts:
 stdout: .temp/session-0001/exec/runs/tc_3/stdout.txt
 stderr: .temp/session-0001/exec/runs/tc_3/stderr.txt
 </output_info>
 <system-hint>
-Use targeted filtering or `n0n read`; avoid re-dumping the full artifact.
+Do not blindly dump the artifact. Filter it, read explicit bounded ranges (independent ranges may be batched), or safely rerun a cheap read-only command with a sufficient output_tokens budget.
 </system-hint>
 ```

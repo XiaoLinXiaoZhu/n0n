@@ -44,6 +44,7 @@ async function collectWithHardTimeout(
 			sessionDir: SESSION_DIR,
 			blocked_commands: [],
 			default_exec_waitfor: execWaitfor,
+			max_exec_output_tokens: 32_000,
 			platform: resolvePlatform(),
 		})) {
 			if (event.type === "tool_result" && event.tool === "observe") {

@@ -12,6 +12,7 @@
 
 import type { ToolDefinition } from "@n0n/types";
 import { ExecArgsSchema, ExecParamDefs, withDescriptions } from "@n0n/types";
+import { z } from "zod";
 import { paramsFromDefs } from "../zod-to-parameters.ts";
 import type { ExecRole } from "./role.ts";
 
@@ -19,11 +20,12 @@ export { ExecArgsSchema };
 
 const ALL_RUNTIMES =
 	"sh, bash, pwsh, cmd, bun, node, deno, python, python3, uv";
+const DEFAULT_OUTPUT_TOKENS = 5_000;
 
 /** ExecRole → 工具描述映射 */
 const ROLE_DESCRIPTIONS: Record<ExecRole, string> = {
 	observe:
-		"Read files, search code, or check environment state. No side effects — use this for gathering information only. For large text, filter with rg/jq first or use `n0n read <file>` for bounded cursor-based reads.",
+		"Read files, search code, or check environment state. No side effects — use this for gathering information only. Use rg/fd for project discovery, rg/jq/scripts for extraction, and output_tokens when complete bounded output is valuable.",
 	reason:
 		"Structured thinking, data processing, or hypothesis verification. No side effects — output is for the model's own consumption, not presented to the user.",
 	act: "Execute actions that change environment state: run tests, build, commit, install dependencies, etc. Actions may be irreversible — verify your reasoning (via reason) before acting.",
@@ -39,6 +41,7 @@ const ROLE_WAITFOR: Record<ExecRole, { default: number; max: number }> = {
 export function makeExecToolDefinition(
 	platform: "win32" | "darwin" | "linux",
 	role: ExecRole,
+	maxOutputTokens: number,
 ): ToolDefinition {
 	const defaultRuntime = platform === "win32" ? "cmd" : "sh";
 	const waitfor = ROLE_WAITFOR[role];
@@ -49,11 +52,29 @@ export function makeExecToolDefinition(
 		runtime: `Runtime (default: "${defaultRuntime}"). Options: ${ALL_RUNTIMES}.`,
 		cwd: "Working directory (default: injected workspace root)",
 		waitfor: `Max seconds to wait for process (default: ${waitfor.default}, max: ${waitfor.max}). Process continues in background if exceeded.`,
+		output_tokens: `Maximum estimated stdout+stderr tokens returned to the model (default: ${Math.min(DEFAULT_OUTPUT_TOKENS, maxOutputTokens)}, max: ${maxOutputTokens}). Full truncated output is saved as an execution artifact.`,
 	};
+	const parameters = paramsFromDefs(
+		withDescriptions(ExecParamDefs, descriptions),
+	);
+	const outputTokensProperty = parameters.properties?.output_tokens;
+	if (
+		outputTokensProperty &&
+		typeof outputTokensProperty === "object" &&
+		!Array.isArray(outputTokensProperty)
+	) {
+		(outputTokensProperty as Record<string, unknown>).maximum = maxOutputTokens;
+	}
 
 	return {
 		name: role,
 		description: ROLE_DESCRIPTIONS[role],
-		parameters: paramsFromDefs(withDescriptions(ExecParamDefs, descriptions)),
+		parameters,
 	};
+}
+
+export function makeExecArgsSchema(maxOutputTokens: number) {
+	return ExecArgsSchema.extend({
+		output_tokens: z.number().int().positive().max(maxOutputTokens).optional(),
+	});
 }

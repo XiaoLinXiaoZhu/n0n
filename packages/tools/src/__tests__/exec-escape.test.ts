@@ -38,6 +38,7 @@ async function collectExecResult(script: string, runtime?: string) {
 		sessionDir: SESSION_DIR,
 		blocked_commands: [],
 		default_exec_waitfor: 120,
+		max_exec_output_tokens: 32_000,
 		platform: resolvePlatform(),
 	})) {
 		if (

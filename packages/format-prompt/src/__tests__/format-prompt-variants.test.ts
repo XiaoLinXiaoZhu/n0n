@@ -343,7 +343,7 @@ describe("formatPrompt 变体端到端", () => {
 		expect(toolResults[0]?.content).toContain("system-hint");
 	});
 
-	it("截断结果只引用 artifact，并提示使用 n0n read", () => {
+	it("截断结果引用 artifact，并按语义提供恢复选项", () => {
 		const msgs: DomainMessage[] = [
 			{ type: "system", content: "You are helpful." },
 			{ type: "generic_user_text", content: "Read output." },
@@ -366,8 +366,8 @@ describe("formatPrompt 变体端到端", () => {
 					args: { script: "large" },
 				},
 				exitCode: 0,
-				stdoutTail: "tail",
-				stderrTail: "",
+				stdoutPreview: "head\n... (output omitted) ...\ntail",
+				stderrPreview: "",
 				artifact: {
 					kind: "execution",
 					version: 1,
@@ -379,8 +379,12 @@ describe("formatPrompt 变体端到端", () => {
 				},
 				stdoutLength: 50_000_000,
 				stderrLength: 0,
-				totalLines: 1_000_000,
-				tailStartLine: 999_990,
+				stdoutLines: 1_000_000,
+				stderrLines: 0,
+				outputTokenBudget: 5_000,
+				stdoutEstimatedTokens: 12_000_000,
+				stderrEstimatedTokens: 0,
+				totalEstimatedTokens: 12_000_000,
 				durationMs: 100,
 			},
 		];
@@ -388,7 +392,9 @@ describe("formatPrompt 变体端到端", () => {
 		const result = formatPrompt(msgs, tags);
 		const content = result.find((message) => message.role === "tool")?.content;
 		expect(content).toContain("stdout.txt");
-		expect(content).toContain("n0n read");
+		expect(content).toContain("output_tokens");
+		expect(content).toContain("artifact");
+		expect(content).not.toContain("n0n read");
 		expect(content).not.toContain("chunk 1");
 		expect(content?.length).toBeLessThan(2_000);
 	});

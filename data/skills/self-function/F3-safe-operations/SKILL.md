@@ -43,7 +43,8 @@ function: F3
 - 运行在 `bun` 进程中。终止 bun 进程时按 PID 或端口定向终止——永远不 `killall bun` 或 `pkill bun`
 - `.temp/` 包含运行时产物。不删除或清理这些文件
 - execution artifact 位于 `.temp/session-*/exec/runs/*/`，其中 `result.json` 是状态元数据，`stdout.txt` / `stderr.txt` 是持续追加的原始输出
-- 检查后台任务时先读取 `result.json`，再用 `rg`、`jq` 或 `n0n read` 有界读取输出文件；不要 `cat` 整个 artifact
+- 检查后台任务时先读取 `result.json`，再用 `rg`、`jq`、脚本或明确行范围有界读取输出文件；不要无判断地倾倒整个 artifact
+- `act` 的输出被截断时，不得仅为获得更多输出而重跑可能改变状态的命令；应读取 execution artifact
 - 遇到障碍时不走捷径。定位根因并修复底层问题，不绕过安全检查（如 --no-verify）。发现不熟悉的文件/分支/配置时先调查再决定。不理解的状态加 `// TODO review:` 标记
 
 ## 预防措施

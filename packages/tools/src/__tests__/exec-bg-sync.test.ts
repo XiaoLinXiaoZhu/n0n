@@ -43,6 +43,7 @@ async function collectResult(
 			sessionDir: SESSION_DIR,
 			blocked_commands: [],
 			default_exec_waitfor: waitfor,
+			max_exec_output_tokens: 32_000,
 			bgSyncIntervalMs: 100,
 			platform: resolvePlatform(),
 		},

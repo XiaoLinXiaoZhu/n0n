@@ -7,7 +7,7 @@
  * 工具：tokenx（96% 精准度，2kB，无依赖，纯计算无 WASM）。
  *
  * 接入点分类：
- * - 逻辑判断（executor.ts 截断、n0n read 预算）→ 使用 estimateTokens 做决策
+ * - 逻辑判断（executor.ts 输出预算）→ 使用 estimateTokens 做决策
  * - 人类展示（rich-renderer.ts）→ 字符数后追加 dim `~N tok`
  * - 模型展示（format-prompt.ts）→ 保持字符数，模型不需知道 token 开销
  * - 真实数据（API usage）→ 不需要预估
@@ -47,4 +47,18 @@ export function headByTokens(text: string, maxTokens: number): string {
 		else lo = mid;
 	}
 	return text.slice(0, lo);
+}
+
+/** 在总预算内同时保留文本开头和结尾。 */
+export function headTailByTokens(text: string, maxTokens: number): string {
+	if (estimateTokens(text) <= maxTokens) return text;
+	const separator = "\n... (output omitted) ...\n";
+	const separatorTokens = estimateTokens(separator);
+	if (maxTokens <= separatorTokens) return headByTokens(text, maxTokens);
+	const contentBudget = maxTokens - separatorTokens;
+	const headBudget = Math.ceil(contentBudget / 2);
+	const tailBudget = Math.floor(contentBudget / 2);
+	const head = headByTokens(text, headBudget);
+	const tail = tailByTokens(text.slice(head.length), tailBudget);
+	return `${head}${separator}${tail}`;
 }

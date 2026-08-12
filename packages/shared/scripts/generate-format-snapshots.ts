@@ -164,9 +164,9 @@ const scenarios: Scenario[] = [
 					args: { script: "find . -name '*.ts'", runtime: "sh" },
 				},
 				exitCode: 0,
-				stdoutTail:
+				stdoutPreview:
 					"./src/exec/executor.ts\n./src/exec/security.ts\n./src/types/domain.ts",
-				stderrTail: "",
+				stderrPreview: "",
 				artifact: {
 					kind: "execution",
 					version: 1,
@@ -178,8 +178,12 @@ const scenarios: Scenario[] = [
 				},
 				stdoutLength: 28450,
 				stderrLength: 0,
-				totalLines: 850,
-				tailStartLine: 847,
+				stdoutLines: 850,
+				stderrLines: 0,
+				outputTokenBudget: 5_000,
+				stdoutEstimatedTokens: 8_200,
+				stderrEstimatedTokens: 0,
+				totalEstimatedTokens: 8_200,
 				durationMs: 320,
 			},
 		],

@@ -1,12 +1,6 @@
 import { existsSync, statSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { type CodeRunOptions, runCode } from "@n0n/code";
-import {
-	parseLineRange,
-	type ReadOptions,
-	readStdin,
-	readText,
-} from "@n0n/read";
 import { scanGlobal, scanProject } from "@n0n/scan";
 import {
 	createSkill,
@@ -38,7 +32,6 @@ export type CliDependencies = {
 	showSkillList: typeof showSkillList;
 	runConfig: typeof runConfigCommand;
 	runEnv: typeof runEnvCommand;
-	runRead: (options: ReadOptions) => Promise<void>;
 };
 
 const defaultDependencies: CliDependencies = {
@@ -53,25 +46,6 @@ const defaultDependencies: CliDependencies = {
 	showSkillList,
 	runConfig: runConfigCommand,
 	runEnv: runEnvCommand,
-	runRead: async (options) => {
-		const input =
-			options.path && options.path !== "-"
-				? undefined
-				: await readStdin(options);
-		const result = readText({
-			...options,
-			...(input
-				? {
-						stdin: input.bytes,
-						stdinBaseCursor: input.baseCursor,
-						stdinEof: input.eof,
-						...(options.lines ? { stdinLinesSelected: true } : {}),
-					}
-				: {}),
-		});
-		process.stdout.write(result.text);
-		process.stderr.write(`${JSON.stringify(result.metadata)}\n`);
-	},
 };
 
 export class CliUsageError extends Error {}
@@ -100,37 +74,7 @@ export function createProgram(
 	program.addCommand(createSkillCommand(dependencies));
 	program.addCommand(createConfigCommand(dependencies));
 	program.addCommand(createEnvCommand(dependencies));
-	program.addCommand(createReadCommand(dependencies));
 	return program;
-}
-
-function createReadCommand(dependencies: CliDependencies): Command {
-	const cursor = new Option("--cursor <byte>", "从 UTF-8 字节偏移继续读取");
-	const tokens = new Option("--tokens <count>", "本次最大 token 预算");
-	const tail = new Option("--tail", "读取文件末尾");
-	const lines = new Option("--lines <start:end>", "读取包含首尾的行范围");
-	return new Command("read")
-		.description("按固定预算读取文件或 stdin")
-		.argument("[file]", "输入文件；省略或使用 - 时读取 stdin")
-		.addOption(cursor)
-		.addOption(tokens)
-		.addOption(tail)
-		.addOption(lines)
-		.action(async function (fileValue: unknown) {
-			const path = parseOptionalString(fileValue);
-			const cursorValue = readOptionalStringOption(this, cursor);
-			const tokenValue = readOptionalStringOption(this, tokens);
-			const lineValue = readOptionalStringOption(this, lines);
-			await dependencies.runRead({
-				...(path === undefined ? {} : { path }),
-				...(cursorValue === undefined ? {} : { cursor: Number(cursorValue) }),
-				...(tokenValue === undefined ? {} : { tokens: Number(tokenValue) }),
-				...(readBooleanOption(this, tail) ? { tail: true } : {}),
-				...(lineValue === undefined
-					? {}
-					: { lines: parseLineRange(lineValue) }),
-			});
-		});
 }
 
 interface CodeOptionSet {

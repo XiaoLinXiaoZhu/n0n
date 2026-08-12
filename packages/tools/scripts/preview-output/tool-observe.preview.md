@@ -20,6 +20,12 @@
       "type": "number",
       "maximum": 240
     },
+    "output_tokens": {
+      "description": "Maximum estimated stdout+stderr tokens returned to the model (default: 5000, max: 32000). Full truncated output is saved as an execution artifact.",
+      "type": "integer",
+      "exclusiveMinimum": 0,
+      "maximum": 32000
+    },
     "script": {
       "type": "string",
       "description": "Script content. Single command or multi-line code with imports, loops, etc."
@@ -35,7 +41,7 @@
 ## description
 
 ````
-Read files, search code, or check environment state. No side effects — use this for gathering information only. For large text, filter with rg/jq first or use `n0n read <file>` for bounded cursor-based reads.
+Read files, search code, or check environment state. No side effects — use this for gathering information only. Use rg/fd for project discovery, rg/jq/scripts for extraction, and output_tokens when complete bounded output is valuable.
 ````
 
 ## Full OpenAI function format
@@ -45,7 +51,7 @@ Read files, search code, or check environment state. No side effects — use thi
   "type": "function",
   "function": {
     "name": "observe",
-    "description": "Read files, search code, or check environment state. No side effects — use this for gathering information only. For large text, filter with rg/jq first or use `n0n read <file>` for bounded cursor-based reads.",
+    "description": "Read files, search code, or check environment state. No side effects — use this for gathering information only. Use rg/fd for project discovery, rg/jq/scripts for extraction, and output_tokens when complete bounded output is valuable.",
     "parameters": {
       "type": "object",
       "properties": {
@@ -61,6 +67,12 @@ Read files, search code, or check environment state. No side effects — use thi
           "description": "Max seconds to wait for process (default: 60, max: 120). Process continues in background if exceeded.",
           "type": "number",
           "maximum": 240
+        },
+        "output_tokens": {
+          "description": "Maximum estimated stdout+stderr tokens returned to the model (default: 5000, max: 32000). Full truncated output is saved as an execution artifact.",
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 32000
         },
         "script": {
           "type": "string",

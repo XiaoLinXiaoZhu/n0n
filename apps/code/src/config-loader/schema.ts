@@ -27,6 +27,11 @@ export const codeConfigSchema = z.object({
 			default_exec_waitfor: z
 				.number()
 				.default(DEFAULT_CODE_SETTINGS.agent.default_exec_waitfor),
+			max_exec_output_tokens: z
+				.number()
+				.int()
+				.positive()
+				.default(DEFAULT_CODE_SETTINGS.agent.max_exec_output_tokens),
 		}),
 		security: z.object({
 			blocked_commands: z

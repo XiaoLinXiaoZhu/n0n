@@ -43,6 +43,7 @@ export {
 export {
 	estimateTokens,
 	headByTokens,
+	headTailByTokens,
 	tailByTokens,
 } from "./tokens.ts";
 // Workspace

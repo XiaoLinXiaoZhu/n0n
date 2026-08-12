@@ -9,7 +9,7 @@ const SESSION_DIR = mkdtempSync(join(tmpdir(), "n0n-toolkit-"));
 
 const config = {
 	security: { blocked_commands: [] },
-	agent: { default_exec_waitfor: 10 },
+	agent: { default_exec_waitfor: 10, max_exec_output_tokens: 32_000 },
 	platform: "darwin" as const,
 	workspace: process.cwd(),
 	tempDir: ".temp",
@@ -60,6 +60,22 @@ describe("Toolkit session", () => {
 		const events = await collect(job);
 		const error = events[0] as ToolArgErrorMessage;
 		expect(error.error.kind).toBe("invalid_args");
+	});
+
+	it("output_tokens 超过配置上限时返回 invalid_args", async () => {
+		const session = makeToolkit(showConfig, config).bind();
+		const job = session.createJob({
+			id: "call_output_budget",
+			tool: "observe",
+			args: { script: "echo hello", output_tokens: 32_001 },
+		} as ToolCallRecord);
+
+		const events = await collect(job);
+		const error = events[0] as ToolArgErrorMessage;
+		expect(error.error.kind).toBe("invalid_args");
+		if (error.error.kind === "invalid_args") {
+			expect(error.error.issues[0]?.path).toBe("output_tokens");
+		}
 	});
 
 	it("非流式 show 以单个结果事件执行", async () => {

@@ -10,6 +10,7 @@ export interface ToolsConfig {
 	};
 	agent: {
 		default_exec_waitfor: number;
+		max_exec_output_tokens: number;
 	};
 	platform: "win32" | "darwin" | "linux";
 	workspace: string;

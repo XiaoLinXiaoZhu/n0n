@@ -22,8 +22,8 @@ import type { ToolsConfig } from "./config.ts";
 import type { ExecRole } from "./exec";
 import {
 	EXEC_ROLES,
-	ExecArgsSchema,
 	execToolStream,
+	makeExecArgsSchema,
 	makeExecToolDefinition,
 } from "./exec";
 import {
@@ -66,17 +66,25 @@ function buildBaseRegistry(
 		blocked_commands: toolsConfig.security.blocked_commands,
 		bgSyncIntervalMs: toolsConfig.bgSyncIntervalMs,
 		default_exec_waitfor: toolsConfig.agent.default_exec_waitfor,
+		max_exec_output_tokens: toolsConfig.agent.max_exec_output_tokens,
 	};
 
 	// 动态注册 observe / reason / act — 通过 EXEC_ROLES 迭代生成，
 	// 每个工具使用统一的 execToolStream 后端，透传实际工具名作为执行角色。
 	const makeExecEntry = (role: ExecRole): ToolEntry => ({
-		definition: makeExecToolDefinition(toolsConfig.platform, role),
+		definition: makeExecToolDefinition(
+			toolsConfig.platform,
+			role,
+			toolsConfig.agent.max_exec_output_tokens,
+		),
 		execute: (tc, confirmFn) => {
+			const schema = makeExecArgsSchema(
+				toolsConfig.agent.max_exec_output_tokens,
+			);
 			const call = {
 				id: tc.id,
 				tool: role,
-				args: ExecArgsSchema.parse(tc.args),
+				args: schema.parse(tc.args),
 			};
 			return execToolStream(call, confirmFn, execConfig);
 		},

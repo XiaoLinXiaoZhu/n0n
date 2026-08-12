@@ -11,6 +11,7 @@
 
 export {
 	ExecArgsSchema,
+	makeExecArgsSchema,
 	makeExecToolDefinition,
 } from "./definition.ts";
 export type { ExecCall } from "./executor.ts";

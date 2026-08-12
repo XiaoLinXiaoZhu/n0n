@@ -116,7 +116,12 @@ const systemMessage: DomainMessage = {
 
 const tempDir = resolve(workspace, ".temp");
 const toolsConfig = buildToolsConfig(
-	{ max_iterations: 1, max_idle_rounds: 1, default_exec_waitfor: 120 },
+	{
+		max_iterations: 1,
+		max_idle_rounds: 1,
+		default_exec_waitfor: 120,
+		max_exec_output_tokens: 32_000,
+	},
 	{ blocked_commands: [] },
 	{ workspace, tempDir, sessionDir: tempDir },
 );

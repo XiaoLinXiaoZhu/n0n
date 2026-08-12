@@ -68,6 +68,7 @@ export const ExecParamDefs = [
 		name: "waitfor",
 		schema: z.number().max(240).optional(),
 	},
+	{ name: "output_tokens", schema: z.number().int().positive().optional() },
 	{ name: "script", schema: z.string() },
 ] as const satisfies readonly ParamDef[];
 

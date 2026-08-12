@@ -20,6 +20,12 @@
       "type": "number",
       "maximum": 240
     },
+    "output_tokens": {
+      "description": "Maximum estimated stdout+stderr tokens returned to the model (default: 5000, max: 32000). Full truncated output is saved as an execution artifact.",
+      "type": "integer",
+      "exclusiveMinimum": 0,
+      "maximum": 32000
+    },
     "script": {
       "type": "string",
       "description": "Script content. Single command or multi-line code with imports, loops, etc."
@@ -61,6 +67,12 @@ Structured thinking, data processing, or hypothesis verification. No side effect
           "description": "Max seconds to wait for process (default: 60, max: 120). Process continues in background if exceeded.",
           "type": "number",
           "maximum": 240
+        },
+        "output_tokens": {
+          "description": "Maximum estimated stdout+stderr tokens returned to the model (default: 5000, max: 32000). Full truncated output is saved as an execution artifact.",
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 32000
         },
         "script": {
           "type": "string",
