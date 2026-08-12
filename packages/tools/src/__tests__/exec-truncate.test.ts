@@ -5,7 +5,7 @@
  * 验证 execToolStream 在输出超过阈值时：
  * - 返回 status: "truncated"
  * - stdoutTail 包含末尾内容
- * - outputFile 已创建且包含完整输出
+ * - execution artifact 已创建且包含完整输出
  * - 短输出仍返回 status: "completed"
  *
  * TODO 平台兼容：使用 bun runtime 生成大量输出，
@@ -14,7 +14,9 @@
  */
 
 import { describe, expect, test } from "bun:test";
-import { existsSync } from "node:fs";
+import { existsSync, mkdtempSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { resolvePlatform } from "@n0n/shared";
 import type { ExecToolResult } from "@n0n/types";
 import { ExecArgsSchema, execToolStream } from "../exec";
@@ -26,6 +28,8 @@ interface TestCall {
 	args: { script: string; runtime?: string; cwd?: string; waitfor?: number };
 }
 
+const SESSION_DIR = mkdtempSync(join(tmpdir(), "n0n-exec-truncate-"));
+
 /** 收集 exec 结果 */
 async function collectResult(script: string, runtime?: string) {
 	const args = ExecArgsSchema.parse({ script, runtime });
@@ -34,6 +38,7 @@ async function collectResult(script: string, runtime?: string) {
 	for await (const event of execToolStream(call, undefined, {
 		workspace: process.cwd(),
 		tempDir: ".temp",
+		sessionDir: SESSION_DIR,
 		blocked_commands: [],
 		default_exec_waitfor: 120,
 		platform: resolvePlatform(),
@@ -54,7 +59,7 @@ describe("exec 输出截断", () => {
 		}
 	});
 
-	test("超长输出 — 应返回 status: truncated + outputFile", async () => {
+	test("超长输出 — 应返回 status: truncated + artifact", async () => {
 		// 使用 bun runtime 生成超过 8000 字符的输出
 		const script = [
 			"for (let i = 1; i <= 500; i++) {",
@@ -68,7 +73,10 @@ describe("exec 输出截断", () => {
 			expect(result.stdoutTail).toContain("line_500");
 			expect(result.stdoutTail.length).toBeLessThanOrEqual(8500);
 
-			expect(existsSync(result.outputFile)).toBe(true);
+			expect(result.artifact.kind).toBe("execution");
+			expect(existsSync(result.artifact.stdoutFile)).toBe(true);
+			expect(existsSync(result.artifact.stderrFile)).toBe(true);
+			expect(existsSync(result.artifact.resultFile)).toBe(true);
 
 			expect(result.stdoutLength).toBeGreaterThan(8000);
 			expect(result.exitCode).toBe(0);

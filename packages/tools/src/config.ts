@@ -14,5 +14,6 @@ export interface ToolsConfig {
 	platform: "win32" | "darwin" | "linux";
 	workspace: string;
 	tempDir: string;
+	sessionDir: string;
 	bgSyncIntervalMs?: number;
 }

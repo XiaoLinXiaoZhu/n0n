@@ -27,6 +27,7 @@ export function buildToolsConfig(
 	paths: {
 		workspace: string;
 		tempDir: string;
+		sessionDir: string;
 		platform?: "win32" | "darwin" | "linux";
 	},
 ): ToolsConfig {
@@ -35,6 +36,7 @@ export function buildToolsConfig(
 		agent,
 		workspace: paths.workspace,
 		tempDir: paths.tempDir,
+		sessionDir: paths.sessionDir,
 		platform: paths.platform ?? resolvePlatform(),
 	};
 }

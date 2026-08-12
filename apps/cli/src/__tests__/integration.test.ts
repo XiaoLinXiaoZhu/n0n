@@ -23,6 +23,19 @@ function runCli(args: string[]): CliResult {
 	};
 }
 
+function pipeCli(args: string[], input: string): CliResult {
+	const result = spawnSync("bun", [CLI_PATH, ...args], {
+		cwd: WORKSPACE,
+		encoding: "utf8",
+		input,
+	});
+	return {
+		status: result.status,
+		stdout: result.stdout,
+		stderr: result.stderr,
+	};
+}
+
 describe("n0n CLI integration", () => {
 	test("--help 展示统一命令", () => {
 		const result = runCli(["--help"]);
@@ -32,6 +45,7 @@ describe("n0n CLI integration", () => {
 		expect(result.stdout).toContain("skill");
 		expect(result.stdout).toContain("config");
 		expect(result.stdout).toContain("env");
+		expect(result.stdout).toContain("read");
 		expect(result.stdout).not.toContain("agent [");
 		expect(result.stdout).not.toContain("init ");
 	});
@@ -66,5 +80,18 @@ describe("n0n CLI integration", () => {
 
 		expect(result.status).toBe(0);
 		expect(result.stdout).toContain("[Workspace]");
+	});
+
+	test("read 保持 stdout 可管道组合，导航元数据写入 stderr", () => {
+		const input = "alpha beta gamma delta ".repeat(200);
+		const result = pipeCli(["read", "--tokens", "20"], input);
+
+		expect(result.status).toBe(0);
+		expect(input.startsWith(result.stdout)).toBe(true);
+		expect(result.stdout).not.toContain("nextCursor");
+		const metadata = JSON.parse(result.stderr.trim());
+		expect(metadata.tokens).toBeLessThanOrEqual(20);
+		expect(metadata.nextCursor).toBeGreaterThan(0);
+		expect(metadata.eof).toBe(false);
 	});
 });

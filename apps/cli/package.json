@@ -8,6 +8,7 @@
 	},
 	"dependencies": {
 		"@n0n/code": "workspace:*",
+		"@n0n/read": "workspace:*",
 		"@n0n/scan": "workspace:*",
 		"@n0n/skill": "workspace:*",
 		"commander": "^15.0.0"

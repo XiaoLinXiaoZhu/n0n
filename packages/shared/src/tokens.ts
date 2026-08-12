@@ -7,7 +7,7 @@
  * 工具：tokenx（96% 精准度，2kB，无依赖，纯计算无 WASM）。
  *
  * 接入点分类：
- * - 逻辑判断（executor.ts 截断、rag.ts 内容截取）→ 使用 estimateTokens 做决策
+ * - 逻辑判断（executor.ts 截断、n0n read 预算）→ 使用 estimateTokens 做决策
  * - 人类展示（rich-renderer.ts）→ 字符数后追加 dim `~N tok`
  * - 模型展示（format-prompt.ts）→ 保持字符数，模型不需知道 token 开销
  * - 真实数据（API usage）→ 不需要预估
@@ -47,57 +47,4 @@ export function headByTokens(text: string, maxTokens: number): string {
 		else lo = mid;
 	}
 	return text.slice(0, lo);
-}
-
-/** 分块信息：被截断文本按 token 预算分块后的行号范围 */
-export interface LineChunkInfo {
-	/** 起始行号（1-based） */
-	startLine: number;
-	/** 结束行号（1-based，含） */
-	endLine: number;
-	/** 该块预估 token 数 */
-	tokens: number;
-}
-
-/**
- * 将文本按行分割，每块约 chunkTokens 个 token。
- * 用于截断场景：让模型知道被截断部分可以分几块读取，每块的行号范围和大小。
- */
-export function splitLinesByTokenBudget(
-	text: string,
-	chunkTokens: number,
-): LineChunkInfo[] {
-	const lines = text.split("\n");
-	const chunks: LineChunkInfo[] = [];
-	let chunkStart = 0;
-	let chunkText = "";
-
-	for (let i = 0; i < lines.length; i++) {
-		const lineWithNewline =
-			i < lines.length - 1 ? `${lines[i]}\n` : (lines[i] ?? "");
-		const candidateText = chunkText + lineWithNewline;
-		const candidateTokens = estimateTokens(candidateText);
-
-		if (candidateTokens > chunkTokens && chunkText.length > 0) {
-			chunks.push({
-				startLine: chunkStart + 1,
-				endLine: i,
-				tokens: estimateTokens(chunkText),
-			});
-			chunkStart = i;
-			chunkText = lineWithNewline;
-		} else {
-			chunkText = candidateText;
-		}
-	}
-
-	if (chunkText.length > 0) {
-		chunks.push({
-			startLine: chunkStart + 1,
-			endLine: lines.length,
-			tokens: estimateTokens(chunkText),
-		});
-	}
-
-	return chunks;
 }

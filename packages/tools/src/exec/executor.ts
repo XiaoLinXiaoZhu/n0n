@@ -1,212 +1,180 @@
 /**
- * exec 命令执行器
+ * exec 命令执行器。
  *
- * 将模型提供的 script 写入临时文件，通过 ProcessRunner 执行，
- * 根据结果（completed / backgrounded / error）格式化输出。
- *
- * 等待架构（为什么用 Promise.race 而不是 setTimeout + kill）：
- * 旧方案 setTimeout → proc.kill() 依赖一个脆弱假设：kill 信号能让 stdout/stderr
- * 流关闭从而唤醒读取循环。实际上常不成立：
- * - shell 脚本 fork 的子进程不受 kill 影响，继续持有管道
- * - 某些进程捕获/忽略 SIGTERM
- * - 子进程继承管道 fd，即使父进程退出流也不关闭
- * 结果：流读取的 await 永远不 resolve，agent 主循环卡死。
- *
- * 当前方案（见 process-runner.ts）：Promise.race 让等待 Promise 与流读取竞争，
- * 确定性中断。等待超限后进程转入后台继续执行。
+ * 每次执行先创建 execution artifact，stdout/stderr 流式追加到文件。
+ * 小输出完成后删除 artifact；大输出和后台执行保留 artifact 并返回引用。
  */
 
-import { existsSync, mkdirSync, unlinkSync } from "node:fs";
-import { isAbsolute, join, resolve } from "node:path";
 import {
-	estimateTokens,
-	splitLinesByTokenBudget,
-	tailByTokens,
-} from "@n0n/shared";
-import type { ExecArgs, ExecToolResult, ToolStreamEvent } from "@n0n/types";
+	existsSync,
+	mkdirSync,
+	renameSync,
+	rmSync,
+	unlinkSync,
+	writeFileSync,
+} from "node:fs";
+import { isAbsolute, join, resolve } from "node:path";
+import { estimateTokens, tailByTokens } from "@n0n/shared";
+import type {
+	ExecArgs,
+	ExecToolResult,
+	ExecutionArtifactRef,
+	ToolStreamEvent,
+} from "@n0n/types";
 import {
 	buildSpawnCmd,
 	RUNTIME_EXT,
 	type RunProcessBackgrounded,
 	runProcess,
+	type StreamCapture,
 } from "./process-runner.ts";
 import type { ExecRole } from "./role.ts";
 import { findBlockedCommand, handleBlockedCommand } from "./security.ts";
 
-/**
- * 内部执行调用类型 — carry 实际工具名（observe / reason / act）。
- * 不依赖 @n0n/types 中的 ToolCallRecord 类型，避免循环依赖。
- */
 export interface ExecCall {
 	id: string;
 	tool: ExecRole;
 	args: ExecArgs;
 }
 
-/** 生成简短的截断输出文件名，自动避让已有文件 */
-function makeShortOutputPath(tempDir: string): string {
-	const rand = Math.random().toString(36).slice(2, 8);
-	const name = `exec_output_${rand}.txt`;
-	const full = join(tempDir, name);
-	if (existsSync(full)) return makeShortOutputPath(tempDir);
-	return full;
-}
-
-/** 超过此阈值（stdout+stderr 合计预估 token 数）触发截断写文件 */
 const TRUNCATION_THRESHOLD_TOKENS = 5_000;
-/** 截断后展示的末尾 token 数 */
 const TAIL_TOKENS = 2_000;
 
-// ── 后台协程管理 ──
-
-/**
- * 启动后台协程：定期同步输出到日志文件 + 等待进程结束写最终结果。
- * 独立于主执行流，fire-and-forget。
- */
-async function startBackgroundSync(
-	result: RunProcessBackgrounded,
-	startTime: number,
-	tempDir: string,
-	tmpFile: string,
-	syncIntervalMs?: number,
-): Promise<string> {
-	const { pid, stdoutChunks, stderrChunks, streamsDone, proc } = result;
-	const logFile = join(tempDir, `exec_bg_${pid}.log`);
-	const startedAt = new Date(startTime).toISOString();
-
-	const buildLogContent = (opts: {
-		status: "running" | "exited";
-		stdout: string;
-		stderr: string;
-		exitCode?: number;
-		endedAt?: string;
-		totalDurationMs?: number;
-	}): string => {
-		const now = new Date().toISOString();
-		const stdoutSection = `--- stdout ---\n${opts.stdout || "(empty)"}`;
-		const stderrSection = `--- stderr ---\n${opts.stderr || "(empty)"}`;
-
-		const metaLines = [
-			`pid: ${pid}`,
-			`status: ${opts.status}`,
-			`started_at: ${startedAt}`,
-		];
-
-		if (opts.status === "running") {
-			metaLines.push(`last_updated: ${now}`);
-			metaLines.push(
-				`note: If current time is far ahead of last_updated, log sync may be delayed — verify process status via PID. If current time is close to last_updated and content unchanged, the process likely has no new output.`,
-			);
-		} else {
-			if (opts.exitCode !== undefined)
-				metaLines.push(`exit_code: ${opts.exitCode}`);
-			if (opts.endedAt) metaLines.push(`ended_at: ${opts.endedAt}`);
-			if (opts.totalDurationMs !== undefined) {
-				const secs = Math.round(opts.totalDurationMs / 1000);
-				const mins = Math.floor(secs / 60);
-				const remSecs = secs % 60;
-				const human = mins > 0 ? `${mins}m ${remSecs}s` : `${secs}s`;
-				metaLines.push(`duration: ${opts.totalDurationMs}ms (${human})`);
-			}
-			metaLines.push(`last_updated: ${now}`);
-		}
-
-		return `${stdoutSection}\n${stderrSection}\n--- exec_bg_meta ---\n${metaLines.join("\n")}\n---\n`;
-	};
-
-	// 初始同步：在后台协程启动前立即写入当前输出
-	const initialStdout = stdoutChunks.join("");
-	const initialStderr = stderrChunks.join("");
-	await Bun.write(
-		logFile,
-		buildLogContent({
-			status: "running",
-			stdout: initialStdout,
-			stderr: initialStderr,
-		}),
-	);
-
-	// 后台协程：定期同步 + 等待结束写最终结果
-	(async () => {
-		const SYNC_INTERVAL_MS = syncIntervalMs ?? 3000;
-		let syncTimer: ReturnType<typeof setInterval> | null = null;
-
-		const syncToFile = () => {
-			const currentStdout = stdoutChunks.join("");
-			const currentStderr = stderrChunks.join("");
-			// 非阻塞写入（fire-and-forget 在 interval 中）
-			Bun.write(
-				logFile,
-				buildLogContent({
-					status: "running",
-					stdout: currentStdout,
-					stderr: currentStderr,
-				}),
-			);
-		};
-
-		try {
-			// 定期同步：即使没有新输出也更新 last_updated 时间戳
-			syncTimer = setInterval(syncToFile, SYNC_INTERVAL_MS);
-
-			await streamsDone;
-
-			// DESIGN NOTE: why no timeout on proc.exited?
-			// 1. For daemon processes, streamsDone already resolved — data
-			//    is fully collected; setInterval merely refreshes the
-			//    timestamp in the log file, no data is leaked.
-			// 2. A hard timeout would kill intentionally backgrounded
-			//    processes (e.g. a dev server started by observe) that
-			//    the caller expects to keep running.
-			// 3. The model/agent should use ps / taskkill to judge the
-			//    process state and decide whether to wait, terminate, or
-			//    ignore it.
-			const exitCode = await proc.exited;
-			const endedAt = new Date().toISOString();
-			const totalDurationMs = Date.now() - startTime;
-			const finalStdout = stdoutChunks.join("");
-			const finalStderr = stderrChunks.join("");
-
-			await Bun.write(
-				logFile,
-				buildLogContent({
-					status: "exited",
-					stdout: finalStdout,
-					stderr: finalStderr,
-					exitCode,
-					endedAt,
-					totalDurationMs,
-				}),
-			);
-		} catch {
-			// 后台协程出错不影响主流程
-		} finally {
-			if (syncTimer) clearInterval(syncTimer);
-			try {
-				unlinkSync(tmpFile);
-			} catch {
-				// ignore cleanup errors
-			}
-		}
-	})();
-
-	return logFile;
+interface ArtifactResult {
+	version: 1;
+	runId: string;
+	status: "running" | "completed" | "backgrounded" | "exited";
+	pid: number;
+	startedAt: string;
+	updatedAt: string;
+	endedAt: string | null;
+	exitCode: number | null;
+	durationMs: number;
+	stdoutFile: "stdout.txt";
+	stderrFile: "stderr.txt";
+	stdoutBytes: number;
+	stderrBytes: number;
+	stdoutLines: number;
+	stderrLines: number;
 }
 
-// ── 主入口 ──
+interface ArtifactContext {
+	ref: ExecutionArtifactRef;
+	result: ArtifactResult;
+}
 
-/**
- * 流式执行脚本。
- *
- * 流程：安全检测 → 写临时文件 → runProcess → 格式化输出。
- * 等待超限后进程转入后台继续执行，已捕获输出 + 后续输出写入 .temp/ 日志文件。
- */
+function createArtifact(sessionDir: string, pidHint: string): ArtifactContext {
+	const runsDir = join(sessionDir, "exec", "runs");
+	mkdirSync(runsDir, { recursive: true });
+	const runId = `${Date.now()}-${pidHint}-${Math.random().toString(36).slice(2, 8)}`;
+	const runDir = join(runsDir, runId);
+	mkdirSync(runDir, { recursive: true });
+	const stdoutFile = join(runDir, "stdout.txt");
+	const stderrFile = join(runDir, "stderr.txt");
+	const resultFile = join(runDir, "result.json");
+	writeFileSync(stdoutFile, "");
+	writeFileSync(stderrFile, "");
+	const now = new Date().toISOString();
+	const ref: ExecutionArtifactRef = {
+		kind: "execution",
+		version: 1,
+		runId,
+		runDir,
+		stdoutFile,
+		stderrFile,
+		resultFile,
+	};
+	return {
+		ref,
+		result: {
+			version: 1,
+			runId,
+			status: "running",
+			pid: 0,
+			startedAt: now,
+			updatedAt: now,
+			endedAt: null,
+			exitCode: null,
+			durationMs: 0,
+			stdoutFile: "stdout.txt",
+			stderrFile: "stderr.txt",
+			stdoutBytes: 0,
+			stderrBytes: 0,
+			stdoutLines: 0,
+			stderrLines: 0,
+		},
+	};
+}
+
+function writeArtifactResult(context: ArtifactContext): void {
+	context.result.updatedAt = new Date().toISOString();
+	const temp = `${context.ref.resultFile}.tmp`;
+	writeFileSync(temp, `${JSON.stringify(context.result, null, 2)}\n`, "utf8");
+	renameSync(temp, context.ref.resultFile);
+}
+
+function updateCaptureStats(
+	context: ArtifactContext,
+	stdout: StreamCapture,
+	stderr: StreamCapture,
+): void {
+	context.result.stdoutBytes = stdout.byteLength;
+	context.result.stderrBytes = stderr.byteLength;
+	context.result.stdoutLines = stdout.charLength === 0 ? 0 : stdout.lines;
+	context.result.stderrLines = stderr.charLength === 0 ? 0 : stderr.lines;
+}
+
+function removeArtifact(context: ArtifactContext): void {
+	rmSync(context.ref.runDir, { recursive: true, force: true });
+}
+
+function startBackgroundTracking(
+	processResult: RunProcessBackgrounded,
+	context: ArtifactContext,
+	startTime: number,
+	tmpFile: string,
+	intervalMs?: number,
+): void {
+	context.result.status = "backgrounded";
+	context.result.pid = processResult.pid;
+	context.result.durationMs = processResult.durationMs;
+	updateCaptureStats(context, processResult.stdout, processResult.stderr);
+	writeArtifactResult(context);
+
+	void (async () => {
+		const timer = setInterval(() => {
+			const captures = processResult.captures();
+			updateCaptureStats(context, captures.stdout, captures.stderr);
+			writeArtifactResult(context);
+		}, intervalMs ?? 3_000);
+		try {
+			await processResult.streamsDone;
+			const exitCode = await processResult.proc.exited;
+			context.result.status = "exited";
+			context.result.exitCode = exitCode;
+			context.result.endedAt = new Date().toISOString();
+			context.result.durationMs = Date.now() - startTime;
+			const captures = processResult.captures();
+			updateCaptureStats(context, captures.stdout, captures.stderr);
+			writeArtifactResult(context);
+		} catch {
+			// 后台状态写入失败不影响主流程。
+		} finally {
+			clearInterval(timer);
+			try {
+				unlinkSync(tmpFile);
+			} catch {}
+		}
+	})();
+}
+
 export async function* execToolStream(
 	call: ExecCall,
 	confirmFn: ((question: string) => Promise<string>) | undefined,
 	toolsConfig: {
 		workspace: string;
 		tempDir: string;
+		sessionDir: string;
 		blocked_commands: string[];
 		default_exec_waitfor: number;
 		platform: "win32" | "darwin" | "linux";
@@ -221,16 +189,12 @@ export async function* execToolStream(
 			? call.args.cwd
 			: resolve(workspace, call.args.cwd)
 		: workspace;
-	// prompt cache 的 TTL 为 5 分钟，等待过长会导致缓存失效
-	const MAX_WAITFOR_S = 240;
 	const waitforS = Math.min(
 		call.args.waitfor ?? toolsConfig.default_exec_waitfor,
-		MAX_WAITFOR_S,
+		240,
 	);
-	const waitforMs = waitforS * 1000;
 	const start = Date.now();
 
-	// ── 安全检测 ──
 	const blockedCmd = findBlockedCommand(
 		call.args.script,
 		toolsConfig.blocked_commands,
@@ -250,68 +214,65 @@ export async function* execToolStream(
 		}
 	}
 
-	// ── 写临时文件 ──
-	const ext = RUNTIME_EXT[runtime] ?? "";
 	const tempDir = resolve(toolsConfig.tempDir);
-	if (!existsSync(tempDir)) mkdirSync(tempDir, { recursive: true });
+	mkdirSync(tempDir, { recursive: true });
 	const scriptDir = resolve(cwd);
 	if (!existsSync(scriptDir)) mkdirSync(scriptDir, { recursive: true });
+	const ext = RUNTIME_EXT[runtime] ?? "";
 	const tmpFile = join(
 		scriptDir,
 		`_n0n_exec_${Date.now()}_${Math.random().toString(36).slice(2, 8)}${ext}`,
 	);
-
+	const artifact = createArtifact(toolsConfig.sessionDir, call.id);
+	writeArtifactResult(artifact);
 	let cleanupTempFile = true;
+	let keepArtifact = false;
 
 	try {
-		const scriptContent =
-			runtime === "cmd" ? `@${call.args.script}\n` : call.args.script;
-		await Bun.write(tmpFile, scriptContent);
-
-		const spawnCmd = buildSpawnCmd(runtime, tmpFile);
-
-		// ── 执行 ──
+		await Bun.write(
+			tmpFile,
+			runtime === "cmd" ? `@${call.args.script}\n` : call.args.script,
+		);
 		const result = yield* runProcess({
-			spawnCmd,
+			spawnCmd: buildSpawnCmd(runtime, tmpFile),
 			cwd,
-			waitforMs,
+			waitforMs: waitforS * 1_000,
 			callId: call.id,
 			tool: call.tool,
+			stdoutFile: artifact.ref.stdoutFile,
+			stderrFile: artifact.ref.stderrFile,
 		});
 
 		switch (result.outcome) {
 			case "backgrounded": {
-				// 启动后台协程：定期同步 + 等待结束
-				// await 初始同步写入，确保日志文件在 tool result 返回前已存在
-				const logFile = await startBackgroundSync(
+				keepArtifact = true;
+				cleanupTempFile = false;
+				startBackgroundTracking(
 					result,
+					artifact,
 					start,
-					tempDir,
 					tmpFile,
 					toolsConfig.bgSyncIntervalMs,
 				);
-
 				yield {
 					type: "tool_result",
 					tool: call.tool,
 					call,
 					status: "backgrounded",
 					pid: result.pid,
-					logFile,
-					stdoutSoFar: tailByTokens(result.stdoutSoFar, TAIL_TOKENS),
-					stderrSoFar: tailByTokens(result.stderrSoFar, TAIL_TOKENS),
+					artifact: artifact.ref,
+					stdoutSoFar: tailByTokens(result.stdout.tail, TAIL_TOKENS),
+					stderrSoFar: tailByTokens(result.stderr.tail, TAIL_TOKENS),
 					durationMs: result.durationMs,
 				} satisfies ExecToolResult;
-				cleanupTempFile = false;
 				return;
 			}
-
 			case "error": {
 				yield {
 					type: "tool_result",
 					tool: call.tool,
 					call,
-					status: "completed" as const,
+					status: "completed",
 					exitCode: 1,
 					stdout: "",
 					stderr: result.error,
@@ -319,101 +280,81 @@ export async function* execToolStream(
 				} satisfies ExecToolResult;
 				return;
 			}
-
 			case "completed": {
 				const { stdout, stderr, exitCode, durationMs } = result;
-				const totalTokens = estimateTokens(stdout + stderr);
-
-				if (totalTokens > TRUNCATION_THRESHOLD_TOKENS) {
-					// 截断路径：完整输出写入文件
-					const outputFile = makeShortOutputPath(tempDir);
-					const fileContent = [
-						stdout,
-						"--- stderr ---",
-						stderr,
-						`--- exit code: ${exitCode} ---`,
-					].join("\n");
-					await Bun.write(outputFile, fileContent);
-
-					const stdoutTail = tailByTokens(stdout, TAIL_TOKENS);
-					const truncatedText = stdout.substring(
-						0,
-						stdout.length - stdoutTail.length,
-					);
-					const truncatedChunks =
-						truncatedText.length > 0
-							? splitLinesByTokenBudget(truncatedText, TAIL_TOKENS)
-							: [];
-					const totalLines =
-						stdout.split("\n").length + stderr.split("\n").length;
-					const tailLines = stdoutTail.split("\n").length;
-					const tailStartLine = totalLines - tailLines + 1;
-
-					yield {
-						type: "tool_result",
-						tool: call.tool,
-						call,
-						status: "truncated",
-						exitCode,
-						stdoutTail,
-						stderrTail: tailByTokens(stderr, TAIL_TOKENS),
-						outputFile,
-						stdoutLength: stdout.length,
-						stderrLength: stderr.length,
-						totalLines,
-						tailStartLine,
-						truncatedChunks,
-						durationMs,
-					} satisfies ExecToolResult;
-				} else {
-					// 正常路径：输出直接返回
-					const hasOutput = stdout.trim() || stderr.trim();
-					const hint =
-						!hasOutput && exitCode === 0
-							? "(no output — script may not have top-level executable code, or async operations may not have been awaited.)"
-							: "";
-
+				const isTruncated =
+					!stdout.complete ||
+					!stderr.complete ||
+					estimateTokens(stdout.content + stderr.content) >
+						TRUNCATION_THRESHOLD_TOKENS;
+				if (!isTruncated) {
 					yield {
 						type: "tool_result",
 						tool: call.tool,
 						call,
 						status: "completed",
 						exitCode,
-						stdout: hint || stdout,
-						stderr,
+						stdout:
+							stdout.content ||
+							(stderr.content || exitCode !== 0
+								? ""
+								: "(no output — script may not have top-level executable code, or async operations may not have been awaited.)"),
+						stderr: stderr.content,
 						durationMs,
 					} satisfies ExecToolResult;
+					return;
 				}
+
+				keepArtifact = true;
+				artifact.result.status = "completed";
+				artifact.result.exitCode = exitCode;
+				artifact.result.endedAt = new Date().toISOString();
+				artifact.result.durationMs = durationMs;
+				updateCaptureStats(artifact, stdout, stderr);
+				writeArtifactResult(artifact);
+
+				const stdoutTail = tailByTokens(stdout.tail, TAIL_TOKENS);
+				const stderrTail = tailByTokens(stderr.tail, TAIL_TOKENS);
+				const totalLines =
+					(stdout.charLength === 0 ? 0 : stdout.lines) +
+					(stderr.charLength === 0 ? 0 : stderr.lines);
+				const tailLines =
+					stdoutTail.length === 0 ? 0 : stdoutTail.split("\n").length;
+				yield {
+					type: "tool_result",
+					tool: call.tool,
+					call,
+					status: "truncated",
+					exitCode,
+					stdoutTail,
+					stderrTail,
+					artifact: artifact.ref,
+					stdoutLength: stdout.charLength,
+					stderrLength: stderr.charLength,
+					totalLines,
+					tailStartLine: Math.max(1, stdout.lines - tailLines + 1),
+					durationMs,
+				} satisfies ExecToolResult;
 				return;
 			}
-
-			default: {
-				const _exhaustive: never = result;
-				throw new Error(
-					`Unexpected process outcome: ${(result as { outcome: string }).outcome}`,
-				);
-			}
 		}
-	} catch (err) {
+	} catch (error) {
 		yield {
 			type: "tool_result",
 			tool: call.tool,
 			call,
-			status: "completed" as const,
+			status: "completed",
 			exitCode: 1,
 			stdout: "",
-			stderr: err instanceof Error ? err.message : String(err),
+			stderr: error instanceof Error ? error.message : String(error),
 			durationMs: Date.now() - start,
 		} satisfies ExecToolResult;
 	} finally {
-		// true：正常完成或出错路径，在此清理
-		// false：后台协程负责清理，此处跳过
 		if (cleanupTempFile) {
 			try {
 				unlinkSync(tmpFile);
-			} catch {
-				// ignore cleanup errors
-			}
+			} catch {}
 		}
+		if (!keepArtifact) removeArtifact(artifact);
 	}
 }

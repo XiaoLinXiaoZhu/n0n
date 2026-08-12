@@ -11,6 +11,7 @@ interface Calls {
 	skill: Array<{ name: string; value?: unknown }>;
 	config: unknown[];
 	env: unknown[];
+	read: unknown[];
 }
 
 function setup(): { dependencies: CliDependencies; calls: Calls } {
@@ -21,6 +22,7 @@ function setup(): { dependencies: CliDependencies; calls: Calls } {
 		skill: [],
 		config: [],
 		env: [],
+		read: [],
 	};
 	const dependencies: CliDependencies = {
 		runCode: async (options) => {
@@ -55,6 +57,9 @@ function setup(): { dependencies: CliDependencies; calls: Calls } {
 		},
 		runEnv: (options) => {
 			calls.env.push(options);
+		},
+		runRead: async (options) => {
+			calls.read.push(options);
 		},
 	};
 	return { dependencies, calls };
@@ -163,5 +168,22 @@ describe("n0n Commander contract", () => {
 
 		expect(calls.config).toEqual([{ scope: "local" }]);
 		expect(calls.env).toEqual([{ scope: "global" }]);
+	});
+
+	test("read 解析有界读取参数", async () => {
+		const { dependencies, calls } = setup();
+
+		await parse(dependencies, [
+			"read",
+			"large.log",
+			"--cursor",
+			"128",
+			"--tokens",
+			"900",
+		]);
+
+		expect(calls.read).toEqual([
+			{ path: "large.log", cursor: 128, tokens: 900 },
+		]);
 	});
 });

@@ -9,22 +9,27 @@
 
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
-import { makeToolkit } from "../src";
 import { resolvePlatform } from "@n0n/shared";
-import { CodeResultSchema } from "../../../apps/code/src/schema.ts";
+import { showConfig } from "../../../apps/code/src/show-config.ts";
+import { makeToolkit } from "../src";
 
 const MODEL = "claude-sonnet-4-20250514";
 const PREVIEW_DIR = join(import.meta.dir, "preview-output");
 mkdirSync(PREVIEW_DIR, { recursive: true });
 
 // 构建完整 toolkit（触发环境探测，与生产一致）
-const toolkit = makeToolkit(CodeResultSchema, {
-	workspace: process.cwd(),
-	tempDir: join(process.cwd(), ".temp"),
-	platform: resolvePlatform(),
-	security: { blocked_commands: [] },
-	agent: { default_exec_waitfor: 120 },
-}, MODEL);
+const toolkit = makeToolkit(
+	showConfig,
+	{
+		workspace: process.cwd(),
+		tempDir: join(process.cwd(), ".temp"),
+		sessionDir: join(process.cwd(), ".temp", "preview-session"),
+		platform: resolvePlatform(),
+		security: { blocked_commands: [] },
+		agent: { default_exec_waitfor: 120 },
+	},
+	MODEL,
+);
 
 let count = 0;
 for (const def of toolkit.tools) {

@@ -54,7 +54,7 @@ export function saveConversation(
 	fileName?: string,
 ): string {
 	const log: ConversationLog = {
-		version: 1,
+		version: 2,
 		humanReadable: {
 			savedAt: new Date().toISOString(),
 			workspace,
@@ -85,9 +85,9 @@ export function loadConversation(filePath: string): ConversationLog {
 		throw new Error(`Invalid conversation log: not a JSON object`);
 	}
 
-	if (parsed.version !== 1) {
+	if (parsed.version !== 2) {
 		throw new Error(
-			`Unsupported conversation log version: ${parsed.version} (expected 1)`,
+			`Unsupported conversation log version: ${parsed.version} (expected 2)`,
 		);
 	}
 
@@ -95,6 +95,5 @@ export function loadConversation(filePath: string): ConversationLog {
 		throw new Error(`Invalid conversation log: missing history array`);
 	}
 
-	// history 数组存在性已在上方验证，其余字段为可选
 	return parsed as ConversationLog;
 }

@@ -343,6 +343,56 @@ describe("formatPrompt 变体端到端", () => {
 		expect(toolResults[0]?.content).toContain("system-hint");
 	});
 
+	it("截断结果只引用 artifact，并提示使用 n0n read", () => {
+		const msgs: DomainMessage[] = [
+			{ type: "system", content: "You are helpful." },
+			{ type: "generic_user_text", content: "Read output." },
+			{
+				type: "assistant_tool_call",
+				content: null,
+				reasoning: { ok: false },
+				reasoningSignature: undefined,
+				toolCalls: [
+					{ id: "tc_large", tool: "observe", args: { script: "large" } },
+				],
+			},
+			{
+				type: "tool_result",
+				tool: "observe",
+				status: "truncated",
+				call: {
+					id: "tc_large",
+					tool: "observe",
+					args: { script: "large" },
+				},
+				exitCode: 0,
+				stdoutTail: "tail",
+				stderrTail: "",
+				artifact: {
+					kind: "execution",
+					version: 1,
+					runId: "large",
+					runDir: ".temp/session-0001/exec/runs/large",
+					stdoutFile: ".temp/session-0001/exec/runs/large/stdout.txt",
+					stderrFile: ".temp/session-0001/exec/runs/large/stderr.txt",
+					resultFile: ".temp/session-0001/exec/runs/large/result.json",
+				},
+				stdoutLength: 50_000_000,
+				stderrLength: 0,
+				totalLines: 1_000_000,
+				tailStartLine: 999_990,
+				durationMs: 100,
+			},
+		];
+
+		const result = formatPrompt(msgs, tags);
+		const content = result.find((message) => message.role === "tool")?.content;
+		expect(content).toContain("stdout.txt");
+		expect(content).toContain("n0n read");
+		expect(content).not.toContain("chunk 1");
+		expect(content?.length).toBeLessThan(2_000);
+	});
+
 	it("多轮 exec 结果的格式化不完全相同（anti-few-shot）", () => {
 		const msgs = buildConversation(10);
 		const result = formatPrompt(msgs, tags);

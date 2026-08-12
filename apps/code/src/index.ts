@@ -9,7 +9,7 @@ import { style, writeln } from "@n0n/cli-ui";
 import { buildToolsConfig } from "@n0n/core";
 import type { FormatOptions } from "@n0n/format-prompt";
 import { createLLMClient } from "@n0n/llm";
-import { ensureDirs, resolveBasePaths } from "@n0n/shared";
+import { createSessionDir, ensureDirs, resolveBasePaths } from "@n0n/shared";
 import {
 	DEFAULT_TOML,
 	displayCodeConfig,
@@ -72,6 +72,7 @@ async function startConfiguredCode(
 
 	const paths = resolveBasePaths(workspace);
 	ensureDirs(paths);
+	const sessionDir = createSessionDir(paths.temp);
 
 	const formatOptions: FormatOptions = {
 		strip_hint: settings.strip_hint,
@@ -83,6 +84,7 @@ async function startConfiguredCode(
 	const toolsConfig = buildToolsConfig(settings.agent, settings.security, {
 		workspace: paths.workspace,
 		tempDir: paths.temp,
+		sessionDir,
 	});
 	const notifyConfig: NotifyConfig = {
 		enabled: settings.notify_sound,
@@ -115,5 +117,6 @@ async function startConfiguredCode(
 		userInputConfig: settings.user_input,
 		notifyConfig,
 		expandExec: options.expandExec ?? false,
+		sessionDir,
 	});
 }

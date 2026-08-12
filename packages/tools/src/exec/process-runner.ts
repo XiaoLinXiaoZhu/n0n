@@ -1,18 +1,12 @@
 /**
- * ProcessRunner — 进程 spawn + 流泵 + waitfor 机制
+ * ProcessRunner — 进程 spawn、流泵和 waitfor。
  *
- * 将模型提供的脚本在子进程中执行，流式 yield 输出块，
- * 最终返回汇总结果（completed / backgrounded / error）。
- *
- * 等待机制使用 Promise.race（非 setTimeout → kill），
- * 确定性中断。等待超限后进程转入后台继续执行。
- *
- * 独立于 exec 工具的安全检测和输出格式化——仅负责进程生命周期管理。
+ * 完整 stdout/stderr 直接追加到 execution artifact；内存只保留有界 capture
+ * 与 tail，因此大输出和后台进程的内存占用不随输出总量增长。
  */
 
+import { appendFileSync } from "node:fs";
 import type { ToolOutputChunk } from "@n0n/types";
-
-// ── 类型 ──
 
 export interface RunProcessOptions {
 	spawnCmd: string[];
@@ -20,32 +14,37 @@ export interface RunProcessOptions {
 	waitforMs: number;
 	callId: string;
 	tool: string;
+	stdoutFile: string;
+	stderrFile: string;
+}
+
+export interface StreamCapture {
+	/** 仅当 complete=true 时包含完整流内容。 */
+	content: string;
+	complete: boolean;
+	tail: string;
+	charLength: number;
+	byteLength: number;
+	lines: number;
 }
 
 export interface RunProcessCompleted {
 	outcome: "completed";
-	stdout: string;
-	stderr: string;
+	stdout: StreamCapture;
+	stderr: StreamCapture;
 	exitCode: number;
 	durationMs: number;
-	stdoutChunks: string[];
-	stderrChunks: string[];
 }
 
 export interface RunProcessBackgrounded {
 	outcome: "backgrounded";
-	stdoutSoFar: string;
-	stderrSoFar: string;
+	stdout: StreamCapture;
+	stderr: StreamCapture;
 	pid: number;
 	durationMs: number;
-	/** 持续变化的 stdout 桶（后台协程读取并同步到日志文件） */
-	stdoutChunks: string[];
-	/** 持续变化的 stderr 桶 */
-	stderrChunks: string[];
-	/** resolve 后表示两个流（stdout/stderr）均已读完 */
 	streamsDone: Promise<void>;
-	/** 子进程句柄（后台协程 await proc.exited） */
 	proc: import("bun").Subprocess;
+	captures: () => { stdout: StreamCapture; stderr: StreamCapture };
 }
 
 export interface RunProcessError {
@@ -59,9 +58,6 @@ export type RunProcessResult =
 	| RunProcessBackgrounded
 	| RunProcessError;
 
-// ── runtime 工具 ──
-
-/** runtime → 临时文件扩展名 */
 export const RUNTIME_EXT: Record<string, string> = {
 	sh: ".sh",
 	bash: ".sh",
@@ -75,13 +71,6 @@ export const RUNTIME_EXT: Record<string, string> = {
 	uv: ".py",
 };
 
-/** runtime → 执行命令构造器 */
-// DESIGN NOTE: buildSpawnCmd 用 switch 硬编码每个 runtime 的执行命令，
-// 而非从某个 RuntimeProvider.spawnCmd() 动态获取。理由同 env.ts 顶部的
-// DESIGN NOTE——runtime 列表稳定，且各 runtime 的 spawn 参数差异大
-//（如 deno 需要 --allow-all，pwsh 需要 -NoProfile -File），
-// 一个 switch 比一套接口 + 10 个实现文件更容易一眼看全。
-// —— Mebius ∞
 export function buildSpawnCmd(runtime: string, tmpFile: string): string[] {
 	switch (runtime) {
 		case "cmd":
@@ -107,18 +96,53 @@ export function buildSpawnCmd(runtime: string, tmpFile: string): string[] {
 	}
 }
 
-// ── 执行入口 ──
+const CAPTURE_LIMIT_CHARS = 256 * 1024;
+const TAIL_LIMIT_CHARS = 256 * 1024;
 
-/**
- * 流式执行子进程。
- *
- * Yield ToolOutputChunk 文本块，最终返回 RunProcessResult。
- * 调用方根据 result.outcome 决定后续处理（正常返回 / 截断写文件 / 后台日志）。
- */
+class BoundedStreamCapture {
+	private content = "";
+	private complete = true;
+	private tail = "";
+	private charLength = 0;
+	private byteLength = 0;
+	private newlines = 0;
+
+	push(text: string): void {
+		this.charLength += text.length;
+		this.byteLength += Buffer.byteLength(text, "utf8");
+		for (let i = 0; i < text.length; i++) {
+			if (text[i] === "\n") this.newlines++;
+		}
+
+		if (this.complete) {
+			if (this.content.length + text.length <= CAPTURE_LIMIT_CHARS) {
+				this.content += text;
+			} else {
+				this.content = "";
+				this.complete = false;
+			}
+		}
+
+		this.tail = (this.tail + text).slice(-TAIL_LIMIT_CHARS);
+	}
+
+	snapshot(): StreamCapture {
+		return {
+			content: this.content,
+			complete: this.complete,
+			tail: this.tail,
+			charLength: this.charLength,
+			byteLength: this.byteLength,
+			lines: this.newlines + 1,
+		};
+	}
+}
+
 export async function* runProcess(
 	opts: RunProcessOptions,
 ): AsyncGenerator<ToolOutputChunk, RunProcessResult> {
-	const { spawnCmd, cwd, waitforMs, callId, tool } = opts;
+	const { spawnCmd, cwd, waitforMs, callId, tool, stdoutFile, stderrFile } =
+		opts;
 	const start = Date.now();
 
 	try {
@@ -128,37 +152,66 @@ export async function* runProcess(
 			stderr: "pipe",
 			env: { ...process.env },
 		});
+		if (!proc.stdout || !proc.stderr) {
+			throw new Error("Failed to capture process streams (stdout/stderr)");
+		}
 
-		const stdoutChunks: string[] = [];
-		const stderrChunks: string[] = [];
-		const decoder = new TextDecoder();
-
+		const stdout = new BoundedStreamCapture();
+		const stderr = new BoundedStreamCapture();
 		const pending: ToolOutputChunk[] = [];
+		const MAX_PENDING_CHUNKS = 32;
 		let streamsDoneCount = 0;
 		let resolveStreamsDone: () => void;
 		const streamsDone = new Promise<void>((resolve) => {
 			resolveStreamsDone = resolve;
 		});
 		let notify: (() => void) | null = null;
+		const pendingSpaceWaiters: Array<() => void> = [];
+		let forwardChunks = true;
+
+		const enqueue = async (event: ToolOutputChunk): Promise<void> => {
+			if (!forwardChunks) return;
+			while (pending.length >= MAX_PENDING_CHUNKS) {
+				await new Promise<void>((resolve) => {
+					pendingSpaceWaiters.push(resolve);
+				});
+				if (!forwardChunks) return;
+			}
+			pending.push(event);
+			notify?.();
+		};
 
 		const pumpStream = async (
 			stream: ReadableStream<Uint8Array>,
-			bucket: string[],
+			file: string,
+			capture: BoundedStreamCapture,
 		) => {
+			const decoder = new TextDecoder();
 			const reader = stream.getReader();
 			try {
 				while (true) {
 					const { done, value } = await reader.read();
 					if (done) break;
 					const text = decoder.decode(value, { stream: true });
-					bucket.push(text);
-					pending.push({
+					appendFileSync(file, text, "utf8");
+					capture.push(text);
+					await enqueue({
 						type: "tool_output_chunk",
 						callId,
 						tool,
 						chunk: text,
 					});
-					notify?.();
+				}
+				const finalText = decoder.decode();
+				if (finalText) {
+					appendFileSync(file, finalText, "utf8");
+					capture.push(finalText);
+					await enqueue({
+						type: "tool_output_chunk",
+						callId,
+						tool,
+						chunk: finalText,
+					});
 				}
 			} finally {
 				reader.releaseLock();
@@ -168,13 +221,9 @@ export async function* runProcess(
 			}
 		};
 
-		if (!proc.stdout || !proc.stderr) {
-			throw new Error("Failed to capture process streams (stdout/stderr)");
-		}
-		pumpStream(proc.stdout, stdoutChunks);
-		pumpStream(proc.stderr, stderrChunks);
+		void pumpStream(proc.stdout, stdoutFile, stdout);
+		void pumpStream(proc.stderr, stderrFile, stderr);
 
-		// ── 等待机制：Promise.race 确定性中断 ──
 		let backgrounded = false;
 		const waitforPromise = new Promise<"waitfor">((resolve) => {
 			setTimeout(() => {
@@ -186,50 +235,50 @@ export async function* runProcess(
 		while (streamsDoneCount < 2 || pending.length > 0) {
 			if (backgrounded) break;
 			if (pending.length === 0) {
-				const waitForData = new Promise<"data">((r) => {
-					notify = () => r("data");
+				const waitForData = new Promise<"data">((resolve) => {
+					notify = () => resolve("data");
 				});
-				const raceResult = await Promise.race([waitForData, waitforPromise]);
+				const race = await Promise.race([waitForData, waitforPromise]);
 				notify = null;
-				if (raceResult === "waitfor") break;
+				if (race === "waitfor") break;
 			}
 			while (pending.length > 0) {
 				const chunk = pending.shift();
+				pendingSpaceWaiters.shift()?.();
 				if (chunk) yield chunk;
 			}
 		}
 
 		if (backgrounded) {
-			const durationMs = Date.now() - start;
+			forwardChunks = false;
+			for (const resolve of pendingSpaceWaiters.splice(0)) resolve();
 			return {
 				outcome: "backgrounded",
-				stdoutSoFar: stdoutChunks.join(""),
-				stderrSoFar: stderrChunks.join(""),
+				stdout: stdout.snapshot(),
+				stderr: stderr.snapshot(),
 				pid: proc.pid,
-				durationMs,
-				stdoutChunks,
-				stderrChunks,
+				durationMs: Date.now() - start,
 				streamsDone,
 				proc,
+				captures: () => ({
+					stdout: stdout.snapshot(),
+					stderr: stderr.snapshot(),
+				}),
 			};
 		}
 
-		// ── 正常完成 ──
 		const exitCode = await proc.exited;
-		const durationMs = Date.now() - start;
 		return {
 			outcome: "completed",
-			stdout: stdoutChunks.join(""),
-			stderr: stderrChunks.join(""),
+			stdout: stdout.snapshot(),
+			stderr: stderr.snapshot(),
 			exitCode,
-			durationMs,
-			stdoutChunks,
-			stderrChunks,
+			durationMs: Date.now() - start,
 		};
-	} catch (err) {
+	} catch (error) {
 		return {
 			outcome: "error",
-			error: err instanceof Error ? err.message : String(err),
+			error: error instanceof Error ? error.message : String(error),
 			durationMs: Date.now() - start,
 		};
 	}

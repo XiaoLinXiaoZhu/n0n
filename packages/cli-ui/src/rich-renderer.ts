@@ -152,6 +152,14 @@ export interface RichRendererOptions {
 	expandExec?: boolean;
 }
 
+const MAX_EXEC_PREVIEW_CHARS = 4_096;
+
+export function boundExecPreviewLine(line: string): string {
+	return line.length <= MAX_EXEC_PREVIEW_CHARS
+		? line
+		: `${line.slice(0, MAX_EXEC_PREVIEW_CHARS)}… (${line.length - MAX_EXEC_PREVIEW_CHARS} chars omitted)`;
+}
+
 export class RichRenderer implements Renderer {
 	/** 工具执行阶段的 LiveRegion（实时输出） */
 	private toolRegion = new LiveRegion();
@@ -172,8 +180,10 @@ export class RichRenderer implements Renderer {
 	/** 本轮是否有流式工具参数（有则 toolExecStart 不重复渲染） */
 	private hadStreamingArgs = false;
 
-	/** 折叠模式（非 expandExec）下累积的 exec 输出行（每个活跃工具的原始行） */
-	private execOutputLines: string[] = [];
+	/** 折叠模式仅保留固定大小的头尾行，避免大输出常驻内存。 */
+	private execHeadLines: string[] = [];
+	private execTailLines: string[] = [];
+	private execLineCount = 0;
 
 	protected readonly expandExec: boolean;
 
@@ -359,7 +369,7 @@ export class RichRenderer implements Renderer {
 		this.streamRegion.reset();
 		this.toolRegion.reset();
 		this.renderBuffer.reset();
-		this.execOutputLines = [];
+		this.resetExecPreview();
 		writeln();
 		writeln(`${style.yellow("⚡")} ${style.gray("已中断输出")}`);
 	}
@@ -370,7 +380,7 @@ export class RichRenderer implements Renderer {
 	private renderExecStart(tc: ToolCallRecord): void {
 		this.toolRegion.reset();
 		if (!this.expandExec) {
-			this.execOutputLines = [];
+			this.resetExecPreview();
 		}
 		// 流式模式下参数已由 toolCallArgEnd/streamEnd 渲染，不重复
 		if (this.hadStreamingArgs) return;
@@ -383,24 +393,22 @@ export class RichRenderer implements Renderer {
 	/** 渲染工具执行的 chunk 输出 */
 	private renderExecChunk(chunk: string): void {
 		if (!this.expandExec && isTTY) {
-			// 折叠模式：累积行，展示尾部滚动窗口
+			// 折叠模式：只保留固定头尾窗口，且每行显示长度有界。
 			for (const line of chunk.split("\n")) {
-				if (line) this.execOutputLines.push(line);
+				if (line) this.pushExecPreviewLine(line);
 			}
 			const TAIL_WINDOW = 6;
 			beginSyncUpdate();
 			this.toolRegion.clear();
-			const total = this.execOutputLines.length;
+			const total = this.execLineCount;
 			if (total > TAIL_WINDOW) {
 				this.toolRegion.writeln(
 					`  ${style.dim(":")} ${style.gray(`(${total - TAIL_WINDOW} lines above)`)}`,
 				);
 			}
-			const start = Math.max(0, total - TAIL_WINDOW);
-			for (let i = start; i < total; i++) {
-				this.toolRegion.writeln(
-					`  ${style.dim("│")} ${style.dim(this.execOutputLines[i] ?? "")}`,
-				);
+			const visible = this.execTailLines.slice(-TAIL_WINDOW);
+			for (const line of visible) {
+				this.toolRegion.writeln(`  ${style.dim("│")} ${style.dim(line)}`);
 			}
 			endSyncUpdate();
 		} else {
@@ -418,29 +426,42 @@ export class RichRenderer implements Renderer {
 			// 折叠模式：清除滚动窗口，展示头尾摘要
 			beginSyncUpdate();
 			this.toolRegion.clear();
-			const lines = this.execOutputLines;
 			const HEAD_LINES = 10;
 			const TAIL_LINES = 10;
-			if (lines.length <= HEAD_LINES + TAIL_LINES) {
-				for (const line of lines) {
+			if (this.execLineCount <= HEAD_LINES + TAIL_LINES) {
+				for (const line of this.execTailLines) {
 					writeln(`  ${style.dim("│")} ${style.dim(line)}`);
 				}
 			} else {
-				for (let i = 0; i < HEAD_LINES; i++) {
-					writeln(`  ${style.dim("│")} ${style.dim(lines[i] ?? "")}`);
+				for (const line of this.execHeadLines.slice(0, HEAD_LINES)) {
+					writeln(`  ${style.dim("│")} ${style.dim(line)}`);
 				}
 				writeln(
-					`  ${style.dim(":")} ${style.gray(`(${lines.length - HEAD_LINES - TAIL_LINES} lines folded)`)}`,
+					`  ${style.dim(":")} ${style.gray(`(${this.execLineCount - HEAD_LINES - TAIL_LINES} lines folded)`)}`,
 				);
-				for (let i = lines.length - TAIL_LINES; i < lines.length; i++) {
-					writeln(`  ${style.dim("│")} ${style.dim(lines[i] ?? "")}`);
+				for (const line of this.execTailLines.slice(-TAIL_LINES)) {
+					writeln(`  ${style.dim("│")} ${style.dim(line)}`);
 				}
 			}
-			this.execOutputLines = [];
+			this.resetExecPreview();
 			endSyncUpdate();
 		}
 		const summary = this.formatToolResult(result);
 		writeln(summary);
+	}
+
+	private pushExecPreviewLine(line: string): void {
+		const bounded = boundExecPreviewLine(line);
+		this.execLineCount++;
+		if (this.execHeadLines.length < 10) this.execHeadLines.push(bounded);
+		this.execTailLines.push(bounded);
+		if (this.execTailLines.length > 20) this.execTailLines.shift();
+	}
+
+	private resetExecPreview(): void {
+		this.execHeadLines = [];
+		this.execTailLines = [];
+		this.execLineCount = 0;
 	}
 
 	// ── 工具结果格式化（紧凑摘要行） ──
@@ -461,7 +482,7 @@ export class RichRenderer implements Renderer {
 							result.exitCode === 0
 								? style.green(`exit=${result.exitCode}`)
 								: style.red(`exit=${result.exitCode}`);
-						return `${style.dim("◂")} ${style.cyan(result.tool)} ${duration} ${exit} ${style.yellow(`truncated → ${result.outputFile}`)}`;
+						return `${style.dim("◂")} ${style.cyan(result.tool)} ${duration} ${exit} ${style.yellow(`truncated → ${result.artifact.runDir}`)}`;
 					}
 					case "completed": {
 						const exit =

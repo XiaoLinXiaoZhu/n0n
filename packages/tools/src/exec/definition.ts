@@ -23,7 +23,7 @@ const ALL_RUNTIMES =
 /** ExecRole → 工具描述映射 */
 const ROLE_DESCRIPTIONS: Record<ExecRole, string> = {
 	observe:
-		"Read files, search code, or check environment state. No side effects — use this for gathering information only.",
+		"Read files, search code, or check environment state. No side effects — use this for gathering information only. For large text, filter with rg/jq first or use `n0n read <file>` for bounded cursor-based reads.",
 	reason:
 		"Structured thinking, data processing, or hypothesis verification. No side effects — output is for the model's own consumption, not presented to the user.",
 	act: "Execute actions that change environment state: run tests, build, commit, install dependencies, etc. Actions may be irreversible — verify your reasoning (via reason) before acting.",

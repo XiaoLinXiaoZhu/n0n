@@ -4,22 +4,23 @@
 ```
 role: tool
 toolCallId: tc_4
-toolName: exec
+toolName: observe
 
 --- content ---
-## exec_meta
+<observe_meta>
 (unknown) . | backgrounded | 30003ms
----
-## waitfor_notice
+</observe_meta>
+<waitfor_notice>
 Process exceeded waitfor limit, moved to background.
 PID: 65432
-Log file: .temp/exec_bg_65432.log
----
-## output
+Execution artifact: .temp/session-0001/exec/runs/tc_4
+</waitfor_notice>
+<output>
 npm warn deprecated inflight@1.0.6
 added 142 packages in 28s
----
-【system-hint】
-Log file updates every few seconds; read it to check progress.
----
+</output>
+<system-hint>
+Execution artifacts update while the process runs; inspect them for progress.
+Decide now: does this process need to keep running? If not, kill it by PID. Do not leave background processes running without purpose.
+</system-hint>
 ```

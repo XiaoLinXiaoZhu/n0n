@@ -1,0 +1,12 @@
+{
+	"name": "@n0n/read",
+	"version": "0.1.0",
+	"private": true,
+	"type": "module",
+	"exports": {
+		".": "./src/index.ts"
+	},
+	"dependencies": {
+		"@n0n/shared": "workspace:*"
+	}
+}

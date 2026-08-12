@@ -7,6 +7,9 @@
  */
 
 import { describe, expect, test } from "bun:test";
+import { mkdtempSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { resolvePlatform } from "@n0n/shared";
 import type { ExecToolResult } from "@n0n/types";
 import { ExecArgsSchema, execToolStream } from "../exec";
@@ -17,6 +20,8 @@ interface TestCall {
 	tool: "observe";
 	args: { script: string; runtime?: string; cwd?: string; waitfor?: number };
 }
+
+const SESSION_DIR = mkdtempSync(join(tmpdir(), "n0n-exec-waitfor-"));
 
 /** 收集 exec 流式输出，带硬超时保护 */
 async function collectWithHardTimeout(
@@ -36,6 +41,7 @@ async function collectWithHardTimeout(
 		for await (const event of execToolStream(call, undefined, {
 			workspace: process.cwd(),
 			tempDir: ".temp",
+			sessionDir: SESSION_DIR,
 			blocked_commands: [],
 			default_exec_waitfor: execWaitfor,
 			platform: resolvePlatform(),
@@ -84,7 +90,7 @@ describe("exec waitfor 行为验证", () => {
 			expect(outcome.result.status === "backgrounded").toBe(true);
 			if (outcome.result.status === "backgrounded") {
 				expect(outcome.result.pid).toBeGreaterThan(0);
-				expect(outcome.result.logFile).toContain("exec_bg_");
+				expect(outcome.result.artifact.kind).toBe("execution");
 				try {
 					process.kill(outcome.result.pid, "SIGKILL");
 				} catch {}

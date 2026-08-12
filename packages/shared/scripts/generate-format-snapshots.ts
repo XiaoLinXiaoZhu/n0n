@@ -10,9 +10,9 @@
 
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
+import { formatPrompt } from "@n0n/format-prompt";
+import { createTagAdapter } from "@n0n/shared";
 import type { DomainMessage, PromptMessage } from "@n0n/types";
-import { formatPrompt } from "../src/format-prompt";
-import { createTagAdapter } from "../src/tags.ts";
 
 const MODEL = "claude-sonnet-4-20250514";
 const SNAPSHOT_DIR = join(import.meta.dir, "preview-output");
@@ -117,11 +117,11 @@ const scenarios: Scenario[] = [
 	{
 		file: "exec-completed",
 		title: "exec tool_result — status: completed（正常完成）",
-		messages: [
-			{
-				type: "tool_result",
-				tool: "observe",
-				type: "final report",
+			messages: [
+				{
+					type: "tool_result",
+					tool: "observe",
+					status: "completed",
 				call: {
 					id: "tc_1",
 					tool: "observe",
@@ -138,10 +138,10 @@ const scenarios: Scenario[] = [
 		file: "exec-completed-error",
 		title: "exec tool_result — status: completed（命令失败）",
 		messages: [
-			{
-				type: "tool_result",
-				tool: "observe",
-				type: "final report",
+				{
+					type: "tool_result",
+					tool: "observe",
+					status: "completed",
 				call: { id: "tc_2", tool: "observe", args: { script: "cat missing.txt" } },
 				exitCode: 1,
 				stdout: "",
@@ -167,12 +167,19 @@ const scenarios: Scenario[] = [
 				stdoutTail:
 					"./src/exec/executor.ts\n./src/exec/security.ts\n./src/types/domain.ts",
 				stderrTail: "",
-				outputFile: ".temp/exec_output_tc_3.txt",
+				artifact: {
+					kind: "execution",
+					version: 1,
+					runId: "tc_3",
+					runDir: ".temp/session-0001/exec/runs/tc_3",
+					stdoutFile: ".temp/session-0001/exec/runs/tc_3/stdout.txt",
+					stderrFile: ".temp/session-0001/exec/runs/tc_3/stderr.txt",
+					resultFile: ".temp/session-0001/exec/runs/tc_3/result.json",
+				},
 				stdoutLength: 28450,
 				stderrLength: 0,
 				totalLines: 850,
 				tailStartLine: 847,
-				truncatedChunks: [],
 				durationMs: 320,
 			},
 		],
@@ -191,7 +198,15 @@ const scenarios: Scenario[] = [
 					args: { script: "npm install", waitfor: 30 },
 				},
 				pid: 65432,
-				logFile: ".temp/exec_bg_65432.log",
+				artifact: {
+					kind: "execution",
+					version: 1,
+					runId: "tc_4",
+					runDir: ".temp/session-0001/exec/runs/tc_4",
+					stdoutFile: ".temp/session-0001/exec/runs/tc_4/stdout.txt",
+					stderrFile: ".temp/session-0001/exec/runs/tc_4/stderr.txt",
+					resultFile: ".temp/session-0001/exec/runs/tc_4/result.json",
+				},
 				stdoutSoFar:
 					"npm warn deprecated inflight@1.0.6\nadded 142 packages in 28s",
 				stderrSoFar: "",
@@ -205,16 +220,16 @@ const scenarios: Scenario[] = [
 		file: "write-result",
 		title: "write tool_result",
 		messages: [
-			{
-				type: "tool_result",
-				tool: "write",
+				{
+					type: "tool_result",
+					tool: "write",
 				call: {
 					id: "tc_5",
 					tool: "write",
 					args: { path: "src/config.ts", content: "export const x = 1;" },
 				},
-				type: "final report",
-			},
+					status: "completed",
+				},
 		],
 	},
 	// ── special messages ──

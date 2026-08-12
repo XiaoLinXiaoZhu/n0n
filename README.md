@@ -247,6 +247,11 @@ n0n skill create <category/name> 创建 skill
 
 n0n config [global|local|all]    用编辑器打开配置文件
 n0n env [global|local|all]       用编辑器打开配置目录
+
+n0n read [file|-]                按 token 预算读取大文本
+n0n read <file> --cursor <byte>  从返回的字节游标继续读取
+n0n read <file> --tail           读取文件末尾
+n0n read <file> --lines 10:30    读取指定行范围
 ```
 
 裸参数不再被解释为 prompt。只有实际存在的路径可作为裸参数；其他输入会显示错误和帮助。打开命令通过 `settings.cli.open_command` 配置，默认为：

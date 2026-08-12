@@ -5,11 +5,11 @@
  * msgIndex+N 偏移独立选择变体，组合爆炸产生远超单维度的多样性。
  *
  * 返回 FormattedToolResult：fact（客观数据）与 hint（系统操作建议）分离。
- * fact = 模型未来可能用到且不会过时的信息（状态、PID、文件路径、分块数据等）
+ * fact = 模型未来可能用到且不会过时的信息（状态、PID、artifact 路径等）
  * hint = 仅当前轮有用的操作建议，隔一轮就不需要了
  */
 
-import type { ExecToolResult } from "@n0n/types";
+import type { ExecToolResult, ExecutionArtifactRef } from "@n0n/types";
 import type { FormattedToolResult, TagAdapter } from "./utils.ts";
 import { pick } from "./utils.ts";
 
@@ -44,56 +44,49 @@ const truncatedMetaTemplates = [
 		`(${rt}) ${cwd} | exit ${exit} | ${ms}ms | truncated to ${file}`,
 ];
 
-/** backgrounded fact 模板：包含 PID 和 log file 路径（持久有效的客观信息） */
+/** backgrounded fact 模板：包含 PID 和 artifact 路径（持久有效的客观信息） */
 const backgroundedFactTemplates = [
-	(pid: number, logFile: string) =>
-		`Process exceeded waitfor limit, moved to background.\nPID: ${pid}\nLog file: ${logFile}`,
-	(pid: number, logFile: string) =>
-		`Waitfor exceeded — process continues in background (PID ${pid}).\nOutput is being logged to: ${logFile}`,
-	(pid: number, logFile: string) =>
-		`Background process started (PID: ${pid}).\nThe command exceeded its waitfor limit but is still running.\nLog file: ${logFile}`,
+	(pid: number, artifact: string) =>
+		`Process exceeded waitfor limit, moved to background.\nPID: ${pid}\nExecution artifact: ${artifact}`,
+	(pid: number, artifact: string) =>
+		`Waitfor exceeded — process continues in background (PID ${pid}).\nExecution artifact: ${artifact}`,
+	(pid: number, artifact: string) =>
+		`Background process started (PID: ${pid}).\nThe command exceeded its waitfor limit but is still running.\nExecution artifact: ${artifact}`,
 ];
 
 /** backgrounded hint 模板：操作建议（隔轮后不需要） */
 const backgroundedHintTemplates = [
-	"The log file is updated every few seconds — read it anytime to check output and process status.\nBefore continuing other tasks, decide whether this process still needs to run in the background. If not, kill it by PID — do not leave it running unattended.",
-	"The file syncs every few seconds — check it anytime for progress and status.\nBefore moving on, judge whether you still need this process running. If not, terminate it by PID rather than leaving it idle.",
-	"Log file updates every few seconds; read it to check progress.\nDecide now: does this process need to keep running? If not, kill it by PID. Do not leave background processes running without purpose.",
+	"The execution artifact updates while the process runs — inspect result.json and use `n0n read` or rg on stdout/stderr anytime.\nBefore continuing other tasks, decide whether this process still needs to run in the background. If not, kill it by PID — do not leave it running unattended.",
+	"The artifact files update as output arrives — check result.json and read stdout/stderr for progress.\nBefore moving on, judge whether you still need this process running. If not, terminate it by PID rather than leaving it idle.",
+	"Execution artifacts update while the process runs; inspect them for progress.\nDecide now: does this process need to keep running? If not, kill it by PID. Do not leave background processes running without purpose.",
 ];
 
-/** 格式化截断分块的读取建议（fact 部分：客观分块数据） */
-function formatChunkGuide(
-	chunks: { startLine: number; endLine: number; tokens: number }[],
-	_outputFile: string,
-): string {
-	if (chunks.length === 0) return "";
-	if (chunks.length === 1) {
-		const c = chunks[0];
-		if (!c) return "";
-		return `Truncated part: lines ${c.startLine}-${c.endLine} (~${c.tokens} tokens) — small enough to read in one go if needed.`;
-	}
-	const lines = chunks.map(
-		(c, i) =>
-			`  chunk ${i + 1}: lines ${c.startLine}-${c.endLine} (~${c.tokens} tok)`,
-	);
-	return `Truncated part can be read in ${chunks.length} chunks:\n${lines.join("\n")}`;
+function artifactDisplay(artifact: ExecutionArtifactRef): string {
+	return artifact.runDir;
 }
 
-/** truncated fact 模板：输出文件路径和分块信息（持久有效） */
+function artifactStreams(artifact: ExecutionArtifactRef): {
+	stdout: string;
+	stderr: string;
+} {
+	return { stdout: artifact.stdoutFile, stderr: artifact.stderrFile };
+}
+
+/** truncated fact 模板：输出产物路径（持久有效） */
 const truncatedFactTemplates = [
-	(totalLines: number, outputFile: string, chunkGuide: string) =>
-		`Full output (${totalLines} lines) saved to: ${outputFile}${chunkGuide ? `\n${chunkGuide}` : ""}`,
-	(totalLines: number, outputFile: string, chunkGuide: string) =>
-		`${totalLines} lines captured in ${outputFile}.${chunkGuide ? `\n${chunkGuide}` : ""}`,
-	(totalLines: number, outputFile: string, chunkGuide: string) =>
-		`Complete output saved to ${outputFile} (${totalLines} lines).${chunkGuide ? `\n${chunkGuide}` : ""}`,
+	(totalLines: number, streams: string) =>
+		`Full output (${totalLines} lines) saved as execution artifacts:\n${streams}`,
+	(totalLines: number, streams: string) =>
+		`${totalLines} lines captured in execution artifacts:\n${streams}`,
+	(totalLines: number, streams: string) =>
+		`Complete output saved (${totalLines} lines):\n${streams}`,
 ];
 
 /** truncated hint 模板：操作建议（隔轮后不需要） */
 const truncatedHintTemplates = [
-	`${IS_WINDOWS ? `Use pwsh -c "Get-Content <file> | Select-Object -Skip <start-1> -First <count>" to read a specific chunk.` : `Use sed -n '<start>,<end>p' <file> to read a specific chunk.`}\nOr write a script to extract key information — do NOT ${IS_WINDOWS ? "type" : "cat"} the full file.`,
-	`Prefer writing a script to extract what you need rather than reading raw output.${IS_WINDOWS ? `\nUse pwsh Select-Object for targeted reads.` : `\nUse sed for targeted reads.`}`,
-	`Use targeted reads or a script — avoid re-dumping the full file.`,
+	`Filter first with ${IS_WINDOWS ? "Select-String/jq" : "rg/jq"}, or explore sequentially with \`n0n read <file>\` and repeat using the reported \`nextCursor\`. Do not dump the full file.`,
+	"Prefer rg/jq or a script for targeted extraction. When you do not yet know what to search for, use `n0n read <file>` for bounded sequential reads.",
+	"Use targeted filtering or `n0n read`; avoid re-dumping the full artifact.",
 ];
 
 const diagnosticHintTemplates = [
@@ -126,10 +119,13 @@ export function formatExecResult(
 				tags.wrapTag(`${toolLabel}_meta`, metaFn(runtime, cwd, msg.durationMs)),
 			];
 
-			// PID + log file 路径：持久有效的客观信息，属于 fact
+			// PID + artifact 路径：持久有效的客观信息，属于 fact
 			const noticeFn = pick(backgroundedFactTemplates, msgIndex + 3);
 			factParts.push(
-				tags.wrapTag("waitfor_notice", noticeFn(msg.pid, msg.logFile)),
+				tags.wrapTag(
+					"waitfor_notice",
+					noticeFn(msg.pid, artifactDisplay(msg.artifact)),
+				),
 			);
 
 			if (msg.stdoutSoFar)
@@ -152,7 +148,13 @@ export function formatExecResult(
 			const factParts = [
 				tags.wrapTag(
 					`${toolLabel}_meta`,
-					metaFn(runtime, cwd, msg.exitCode, msg.durationMs, msg.outputFile),
+					metaFn(
+						runtime,
+						cwd,
+						msg.exitCode,
+						msg.durationMs,
+						artifactDisplay(msg.artifact),
+					),
 				),
 			];
 
@@ -173,14 +175,14 @@ export function formatExecResult(
 				factParts.push(tags.wrapTag("reason_internal", "[reason — internal]"));
 			}
 
-			// 输出文件路径和分块信息：持久有效，属于 fact
-			const chunkGuide = formatChunkGuide(msg.truncatedChunks, msg.outputFile);
+			const streams = artifactStreams(msg.artifact);
+			const streamText = [
+				`stdout: ${streams.stdout}`,
+				`stderr: ${streams.stderr}`,
+			].join("\n");
 			const truncFactFn = pick(truncatedFactTemplates, msgIndex + 3);
 			factParts.push(
-				tags.wrapTag(
-					"output_info",
-					truncFactFn(msg.totalLines, msg.outputFile, chunkGuide),
-				),
+				tags.wrapTag("output_info", truncFactFn(msg.totalLines, streamText)),
 			);
 
 			// 操作建议：隔轮后不需要

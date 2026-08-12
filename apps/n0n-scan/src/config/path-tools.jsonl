@@ -1,4 +1,4 @@
-{"type":"whitelist","tools":["git","rg","fd","fzf","jq","curl","wget","docker","kubectl","npm","pnpm","yarn","cargo","go","rustc","gcc","make","cmake","ssh","rsync","tar","zip","unzip","uv","bun","node","deno","python3","python","zstd","ffmpeg","ffplay","ffprobe","pandoc","markitdown","ppt2md","choco","gh","dotnet","openssl","sqlite3","xmake","nvim","tig","adb","fastboot","pwsh"]}
+{"type":"whitelist","tools":["n0n","git","rg","fd","fzf","jq","curl","wget","docker","kubectl","npm","pnpm","yarn","cargo","go","rustc","gcc","make","cmake","ssh","rsync","tar","zip","unzip","uv","bun","node","deno","python3","python","zstd","ffmpeg","ffplay","ffprobe","pandoc","markitdown","ppt2md","choco","gh","dotnet","openssl","sqlite3","xmake","nvim","tig","adb","fastboot","pwsh"]}
 {"type":"blacklist-dir-pattern","patterns":["\\\\windows\\\\","\\\\windows$","\\\\system32","\\\\syswow64","\\\\winsxs","\\\\windowsapps","\\\\servicing"]}
 {"type":"blacklist-dir-pattern","patterns":["\\.venv","\\\\node_modules\\\\","\\.bin$","\\\\jdk","\\\\java\\\\","\\\\mingw","\\\\msys"]}
 {"type":"blacklist-name-prefix","prefixes":["x86_64-w64-mingw32-","microsoft.","@"]}

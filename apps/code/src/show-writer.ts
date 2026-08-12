@@ -5,7 +5,7 @@
  * 每次 agent loop 完成后，将 show 结果写入 session 目录。
  */
 
-import { existsSync, mkdirSync, readdirSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import type { CodeShowResult } from "./schema.ts";
 import { formatShowResult } from "./show-formatter.ts";
@@ -14,24 +14,8 @@ export class ShowWriter {
 	private readonly sessionDir: string;
 	private seq = 0;
 
-	constructor(tempDir: string) {
-		this.sessionDir = this.createSessionDir(tempDir);
-	}
-
-	/** 自动递增的 session 目录编号 */
-	private createSessionDir(tempDir: string): string {
-		const nextId = (() => {
-			try {
-				const existing = readdirSync(tempDir)
-					.filter((d) => d.startsWith("session-"))
-					.map((d) => Number.parseInt(d.slice("session-".length), 10))
-					.filter((n) => !Number.isNaN(n));
-				return existing.length > 0 ? Math.max(...existing) + 1 : 1;
-			} catch {
-				return 1;
-			}
-		})();
-		return resolve(tempDir, `session-${String(nextId).padStart(4, "0")}`);
+	constructor(sessionDir: string) {
+		this.sessionDir = sessionDir;
 	}
 
 	/** 写入一条 show 结果到 session 目录 */

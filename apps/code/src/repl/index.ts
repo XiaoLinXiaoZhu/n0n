@@ -50,6 +50,7 @@ export interface CodeReplOptions {
 	userInputConfig?: UserInputConfig;
 	notifyConfig?: NotifyConfig;
 	expandExec?: boolean;
+	sessionDir: string;
 }
 
 type CodeWorkspacePaths = BaseWorkspacePaths;
@@ -105,7 +106,7 @@ export async function startCodeRepl(
 
 	const stdin = canInteract ? createStdinController() : null;
 	const prompter = new UserPrompter(stdin, userInputConfig);
-	const showWriter = new ShowWriter(paths.temp);
+	const showWriter = new ShowWriter(options.sessionDir);
 
 	// ── 心跳保活 ──
 

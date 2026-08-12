@@ -7,7 +7,7 @@ toolCallId: tc_5
 toolName: write
 
 --- content ---
-## write_result
+<write_result>
 `src/config.ts` created successfully
----
+</write_result>
 ```

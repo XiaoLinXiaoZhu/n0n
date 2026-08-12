@@ -14,7 +14,7 @@ import {
 	PlainRenderer,
 	type SecurityConfig,
 } from "@n0n/core";
-import type { BaseWorkspacePaths } from "@n0n/shared";
+import { type BaseWorkspacePaths, createSessionDir } from "@n0n/shared";
 import { loadInitSkills, toSkill } from "@n0n/skill";
 import { makeToolkit } from "@n0n/tools";
 import type { DomainMessage, LLMClient, Skill } from "@n0n/types";
@@ -92,6 +92,7 @@ export async function runHeadless(
 	const systemSkills: Skill[] = initSkills.map(toSkill);
 
 	const renderer = new PlainRenderer();
+	const sessionDir = createSessionDir(paths.temp);
 	const abortController = new AbortController();
 
 	// 超时控制
@@ -104,6 +105,7 @@ export async function runHeadless(
 		{
 			workspace: paths.workspace,
 			tempDir: paths.temp,
+			sessionDir,
 		},
 	);
 	const client = options.client;

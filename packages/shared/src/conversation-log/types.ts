@@ -23,7 +23,7 @@ export interface HumanReadableInfo {
 /** 对话日志完整结构 */
 export interface ConversationLog {
 	/** 格式版本，便于未来迁移 */
-	version: 1;
+	version: 2;
 	/** 仅供人类检查文件内容使用，程序不应消费此字段 */
 	humanReadable: HumanReadableInfo;
 	/** 完整消息历史 */

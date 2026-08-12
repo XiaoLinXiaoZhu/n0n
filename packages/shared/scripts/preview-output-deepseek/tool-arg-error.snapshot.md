@@ -4,10 +4,10 @@
 ```
 role: tool
 toolCallId: tc_err
-toolName: exec
+toolName: observe
 
 --- content ---
-## error
+<error>
 Bad tool args — script: Required
 
 Expected schema:
@@ -22,5 +22,5 @@ Expected schema:
     "script"
   ]
 }
----
+</error>
 ```

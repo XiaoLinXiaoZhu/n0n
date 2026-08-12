@@ -1,6 +1,11 @@
 import { describe, expect, it } from "bun:test";
+import { mkdtempSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import type { ToolArgErrorMessage, ToolCallRecord } from "@n0n/types";
 import { makeToolkit, type ToolJob } from "../index.ts";
+
+const SESSION_DIR = mkdtempSync(join(tmpdir(), "n0n-toolkit-"));
 
 const config = {
 	security: { blocked_commands: [] },
@@ -8,6 +13,7 @@ const config = {
 	platform: "darwin" as const,
 	workspace: process.cwd(),
 	tempDir: ".temp",
+	sessionDir: SESSION_DIR,
 };
 
 const showConfig = [

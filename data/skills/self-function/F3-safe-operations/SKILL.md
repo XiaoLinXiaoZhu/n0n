@@ -41,7 +41,9 @@ function: F3
 
 - 不使用 `sudo`，不修改系统文件
 - 运行在 `bun` 进程中。终止 bun 进程时按 PID 或端口定向终止——永远不 `killall bun` 或 `pkill bun`
-- `.temp/` 包含运行时产物。不删除或清理这些文件；需要时读取即可
+- `.temp/` 包含运行时产物。不删除或清理这些文件
+- execution artifact 位于 `.temp/session-*/exec/runs/*/`，其中 `result.json` 是状态元数据，`stdout.txt` / `stderr.txt` 是持续追加的原始输出
+- 检查后台任务时先读取 `result.json`，再用 `rg`、`jq` 或 `n0n read` 有界读取输出文件；不要 `cat` 整个 artifact
 - 遇到障碍时不走捷径。定位根因并修复底层问题，不绕过安全检查（如 --no-verify）。发现不熟悉的文件/分支/配置时先调查再决定。不理解的状态加 `// TODO review:` 标记
 
 ## 预防措施

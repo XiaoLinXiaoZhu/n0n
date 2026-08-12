@@ -4,7 +4,7 @@
 ```
 role: tool
 toolCallId: tc_err
-toolName: exec
+toolName: observe
 
 --- content ---
 <error>

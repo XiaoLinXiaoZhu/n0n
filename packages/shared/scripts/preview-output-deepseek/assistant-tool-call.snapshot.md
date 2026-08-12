@@ -6,7 +6,7 @@ role: assistant
 toolCalls: [
   {
     "id": "tc_1",
-    "tool": "exec",
+    "tool": "observe",
     "args": {
       "script": "cat src/auth.ts"
     }

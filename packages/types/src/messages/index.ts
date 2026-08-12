@@ -41,6 +41,7 @@ export type {
 	ActToolCall,
 	// Exec
 	ExecToolResult,
+	ExecutionArtifactRef,
 	MakeCall,
 	MakeResult,
 	MakeResultBase,

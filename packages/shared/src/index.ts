@@ -40,16 +40,15 @@ export {
 	type TagAdapter,
 	type TagStyle,
 } from "./tags.ts";
-export type { LineChunkInfo } from "./tokens.ts";
 export {
 	estimateTokens,
 	headByTokens,
-	splitLinesByTokenBudget,
 	tailByTokens,
 } from "./tokens.ts";
 // Workspace
 export type { BaseWorkspacePaths } from "./workspace.ts";
 export {
+	createSessionDir,
 	ensureDirs,
 	parseWorkspaceArg,
 	resolveBasePaths,

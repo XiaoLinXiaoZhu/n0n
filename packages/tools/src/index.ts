@@ -61,6 +61,7 @@ function buildBaseRegistry(
 	const execConfig = {
 		workspace: toolsConfig.workspace,
 		tempDir: toolsConfig.tempDir,
+		sessionDir: toolsConfig.sessionDir,
 		platform: toolsConfig.platform,
 		blocked_commands: toolsConfig.security.blocked_commands,
 		bgSyncIntervalMs: toolsConfig.bgSyncIntervalMs,

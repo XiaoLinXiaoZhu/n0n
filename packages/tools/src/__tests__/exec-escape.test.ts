@@ -9,6 +9,9 @@
  */
 
 import { describe, expect, test } from "bun:test";
+import { mkdtempSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { resolvePlatform } from "@n0n/shared";
 import { ExecArgsSchema, execToolStream } from "../exec";
 
@@ -18,6 +21,8 @@ interface TestCall {
 	tool: "observe";
 	args: { script: string; runtime?: string; cwd?: string; waitfor?: number };
 }
+
+const SESSION_DIR = mkdtempSync(join(tmpdir(), "n0n-exec-escape-"));
 
 /** 收集 exec 流式输出的最终结果 */
 async function collectExecResult(script: string, runtime?: string) {
@@ -30,6 +35,7 @@ async function collectExecResult(script: string, runtime?: string) {
 	for await (const event of execToolStream(call, undefined, {
 		workspace: process.cwd(),
 		tempDir: ".temp",
+		sessionDir: SESSION_DIR,
 		blocked_commands: [],
 		default_exec_waitfor: 120,
 		platform: resolvePlatform(),

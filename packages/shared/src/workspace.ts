@@ -7,7 +7,7 @@
  * 扩展路径集（如 WorkflowPaths）由各业务包自行定义。
  */
 
-import { existsSync, mkdirSync, statSync } from "node:fs";
+import { existsSync, mkdirSync, readdirSync, statSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 
 // ── 类型 ──
@@ -52,6 +52,22 @@ export function ensureDirs<T extends BaseWorkspacePaths>(paths: T): void {
 			mkdirSync(dir, { recursive: true });
 		}
 	}
+}
+
+/** 创建并返回递增编号的 session 目录。 */
+export function createSessionDir(tempDir: string): string {
+	mkdirSync(tempDir, { recursive: true });
+	const existing = readdirSync(tempDir)
+		.filter((name) => /^session-\d+$/.test(name))
+		.map((name) => Number.parseInt(name.slice("session-".length), 10))
+		.filter(Number.isFinite);
+	const next = existing.length > 0 ? Math.max(...existing) + 1 : 1;
+	const sessionDir = resolve(
+		tempDir,
+		`session-${String(next).padStart(4, "0")}`,
+	);
+	mkdirSync(sessionDir, { recursive: true });
+	return sessionDir;
 }
 
 // ── CLI 参数解析 ──

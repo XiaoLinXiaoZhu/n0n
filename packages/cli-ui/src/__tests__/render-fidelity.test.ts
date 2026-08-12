@@ -264,4 +264,11 @@ describe("RichRenderer 虚拟终端保真测试", () => {
 		const hasResult = cleanLines.some((l) => l.includes("show"));
 		expect(hasResult).toBe(true);
 	});
+
+	test("超长单行 exec 输出在折叠模式中使用有界预览", async () => {
+		const { boundExecPreviewLine } = await import("../rich-renderer.ts");
+		const preview = boundExecPreviewLine("x".repeat(100_000));
+		expect(preview).toContain("chars omitted");
+		expect(preview.length).toBeLessThan(4_200);
+	});
 });

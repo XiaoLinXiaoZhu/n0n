@@ -9,6 +9,7 @@ export type {
 	ExecToolName,
 	ExecToolResult,
 	ExecTruncated,
+	ExecutionArtifactRef,
 } from "./exec.ts";
 // 注册表核心
 export type {

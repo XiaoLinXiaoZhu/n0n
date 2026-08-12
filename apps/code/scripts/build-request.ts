@@ -109,7 +109,7 @@ const tempDir = resolve(workspace, ".temp");
 const toolsConfig = buildToolsConfig(
 	{ max_iterations: 1, max_idle_rounds: 1, default_exec_waitfor: 120 },
 	{ blocked_commands: [] },
-	{ workspace, tempDir },
+	{ workspace, tempDir, sessionDir: tempDir },
 );
 
 const toolkit = makeToolkit(showConfig, toolsConfig, mockClient.modelId);

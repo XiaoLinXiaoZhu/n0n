@@ -11,6 +11,16 @@ import type { MakeResult } from "./registry.ts";
 /** 共享此结果类型的工具名集合 */
 export type ExecToolName = "observe" | "reason" | "act";
 
+export interface ExecutionArtifactRef {
+	kind: "execution";
+	version: 1;
+	runId: string;
+	runDir: string;
+	stdoutFile: string;
+	stderrFile: string;
+	resultFile: string;
+}
+
 /** 正常完成，输出在阈值内 */
 export interface ExecCompleted extends MakeResult<ExecToolName, "completed"> {
 	exitCode: number;
@@ -27,7 +37,7 @@ export interface ExecTruncated extends MakeResult<ExecToolName, "truncated"> {
 	/** stderr 末尾截断内容 */
 	stderrTail: string;
 	/** 完整输出文件路径 */
-	outputFile: string;
+	artifact: ExecutionArtifactRef;
 	/** 原始 stdout 总字符数 */
 	stdoutLength: number;
 	/** 原始 stderr 总字符数 */
@@ -36,8 +46,6 @@ export interface ExecTruncated extends MakeResult<ExecToolName, "truncated"> {
 	totalLines: number;
 	/** 截断展示内容起始行号（从第几行开始展示） */
 	tailStartLine: number;
-	/** 被截断前半部分按 token 预算分块的行号范围，帮助模型精确分块读取 */
-	truncatedChunks: { startLine: number; endLine: number; tokens: number }[];
 	durationMs: number;
 }
 
@@ -46,8 +54,8 @@ export interface ExecBackgrounded
 	extends MakeResult<ExecToolName, "backgrounded"> {
 	/** 后台进程 PID */
 	pid: number;
-	/** 后台日志文件路径 */
-	logFile: string;
+	/** 持续更新的执行产物 */
+	artifact: ExecutionArtifactRef;
 	/** 超时前已捕获的 stdout */
 	stdoutSoFar: string;
 	/** 超时前已捕获的 stderr */
