@@ -16,12 +16,12 @@
       "type": "string"
     },
     "waitfor": {
-      "description": "Max seconds to wait for process (default: 120, max: 240). Process continues in background if exceeded.",
+      "description": "Max seconds to wait for the process (default: 20, max: 240). Exceeding it is a signal, not a failure: the process keeps running in the background and its PID and execution artifact are returned. Set this explicitly when you expect the command to take longer.",
       "type": "number",
       "maximum": 240
     },
     "output_tokens": {
-      "description": "Maximum estimated stdout+stderr tokens returned to the model (default: 5000, max: 32000). Full truncated output is saved as an execution artifact.",
+      "description": "Maximum estimated stdout+stderr tokens returned to the model (default: 5000, max: 32000). The budget covers both streams combined. Full output is saved as an execution artifact when truncated.",
       "type": "integer",
       "exclusiveMinimum": 0,
       "maximum": 32000
@@ -41,7 +41,9 @@
 ## description
 
 ````
-Execute actions that change environment state: run tests, build, commit, install dependencies, etc. Actions may be irreversible — verify your reasoning (via reason) before acting.
+Execute actions that change state: run tests, build, install dependencies, version control operations. Effects are real and may be irreversible.
+
+Calls run in submission order, so a call that depends on an earlier one can still be issued in the same response. Split into a separate response only when you must see a result before deciding what to do next.
 ````
 
 ## Full OpenAI function format
@@ -51,7 +53,7 @@ Execute actions that change environment state: run tests, build, commit, install
   "type": "function",
   "function": {
     "name": "act",
-    "description": "Execute actions that change environment state: run tests, build, commit, install dependencies, etc. Actions may be irreversible — verify your reasoning (via reason) before acting.",
+    "description": "Execute actions that change state: run tests, build, install dependencies, version control operations. Effects are real and may be irreversible.\n\nCalls run in submission order, so a call that depends on an earlier one can still be issued in the same response. Split into a separate response only when you must see a result before deciding what to do next.",
     "parameters": {
       "type": "object",
       "properties": {
@@ -64,12 +66,12 @@ Execute actions that change environment state: run tests, build, commit, install
           "type": "string"
         },
         "waitfor": {
-          "description": "Max seconds to wait for process (default: 120, max: 240). Process continues in background if exceeded.",
+          "description": "Max seconds to wait for the process (default: 20, max: 240). Exceeding it is a signal, not a failure: the process keeps running in the background and its PID and execution artifact are returned. Set this explicitly when you expect the command to take longer.",
           "type": "number",
           "maximum": 240
         },
         "output_tokens": {
-          "description": "Maximum estimated stdout+stderr tokens returned to the model (default: 5000, max: 32000). Full truncated output is saved as an execution artifact.",
+          "description": "Maximum estimated stdout+stderr tokens returned to the model (default: 5000, max: 32000). The budget covers both streams combined. Full output is saved as an execution artifact when truncated.",
           "type": "integer",
           "exclusiveMinimum": 0,
           "maximum": 32000

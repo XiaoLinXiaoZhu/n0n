@@ -16,12 +16,12 @@
       "type": "string"
     },
     "waitfor": {
-      "description": "Max seconds to wait for process (default: 60, max: 120). Process continues in background if exceeded.",
+      "description": "Max seconds to wait for the process (default: 20, max: 240). Exceeding it is a signal, not a failure: the process keeps running in the background and its PID and execution artifact are returned. Set this explicitly when you expect the command to take longer.",
       "type": "number",
       "maximum": 240
     },
     "output_tokens": {
-      "description": "Maximum estimated stdout+stderr tokens returned to the model (default: 5000, max: 32000). Full truncated output is saved as an execution artifact.",
+      "description": "Maximum estimated stdout+stderr tokens returned to the model (default: 5000, max: 32000). The budget covers both streams combined. Full output is saved as an execution artifact when truncated.",
       "type": "integer",
       "exclusiveMinimum": 0,
       "maximum": 32000
@@ -41,7 +41,9 @@
 ## description
 
 ````
-Read files, search code, or check environment state. No side effects — use this for gathering information only. Use rg/fd for project discovery, rg/jq/scripts for extraction, and output_tokens when complete bounded output is valuable.
+Read files, search code, or inspect environment state. No side effects — this tool only gathers information.
+
+Calls run in submission order, so a call that depends on an earlier one can still be issued in the same response. Split into a separate response only when you must see a result before deciding what to do next.
 ````
 
 ## Full OpenAI function format
@@ -51,7 +53,7 @@ Read files, search code, or check environment state. No side effects — use thi
   "type": "function",
   "function": {
     "name": "observe",
-    "description": "Read files, search code, or check environment state. No side effects — use this for gathering information only. Use rg/fd for project discovery, rg/jq/scripts for extraction, and output_tokens when complete bounded output is valuable.",
+    "description": "Read files, search code, or inspect environment state. No side effects — this tool only gathers information.\n\nCalls run in submission order, so a call that depends on an earlier one can still be issued in the same response. Split into a separate response only when you must see a result before deciding what to do next.",
     "parameters": {
       "type": "object",
       "properties": {
@@ -64,12 +66,12 @@ Read files, search code, or check environment state. No side effects — use thi
           "type": "string"
         },
         "waitfor": {
-          "description": "Max seconds to wait for process (default: 60, max: 120). Process continues in background if exceeded.",
+          "description": "Max seconds to wait for the process (default: 20, max: 240). Exceeding it is a signal, not a failure: the process keeps running in the background and its PID and execution artifact are returned. Set this explicitly when you expect the command to take longer.",
           "type": "number",
           "maximum": 240
         },
         "output_tokens": {
-          "description": "Maximum estimated stdout+stderr tokens returned to the model (default: 5000, max: 32000). Full truncated output is saved as an execution artifact.",
+          "description": "Maximum estimated stdout+stderr tokens returned to the model (default: 5000, max: 32000). The budget covers both streams combined. Full output is saved as an execution artifact when truncated.",
           "type": "integer",
           "exclusiveMinimum": 0,
           "maximum": 32000

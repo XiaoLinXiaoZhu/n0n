@@ -32,7 +32,7 @@ export const DEFAULT_CODE_SETTINGS: CodeSettingsDefaults = {
 	agent: {
 		max_iterations: 50,
 		max_idle_rounds: 5,
-		default_exec_waitfor: 120,
+		default_exec_waitfor: 20,
 		max_exec_output_tokens: 32_000,
 	},
 	security: {

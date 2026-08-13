@@ -71,11 +71,13 @@ function buildBaseRegistry(
 
 	// 动态注册 observe / reason / act — 通过 EXEC_ROLES 迭代生成，
 	// 每个工具使用统一的 execToolStream 后端，透传实际工具名作为执行角色。
+	// 默认值从配置传入，使工具描述与运行时行为一致。
 	const makeExecEntry = (role: ExecRole): ToolEntry => ({
 		definition: makeExecToolDefinition(
 			toolsConfig.platform,
 			role,
 			toolsConfig.agent.max_exec_output_tokens,
+			toolsConfig.agent.default_exec_waitfor,
 		),
 		execute: (tc, confirmFn) => {
 			const schema = makeExecArgsSchema(

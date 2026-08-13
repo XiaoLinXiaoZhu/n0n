@@ -119,7 +119,7 @@ const toolsConfig = buildToolsConfig(
 	{
 		max_iterations: 1,
 		max_idle_rounds: 1,
-		default_exec_waitfor: 120,
+		default_exec_waitfor: 20,
 		max_exec_output_tokens: 32_000,
 	},
 	{ blocked_commands: [] },

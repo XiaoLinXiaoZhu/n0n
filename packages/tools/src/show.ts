@@ -14,7 +14,7 @@ export interface ShowTypeConfig {
 	value: string;
 	/** 该 type 的含义说明（写入工具顶层 description） */
 	typeDesc: string;
-	/** 该 type 下 content 的格式说明（写入工具顶层 description） */
+	/** 该 type 下 content 的格式说明（写入工具顶层 description）；为空则不输出该行 */
 	contentDesc: string;
 }
 
@@ -30,7 +30,11 @@ export interface ShowTypeConfig {
  */
 export function makeShowTool(config: ShowTypeConfig[]): ToolDefinition {
 	const typeDocs = config
-		.map((c) => `- ${c.value}: ${c.typeDesc}\n  content: ${c.contentDesc}`)
+		.map((c) =>
+			c.contentDesc
+				? `- ${c.value}: ${c.typeDesc}\n  content: ${c.contentDesc}`
+				: `- ${c.value}: ${c.typeDesc}`,
+		)
 		.join("\n");
 
 	const description = [

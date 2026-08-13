@@ -14,7 +14,7 @@ export type SkillActivation = (typeof SKILL_ACTIVATIONS)[number];
 /**
  * Skill 分类 — 由父目录名推断
  *
- * - self-function: IE 驱动的核心功能文档（F0-F5）。作为 init skill 启动时自动加载。
+ * - self-function: 按动作对象组织的质量标准（总则、D1-D5 与规范性附录）。作为 init skill 启动时自动加载。
  * - task: 指向具体任务的完整 SOP，有步骤序列和退出条件。需 @name 触发。
  * - directive: 改变交互行为模式，不定义任务。可与其他类型堆叠。
  * - capability: 赋予使用特定工具/API/外部系统的操作能力，通常包含脚本。
