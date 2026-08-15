@@ -8,6 +8,7 @@
 import {
 	existsSync,
 	mkdirSync,
+	readdirSync,
 	renameSync,
 	rmSync,
 	unlinkSync,
@@ -64,12 +65,37 @@ interface ArtifactContext {
 	result: ArtifactResult;
 }
 
-function createArtifact(sessionDir: string, pidHint: string): ArtifactContext {
-	const runsDir = join(sessionDir, "exec", "runs");
+/**
+ * 分配下一个 run 序号并原子创建其目录。
+ *
+ * 不引入独立计数器状态——runs 目录自身即状态。起点取"现有数字目录最大序号
+ * +1"（索引单调递增、不回填已删除 run 留下的空洞），再用 mkdir 的原子性
+ * 完成并发占用：mkdir 成功即占用该序号，遇 EEXIST 则递增重试。
+ */
+function allocateRunDir(runsDir: string): { runId: string; runDir: string } {
 	mkdirSync(runsDir, { recursive: true });
-	const runId = `${Date.now()}-${pidHint}-${Math.random().toString(36).slice(2, 8)}`;
-	const runDir = join(runsDir, runId);
-	mkdirSync(runDir, { recursive: true });
+	let next = 1;
+	for (const name of readdirSync(runsDir)) {
+		if (!/^\d+$/.test(name)) continue;
+		const n = Number.parseInt(name, 10);
+		if (n >= next) next = n + 1;
+	}
+	for (;;) {
+		const runId = String(next).padStart(4, "0");
+		const runDir = join(runsDir, runId);
+		try {
+			mkdirSync(runDir);
+			return { runId, runDir };
+		} catch (err) {
+			if ((err as NodeJS.ErrnoException).code !== "EEXIST") throw err;
+			next++;
+		}
+	}
+}
+
+function createArtifact(sessionDir: string): ArtifactContext {
+	const runsDir = join(sessionDir, "exec", "runs");
+	const { runId, runDir } = allocateRunDir(runsDir);
 	const stdoutFile = join(runDir, "stdout.txt");
 	const stderrFile = join(runDir, "stderr.txt");
 	const resultFile = join(runDir, "result.json");
@@ -261,7 +287,7 @@ export async function* execToolStream(
 		scriptDir,
 		`_n0n_exec_${Date.now()}_${Math.random().toString(36).slice(2, 8)}${ext}`,
 	);
-	const artifact = createArtifact(toolsConfig.sessionDir, call.id);
+	const artifact = createArtifact(toolsConfig.sessionDir);
 	writeArtifactResult(artifact);
 	let cleanupTempFile = true;
 	let keepArtifact = false;
