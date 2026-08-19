@@ -18,7 +18,7 @@ activation: manual
 用 `observe` 读取当前会话的工具调用日志。不依赖 CoT，不信任 agent 的自我陈述。
 
 ```bash
-rg "act|write" .temp/ --include="*.log" -n
+rg "act|write" .n0n/sessions/ --include="*.log" -n
 git diff HEAD
 ```
 

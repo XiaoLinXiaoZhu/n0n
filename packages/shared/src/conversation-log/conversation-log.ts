@@ -8,7 +8,7 @@
  * 其中 timestamp 为紧凑格式（如 20250320-181500）。
  */
 
-import { readFileSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import type { DomainMessage } from "@n0n/types";
 import type { ConversationLog } from "./types.ts";
@@ -43,7 +43,7 @@ export function generateLogFileName(): string {
  *
  * @param history 完整的 DomainMessage 历史
  * @param workspace 当前工作区路径
- * @param outputDir 输出目录（通常为工作区根目录）
+ * @param outputDir 输出目录（通常为当前 session 目录）
  * @param fileName 可选的文件名，默认自动生成带时间戳的文件名
  * @returns 写入的文件绝对路径
  */
@@ -64,6 +64,7 @@ export function saveConversation(
 	};
 
 	const name = fileName ?? generateLogFileName();
+	mkdirSync(outputDir, { recursive: true });
 	const filePath = resolve(outputDir, name);
 	writeFileSync(filePath, JSON.stringify(log, null, 2), "utf-8");
 	return filePath;

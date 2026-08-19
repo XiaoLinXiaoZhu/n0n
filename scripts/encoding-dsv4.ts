@@ -7,9 +7,9 @@
  * 3. 预览模型实际看到的格式化结果（CLI 模式）
  *
  * 用法：
- *   bun run scripts/encoding-dsv4.ts                                    # 读取默认 .temp/code-request.json
- *   bun run scripts/encoding-dsv4.ts --json .temp/code-request.json     # 指定请求 JSON
- *   bun run scripts/encoding-dsv4.ts --out .temp/dsv4-prompt.md         # 指定输出路径
+ *   bun run scripts/encoding-dsv4.ts                                                     # 读取默认 preview session
+ *   bun run scripts/encoding-dsv4.ts --json .n0n/previews/preview-session/code-request.json
+ *   bun run scripts/encoding-dsv4.ts --out .n0n/previews/preview-session/dsv4-prompt.md
  *   bun run scripts/encoding-dsv4.ts --thinking-mode chat               # 指定 thinking mode
  *   bun run scripts/encoding-dsv4.ts --drop-thinking false              # 不丢弃历史 thinking
  *   bun run scripts/encoding-dsv4.ts --reasoning-effort max             # 设置 reasoning effort
@@ -600,8 +600,12 @@ async function main() {
 		return args[idx + 1] !== "false";
 	}
 
-	const jsonPath = resolve(getArg("--json", ".temp/code-request.json"));
-	const outPath = resolve(getArg("--out", ".temp/dsv4-prompt.md"));
+	const jsonPath = resolve(
+		getArg("--json", ".n0n/previews/preview-session/code-request.json"),
+	);
+	const outPath = resolve(
+		getArg("--out", ".n0n/previews/preview-session/dsv4-prompt.md"),
+	);
 	const thinkingMode = getArg("--thinking-mode", "thinking") as ThinkingMode;
 	const dropThinking = getBoolArg("--drop-thinking", true);
 	const effort = getArg("--reasoning-effort", "null");

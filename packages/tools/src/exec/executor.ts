@@ -233,7 +233,6 @@ export async function* execToolStream(
 	confirmFn: ((question: string) => Promise<string>) | undefined,
 	toolsConfig: {
 		workspace: string;
-		tempDir: string;
 		sessionDir: string;
 		blocked_commands: string[];
 		default_exec_waitfor: number;
@@ -278,8 +277,6 @@ export async function* execToolStream(
 		}
 	}
 
-	const tempDir = resolve(toolsConfig.tempDir);
-	mkdirSync(tempDir, { recursive: true });
 	const scriptDir = resolve(cwd);
 	if (!existsSync(scriptDir)) mkdirSync(scriptDir, { recursive: true });
 	const ext = RUNTIME_EXT[runtime] ?? "";

@@ -49,7 +49,8 @@ const userMessage = getArg(
 // ── 输出路径 ──
 
 const workspace = process.cwd();
-const outPath = resolve(workspace, ".temp/code-request.json");
+const sessionDir = resolve(workspace, ".n0n", "previews", "preview-session");
+const outPath = resolve(sessionDir, "code-request.json");
 
 // ── Mock LLMClient ──
 
@@ -105,7 +106,6 @@ const systemMessage: DomainMessage = {
 	skills: initSkills.map(toSkill),
 };
 
-const tempDir = resolve(workspace, ".temp");
 const toolsConfig = buildToolsConfig(
 	{
 		max_iterations: 1,
@@ -114,7 +114,7 @@ const toolsConfig = buildToolsConfig(
 		max_exec_output_tokens: 32_000,
 	},
 	{ blocked_commands: [] },
-	{ workspace, tempDir, sessionDir: tempDir },
+	{ workspace, sessionDir },
 );
 
 const toolkit = makeToolkit(showConfig, toolsConfig, mockClient.modelId);

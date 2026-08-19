@@ -39,7 +39,6 @@ async function collectResult(
 		undefined,
 		{
 			workspace: process.cwd(),
-			tempDir: ".temp",
 			sessionDir: SESSION_DIR,
 			blocked_commands: [],
 			default_exec_waitfor: waitfor,

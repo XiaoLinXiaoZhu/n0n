@@ -60,7 +60,6 @@ function buildBaseRegistry(
 ): Record<string, ToolEntry> {
 	const execConfig = {
 		workspace: toolsConfig.workspace,
-		tempDir: toolsConfig.tempDir,
 		sessionDir: toolsConfig.sessionDir,
 		platform: toolsConfig.platform,
 		blocked_commands: toolsConfig.security.blocked_commands,
@@ -124,7 +123,7 @@ export interface Toolkit {
  * 构建完整的工具集（含 show）。
  *
  * @param showConfig show 工具的 type 配置列表。
- * @param toolsConfig 工具配置，包含 workspace、tempDir、security 等。
+ * @param toolsConfig 工具配置，包含 workspace、sessionDir、security 等。
  * @param model LLM 模型名称（可选，保留接口兼容）。
  */
 export function makeToolkit(

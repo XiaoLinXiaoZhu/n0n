@@ -12,7 +12,6 @@ const config = {
 	agent: { default_exec_waitfor: 10, max_exec_output_tokens: 32_000 },
 	platform: "darwin" as const,
 	workspace: process.cwd(),
-	tempDir: ".temp",
 	sessionDir: SESSION_DIR,
 };
 

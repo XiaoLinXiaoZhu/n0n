@@ -101,7 +101,10 @@ export async function startCodeRepl(
 
 	const canInteract = typeof process.stdin.setRawMode === "function";
 	const renderer = canInteract
-		? new CodeRenderer(paths, { expandExec })
+		? new CodeRenderer(paths, {
+				expandExec,
+				sessionDir: options.sessionDir,
+			})
 		: new PlainRenderer();
 
 	const stdin = canInteract ? createStdinController() : null;
@@ -181,7 +184,7 @@ export async function startCodeRepl(
 					const filePath = saveConversation(
 						history,
 						paths.workspace,
-						paths.workspace,
+						options.sessionDir,
 					);
 					writeln(`${style.green("✓")} 对话已保存到 ${style.cyan(filePath)}`);
 				} catch (err) {
@@ -274,7 +277,7 @@ export async function startCodeRepl(
 					saveConversation(
 						history,
 						paths.workspace,
-						paths.workspace,
+						options.sessionDir,
 						"n0n-conversation-latest.json",
 					);
 				} catch {

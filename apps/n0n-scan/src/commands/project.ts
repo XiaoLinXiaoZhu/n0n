@@ -76,7 +76,7 @@ async function codebaseSection(cwd: string): Promise<string> {
 	const IGNORE = new Set([
 		"node_modules",
 		".git",
-		".temp",
+		".n0n",
 		"dist",
 		".turbo",
 		"bun.lock",

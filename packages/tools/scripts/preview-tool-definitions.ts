@@ -22,8 +22,12 @@ const toolkit = makeToolkit(
 	showConfig,
 	{
 		workspace: process.cwd(),
-		tempDir: join(process.cwd(), ".temp"),
-		sessionDir: join(process.cwd(), ".temp", "preview-session"),
+		sessionDir: join(
+			process.cwd(),
+			".n0n",
+			"previews",
+			"preview-session",
+		),
 		platform: resolvePlatform(),
 		security: { blocked_commands: [] },
 		agent: { default_exec_waitfor: 20, max_exec_output_tokens: 32_000 },

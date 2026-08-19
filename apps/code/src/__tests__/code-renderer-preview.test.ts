@@ -15,8 +15,14 @@ import { formatShowResult } from "../show-formatter.ts";
 
 // ── 测试用临时目录 ──
 const TEST_WORKSPACE = join(import.meta.dir, ".tmp-preview-test");
-const TEST_TEMP = join(TEST_WORKSPACE, ".temp");
-const TEST_PATHS = { workspace: TEST_WORKSPACE, temp: TEST_TEMP };
+const TEST_SESSIONS = join(TEST_WORKSPACE, ".n0n", "sessions");
+const TEST_SESSION = join(TEST_SESSIONS, "session-0001");
+const TEST_PATHS = {
+	workspace: TEST_WORKSPACE,
+	n0n: join(TEST_WORKSPACE, ".n0n"),
+	sessions: TEST_SESSIONS,
+};
+const TEST_RENDERER_OPTIONS = { sessionDir: TEST_SESSION };
 
 function cleanup() {
 	if (existsSync(TEST_WORKSPACE)) {
@@ -94,7 +100,7 @@ function simulateStream(
 
 describe("CodeRenderer 流式 write 预览", () => {
 	test("BUG 复现：path 不应在值未完整时被锁定", () => {
-		const renderer = new CodeRenderer(TEST_PATHS);
+		const renderer = new CodeRenderer(TEST_PATHS, TEST_RENDERER_OPTIONS);
 
 		// 模拟 LLM 逐 chunk 输出 {"path": "tsconfig.json", "content": "{}"}
 		simulateStream(
@@ -118,7 +124,7 @@ describe("CodeRenderer 流式 write 预览", () => {
 	});
 
 	test("path 在 content key 出现后才锁定", () => {
-		const renderer = new CodeRenderer(TEST_PATHS);
+		const renderer = new CodeRenderer(TEST_PATHS, TEST_RENDERER_OPTIONS);
 
 		renderer.toolCallArgStart(0, "write");
 		renderer.toolCallArgChunk(0, '{"path": "sr');
@@ -142,7 +148,7 @@ describe("CodeRenderer 流式 write 预览", () => {
 	});
 
 	test("非 write 工具不触发预览", () => {
-		const renderer = new CodeRenderer(TEST_PATHS);
+		const renderer = new CodeRenderer(TEST_PATHS, TEST_RENDERER_OPTIONS);
 
 		simulateStream(renderer, 0, "observe", ['{"script": "echo hello"}'], {
 			script: "echo hello",
@@ -152,7 +158,7 @@ describe("CodeRenderer 流式 write 预览", () => {
 	});
 
 	test("流中断时 path 未完整不写入", () => {
-		const renderer = new CodeRenderer(TEST_PATHS);
+		const renderer = new CodeRenderer(TEST_PATHS, TEST_RENDERER_OPTIONS);
 
 		renderer.toolCallArgStart(0, "write");
 		renderer.toolCallArgChunk(0, '{"path": "te');
@@ -162,7 +168,7 @@ describe("CodeRenderer 流式 write 预览", () => {
 	});
 
 	test("aborted 时清理状态不触发额外写入", () => {
-		const renderer = new CodeRenderer(TEST_PATHS);
+		const renderer = new CodeRenderer(TEST_PATHS, TEST_RENDERER_OPTIONS);
 
 		// path 和 content 都已出现，流式预览已触发写入
 		renderer.toolCallArgStart(0, "write");

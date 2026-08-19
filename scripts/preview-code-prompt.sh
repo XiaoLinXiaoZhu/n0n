@@ -19,22 +19,22 @@ echo ""
 echo "==> Step 2a: Rendering with Qwen chat template..."
 uv run scripts/render-chat-template.py \
   --template scripts/chat_template_qwen.jinja \
-  --out .temp/rendered-prompt-qwen.md
+  --out .n0n/previews/preview-session/rendered-prompt-qwen.md
 
 echo ""
 echo "==> Step 2b: Rendering with GLM chat template..."
 uv run scripts/render-chat-template.py \
   --template scripts/chat_template_glm.jinja \
-  --out .temp/rendered-prompt-glm.md
+  --out .n0n/previews/preview-session/rendered-prompt-glm.md
 
 echo ""
 echo "==> Step 2c: Rendering with Claude chat template (approximate)..."
 uv run scripts/render-chat-template.py \
   --template scripts/chat_template_claude.jinja \
-  --out .temp/rendered-prompt-claude.md
+  --out .n0n/previews/preview-session/rendered-prompt-claude.md
 
 echo ""
 echo "==> Done."
-echo "  Qwen output:   .temp/rendered-prompt-qwen.md"
-echo "  GLM  output:   .temp/rendered-prompt-glm.md"
-echo "  Claude output:  .temp/rendered-prompt-claude.md"
+echo "  Qwen output:   .n0n/previews/preview-session/rendered-prompt-qwen.md"
+echo "  GLM  output:   .n0n/previews/preview-session/rendered-prompt-glm.md"
+echo "  Claude output:  .n0n/previews/preview-session/rendered-prompt-claude.md"

@@ -92,7 +92,7 @@ export async function runHeadless(
 	const systemSkills: Skill[] = initSkills.map(toSkill);
 
 	const renderer = new PlainRenderer();
-	const sessionDir = createSessionDir(paths.temp);
+	const sessionDir = createSessionDir(paths.sessions);
 	const abortController = new AbortController();
 
 	// 超时控制
@@ -104,7 +104,6 @@ export async function runHeadless(
 		options.securityConfig,
 		{
 			workspace: paths.workspace,
-			tempDir: paths.temp,
 			sessionDir,
 		},
 	);

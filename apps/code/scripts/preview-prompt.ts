@@ -114,7 +114,7 @@ const systemMessage: DomainMessage = {
 	skills: initSkills.map(toSkill),
 };
 
-const tempDir = resolve(workspace, ".temp");
+const sessionDir = resolve(workspace, ".n0n", "previews", "preview-session");
 const toolsConfig = buildToolsConfig(
 	{
 		max_iterations: 1,
@@ -123,7 +123,7 @@ const toolsConfig = buildToolsConfig(
 		max_exec_output_tokens: 32_000,
 	},
 	{ blocked_commands: [] },
-	{ workspace, tempDir, sessionDir: tempDir },
+	{ workspace, sessionDir },
 );
 
 const toolkit = makeToolkit(showConfig, toolsConfig, mockClient.modelId);

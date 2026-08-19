@@ -36,7 +36,7 @@ activation: manual
 
 ### 3. 撰写交接文档
 
-写入文件（路径由用户指定或使用 `.temp/handoff-<timestamp>.md`）。
+写入文件（路径由用户指定或使用 `.n0n/manual/handoff-<timestamp>.md`）。
 
 ```markdown
 ## 当前状态

@@ -72,7 +72,7 @@ async function startConfiguredCode(
 
 	const paths = resolveBasePaths(workspace);
 	ensureDirs(paths);
-	const sessionDir = createSessionDir(paths.temp);
+	const sessionDir = createSessionDir(paths.sessions);
 
 	const formatOptions: FormatOptions = {
 		strip_hint: settings.strip_hint,
@@ -83,7 +83,6 @@ async function startConfiguredCode(
 	);
 	const toolsConfig = buildToolsConfig(settings.agent, settings.security, {
 		workspace: paths.workspace,
-		tempDir: paths.temp,
 		sessionDir,
 	});
 	const notifyConfig: NotifyConfig = {

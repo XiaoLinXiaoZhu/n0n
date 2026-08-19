@@ -16,8 +16,10 @@ import { dirname, resolve } from "node:path";
 export interface BaseWorkspacePaths {
 	/** 工作区根目录（绝对路径） */
 	workspace: string;
-	/** 临时文件目录 */
-	temp: string;
+	/** n0n 项目目录 */
+	n0n: string;
+	/** 会话目录根路径 */
+	sessions: string;
 }
 
 // ── 平台 ──
@@ -37,9 +39,11 @@ export function resolvePlatform(): "win32" | "darwin" | "linux" {
 /** 解析 base 路径 — 最小路径集 */
 export function resolveBasePaths(workspace: string): BaseWorkspacePaths {
 	const ws = resolve(workspace);
+	const n0n = resolve(ws, ".n0n");
 	return {
 		workspace: ws,
-		temp: resolve(ws, ".temp"),
+		n0n,
+		sessions: resolve(n0n, "sessions"),
 	};
 }
 
@@ -55,19 +59,36 @@ export function ensureDirs<T extends BaseWorkspacePaths>(paths: T): void {
 }
 
 /** 创建并返回递增编号的 session 目录。 */
-export function createSessionDir(tempDir: string): string {
-	mkdirSync(tempDir, { recursive: true });
-	const existing = readdirSync(tempDir)
+export function createSessionDir(sessionsDir: string): string {
+	mkdirSync(sessionsDir, { recursive: true });
+	const existing = readdirSync(sessionsDir)
 		.filter((name) => /^session-\d+$/.test(name))
 		.map((name) => Number.parseInt(name.slice("session-".length), 10))
 		.filter(Number.isFinite);
 	const next = existing.length > 0 ? Math.max(...existing) + 1 : 1;
-	const sessionDir = resolve(
-		tempDir,
-		`session-${String(next).padStart(4, "0")}`,
-	);
-	mkdirSync(sessionDir, { recursive: true });
-	return sessionDir;
+	let index = next;
+	while (true) {
+		const sessionDir = resolve(
+			sessionsDir,
+			`session-${String(index).padStart(4, "0")}`,
+		);
+		try {
+			// 非递归 mkdir 是分配 session 的原子占位操作。并发启动时，
+			// 只有一个进程能成功创建候选目录，其他进程捕获 EEXIST 后继续递增。
+			mkdirSync(sessionDir);
+			return sessionDir;
+		} catch (error) {
+			if (
+				error instanceof Error &&
+				"code" in error &&
+				error.code === "EEXIST"
+			) {
+				index += 1;
+				continue;
+			}
+			throw error;
+		}
+	}
 }
 
 // ── CLI 参数解析 ──

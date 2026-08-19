@@ -8,6 +8,9 @@ package-lock.json
 *.log
 _n0n_exec_*
 .temp/
+.n0n/sessions/
+.n0n/manual/
+.n0n/previews/
 workflows/
 .runtime/**
 !.runtime/feishu/

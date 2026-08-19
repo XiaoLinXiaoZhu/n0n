@@ -39,6 +39,11 @@ interface WritePreview {
 /** 写入节流间隔（ms）— 避免过于频繁的磁盘写入 */
 const THROTTLE_MS = 100;
 
+export interface CodeRendererOptions extends RichRendererOptions {
+	/** 当前会话目录，用于存放尚未解析出目标路径的流式预览 */
+	sessionDir: string;
+}
+
 /** partial-json 解析出的 write 工具参数（字段可能不完整） */
 function isWritePreviewArgs(v: unknown): v is Record<string, unknown> {
 	return v !== null && typeof v === "object" && !Array.isArray(v);
@@ -47,12 +52,14 @@ function isWritePreviewArgs(v: unknown): v is Record<string, unknown> {
 export class CodeRenderer extends RichRenderer {
 	/** 活跃的 write 预览（index → preview state） */
 	private previews = new Map<number, WritePreview>();
+	private readonly sessionDir: string;
 
 	constructor(
 		private readonly paths: BaseWorkspacePaths,
-		options?: RichRendererOptions,
+		options: CodeRendererOptions,
 	) {
 		super(options);
+		this.sessionDir = options.sessionDir;
 	}
 
 	override toolCallArgStart(index: number, name: string): void {
@@ -146,7 +153,7 @@ export class CodeRenderer extends RichRenderer {
 				// content 先到 — 使用临时预览路径，永不锁定 path
 				preview.mode = "content-first";
 				preview.tempPreviewPath = resolve(
-					this.paths.temp,
+					this.sessionDir,
 					"write-stream-previews",
 					`write-stream-preview-${index}`,
 				);

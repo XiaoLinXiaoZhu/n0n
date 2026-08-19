@@ -40,7 +40,6 @@ async function collectWithHardTimeout(
 	const execPromise = (async () => {
 		for await (const event of execToolStream(call, undefined, {
 			workspace: process.cwd(),
-			tempDir: ".temp",
 			sessionDir: SESSION_DIR,
 			blocked_commands: [],
 			default_exec_waitfor: execWaitfor,
