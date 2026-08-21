@@ -14,19 +14,16 @@ import type {
 export class PlainRenderer implements Renderer {
 	userMessage(_content: string): void {}
 
-	roundStart(
-		round: number,
-		maxRounds: number,
-		msgCount: number,
-		lastUsage?: RoundTokenUsage | null,
-	): void {
-		const usagePart = lastUsage ? ` | ${lastUsage.totalTokens} tok` : "";
-		console.error(
-			`  [agent] round ${round}/${maxRounds} (${msgCount} msgs${usagePart})`,
-		);
+	roundStart(round: number, maxRounds: number, msgCount: number): void {
+		console.error(`  [agent] round ${round}/${maxRounds} (${msgCount} msgs)`);
 	}
 
-	roundEnd(): void {}
+	roundEnd(usage?: RoundTokenUsage | null): void {
+		if (!usage) return;
+		console.error(
+			`  [agent] usage: ${usage.totalTokens} tok, cache read=${usage.cacheReadTokens}, write=${usage.cacheWriteTokens}`,
+		);
+	}
 
 	thinkingStart(): void {}
 	thinkingChunk(_token: string): void {}

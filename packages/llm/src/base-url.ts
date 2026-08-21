@@ -1,5 +1,5 @@
 /**
- * 规范化的 API Base URL — 保证是合法的 URL 对象且不含尾部 /v1、/messages、/chat/completions 和 /。
+ * 规范化的 API Base URL — 保证是合法的 URL 对象且不含尾部 /v1、/messages、/responses、/chat/completions 和 /。
  *
  * Branded type：URL 子类型，可直接用于 fetch()。
  * 只能通过 parseBaseUrl 构造，类型系统保证下游不会误用原始字符串。
@@ -25,6 +25,7 @@ export function parseBaseUrl(raw: string): BaseUrlResult {
 	const normalized = raw
 		.replace(/\/chat\/completions\/?$/, "")
 		.replace(/\/messages\/?$/, "")
+		.replace(/\/responses\/?$/, "")
 		.replace(/\/v1\/?$/, "")
 		.replace(/\/$/, "");
 
@@ -45,6 +46,11 @@ function appendPath(baseUrl: BaseUrl, suffix: string): URL {
 /** Chat Completions 端点（OpenAI 兼容协议） */
 export function chatCompletionsUrl(baseUrl: BaseUrl): URL {
 	return appendPath(baseUrl, "/v1/chat/completions");
+}
+
+/** Responses 端点 */
+export function responsesUrl(baseUrl: BaseUrl): URL {
+	return appendPath(baseUrl, "/v1/responses");
 }
 
 /** Messages 端点（Anthropic 协议） */

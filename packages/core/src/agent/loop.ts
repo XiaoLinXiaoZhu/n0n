@@ -19,7 +19,7 @@ import type {
 	ToolCallRecord,
 	ToolDefinition,
 } from "@n0n/types";
-import { FinishReason, findLastUsage } from "@n0n/types";
+import { FinishReason } from "@n0n/types";
 
 import { PlainRenderer } from "../ui/renderer.ts";
 import {
@@ -78,12 +78,7 @@ export async function agentLoop<T = unknown>(
 			};
 		}
 
-		renderer.roundStart(
-			iter + 1,
-			maxIter,
-			messages.length,
-			findLastUsage(messages),
-		);
+		renderer.roundStart(iter + 1, maxIter, messages.length);
 
 		// ── 1. 流式解析 + 并行执行（交织进行） ──
 		const scheduler = new ExecutionScheduler({
@@ -169,9 +164,9 @@ export async function agentLoop<T = unknown>(
 				messages.push(outcome.assistantMessage);
 			}
 			pushTokenUsage(messages, roundUsage, roundFinishReason);
+			renderer.roundEnd(roundUsage);
 			if (outcome.reason === "aborted") renderer.aborted();
 			else renderer.agentTerminated(outcome.reason);
-			renderer.roundEnd();
 			return {
 				result: null,
 				report: outcome.report,
@@ -186,8 +181,8 @@ export async function agentLoop<T = unknown>(
 			pushTokenUsage(messages, roundUsage, roundFinishReason);
 			idleCount++;
 			if (idleCount >= maxIdleRounds) {
+				renderer.roundEnd(roundUsage);
 				renderer.agentTerminated("max idle rounds exceeded (no tool calls)");
-				renderer.roundEnd();
 				return {
 					result: null,
 					report: `Agent terminated: max idle rounds exceeded. Last content: ${(result.accumulator.content || "").slice(0, 200)}`,
@@ -200,7 +195,7 @@ export async function agentLoop<T = unknown>(
 				idleCount,
 				maxIdleRounds: maxIdleRounds,
 			});
-			renderer.roundEnd();
+			renderer.roundEnd(roundUsage);
 			continue;
 		}
 
@@ -209,7 +204,7 @@ export async function agentLoop<T = unknown>(
 			messages.push(outcome.assistantMessage);
 			messages.push(outcome.retryMessage);
 			pushTokenUsage(messages, roundUsage, roundFinishReason);
-			renderer.roundEnd();
+			renderer.roundEnd(roundUsage);
 			continue;
 		}
 
@@ -226,7 +221,7 @@ export async function agentLoop<T = unknown>(
 		];
 
 		if (allCalls.length === 0) {
-			renderer.roundEnd();
+			renderer.roundEnd(roundUsage);
 			continue;
 		}
 
@@ -246,8 +241,8 @@ export async function agentLoop<T = unknown>(
 		// ── 7. 检测 show 调用 → 终止循环并返回结果 ──
 		for (const job of scheduler.orderedJobs()) {
 			if (job.status === "completed" && job.result.tool === "show") {
+				renderer.roundEnd(roundUsage);
 				renderer.showAccepted();
-				renderer.roundEnd();
 				return {
 					result: job.result.cleanedResult as T,
 					report: null,
@@ -257,7 +252,7 @@ export async function agentLoop<T = unknown>(
 			}
 		}
 
-		renderer.roundEnd();
+		renderer.roundEnd(roundUsage);
 	}
 
 	return {

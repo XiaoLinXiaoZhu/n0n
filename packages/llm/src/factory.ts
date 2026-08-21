@@ -17,6 +17,7 @@ import { DeepSeekClient } from "./deepseek-client";
 import { GeminiClient } from "./gemini-client";
 import { OpenAIClient } from "./openai-client";
 import { OpenAICompatibleClient } from "./openai-compatible-client";
+import { OpenAIResponseClient } from "./openai-response-client";
 
 /** 格式化函数类型 — DomainMessage[] → PromptMessage[] */
 export type FormatFn = (messages: DomainMessage[]) => PromptMessage[];
@@ -40,6 +41,8 @@ export function createLLMClient(
 	switch (pc.provider) {
 		case "openai":
 			return new OpenAIClient(pc, format);
+		case "openai-response":
+			return new OpenAIResponseClient(pc, format);
 		case "openai-compatible":
 			return new OpenAICompatibleClient(pc, format);
 		case "anthropic":

@@ -75,15 +75,10 @@ export interface Renderer
 	userMessage(content: string): void;
 
 	/** 新一轮开始 */
-	roundStart(
-		round: number,
-		maxRounds: number,
-		msgCount: number,
-		lastUsage?: RoundTokenUsage | null,
-	): void;
+	roundStart(round: number, maxRounds: number, msgCount: number): void;
 
-	/** 本轮结束 */
-	roundEnd(): void;
+	/** 本轮结束，同时展示本轮实际 token/cache 用量 */
+	roundEnd(usage?: RoundTokenUsage | null): void;
 
 	/**
 	 * LLM 流式输出全部结束（阶段终结信号）

@@ -204,26 +204,20 @@ export class RichRenderer implements Renderer {
 		writeln(content);
 	}
 
-	roundStart(
-		round: number,
-		maxRounds: number,
-		msgCount: number,
-		lastUsage?: RoundTokenUsage | null,
-	): void {
+	roundStart(round: number, maxRounds: number, msgCount: number): void {
 		this.hadStreamingArgs = false;
 		this.renderBuffer.reset();
 		writeln();
 		write(label.agent());
 
 		const roundInfo = `round ${round}/${maxRounds} (${msgCount} msgs)`;
-		if (lastUsage) {
-			writeln(style.gray(`  ${roundInfo} · ${formatUsageSummary(lastUsage)}`));
-		} else {
-			writeln(style.gray(`  ${roundInfo}`));
-		}
+		writeln(style.gray(`  ${roundInfo}`));
 	}
 
-	roundEnd(): void {}
+	roundEnd(usage?: RoundTokenUsage | null): void {
+		if (!usage) return;
+		writeln(style.gray(`  usage · ${formatUsageSummary(usage)}`));
+	}
 
 	// ── LLM 流式输出（指令式：无推断状态）──
 

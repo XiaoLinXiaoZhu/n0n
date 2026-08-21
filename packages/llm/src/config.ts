@@ -41,6 +41,18 @@ export const OpenAIProviderConfigSchema = z.object({
 });
 export type OpenAIProviderConfig = z.infer<typeof OpenAIProviderConfigSchema>;
 
+export const OpenAIResponseProviderConfigSchema = z.object({
+	provider: z.literal("openai-response"),
+	api_key: z.string(),
+	model: z.string(),
+	base_url: z.string().default("https://api.openai.com"),
+	tag_style: tagStyleField,
+	extra_body: extraBodyField,
+});
+export type OpenAIResponseProviderConfig = z.infer<
+	typeof OpenAIResponseProviderConfigSchema
+>;
+
 export const AnthropicProviderConfigSchema = z.object({
 	provider: z.literal("anthropic"),
 	api_key: z.string(),
@@ -92,6 +104,7 @@ export type DeepSeekProviderConfig = z.infer<
 
 export const ProviderConfigSchema = z.discriminatedUnion("provider", [
 	OpenAIProviderConfigSchema,
+	OpenAIResponseProviderConfigSchema,
 	AnthropicProviderConfigSchema,
 	GoogleProviderConfigSchema,
 	OpenAICompatibleProviderConfigSchema,

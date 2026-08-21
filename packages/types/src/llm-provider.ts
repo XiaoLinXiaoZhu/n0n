@@ -17,6 +17,7 @@
 /** 支持的 LLM provider 类型 */
 export type LLMProvider =
 	| "openai"
+	| "openai-response"
 	| "anthropic"
 	| "google"
 	| "deepseek"
@@ -25,6 +26,7 @@ export type LLMProvider =
 /** 所有合法 provider 值的运行时数组（与类型同步，satisfies 保证穷尽） */
 export const LLM_PROVIDERS = [
 	"openai",
+	"openai-response",
 	"anthropic",
 	"google",
 	"deepseek",
