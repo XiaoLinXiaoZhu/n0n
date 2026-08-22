@@ -8,6 +8,7 @@ export type { Skill, SkillContent, SkillMeta } from "./api.ts";
 export {
 	listSkills,
 	loadInitSkills,
+	loadInitSkillsFromDirs,
 	readSkill,
 	readSkills,
 	toSkill,

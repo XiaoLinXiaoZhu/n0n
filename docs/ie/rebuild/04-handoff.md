@@ -14,7 +14,11 @@
 | `docs/ie/rebuild/01-action-objects.md` | 骨架、边界规则、变更记录、工具定义打磨记录 |
 | `docs/ie/rebuild/02-coverage.md` | 旧体系内容到新条款的逐条追踪 |
 | `docs/ie/rebuild/03-review-findings.md` | 审查发现的分级与处置 |
+| `docs/ie/rebuild/06-dialogue-reviewability.md` | `show` 报告难审查、难回复的失效分析与 D1 二次重构 |
+| `docs/ie/rebuild/07-system-prompt.md` | 旧 `code.md` bad case 的逐条处置与最小 system prompt 分层 |
 | `docs/ie/self-function-ground-truth.md` | 上游基准，一切设计与本文冲突时以它为准 |
+| `apps/code/src/prompts/code.md` | 默认 system prompt，仅保留角色定义 |
+| `apps/code/src/prompts/code-2026-0821.md` | 旧 system prompt 快照，可用版本 `2026-08-21` 回归 |
 
 标准的组织方式：第 0 章总则与术语；D1 对话与交付；D2 任务状态与流程；D3 信息获取；D4 代码与文件内容；D5 执行环境与外部系统；附录 A 环境与工具口径。一个动作的全部义务写在它所属的一章内，不跨章拼装。
 
@@ -33,12 +37,14 @@ diff -rq data/skills ~/.n0n/builtin-skills
 应只报 `Only in data/skills: TODO.md`。其余任何差异都意味着仓库与运行时不同步，执行 `n0n skill init` 修复。
 
 ```
-bun run apps/code/scripts/preview-prompt.ts
+bun run apps/code/scripts/preview-prompt.ts --repository-skills
 rg -n "^# 第 0 章|^# D[1-5] |^# 附录 A" apps/code/scripts/PREVIEW.md
 ```
 应按第 0 章、D1、D2、D3、D4、D5、附录 A 的顺序各命中一次。顺序错乱说明 frontmatter 的 order 被改动。
 
-当前基线：系统提示词约 5,324 tokens，含工具定义与环境上下文的总前缀约 5,845 tokens。旧体系同口径约 4,855 tokens。
+`--repository-skills` 从当前仓库的 `data/skills/` 生成预览，不改动 `~/.n0n/builtin-skills`。不带该参数时仍从实际安装目录加载，用于安装完成后的运行时核对。
+
+提示词预览会分别显示 system、init skill user 消息、工具定义、环境上下文与用户请求。当前 system 只应约 17 tokens；init skill 仍作为独立 user 消息保留。总前缀的实际数字以本次生成的 `apps/code/scripts/PREVIEW.md` 为准，不在本文手工复制。
 
 ## 三、观察行为是否符合条款
 
@@ -62,7 +68,7 @@ rg -n "^# 第 0 章|^# D[1-5] |^# 附录 A" apps/code/scripts/PREVIEW.md
 | D4.6.2 测试有效性验证 | 新写测试后故意改坏被测代码确认它会失败 | 写完测试跑通就交 |
 | D5.1.3 一律确认清单 | 终止进程、依赖变更、推送、对外操作前一律问 | 自行判断"这个风险不大"就做了 |
 | D5.5.2 预测失败判据 | 执行命令前说明什么输出算失败，执行后比对 | 执行完只说"成功了" |
-| A.2 显式等待上限 | 跑测试与类型检查时显式设置 waitfor | 用默认 20 秒，频繁转后台再去读产物 |
+| A.2 工具链识别与等待上限 | 先按项目指令、清单、锁文件和既有命令识别工具链；长命令显式设置 waitfor | 在非 TypeScript 项目中仍运行 `tsgo`，或照抄示例命令 |
 
 ## 四、判断条款是否被形式化执行
 
@@ -111,6 +117,8 @@ diff -rq data/skills ~/.n0n/builtin-skills
 
 改动涉及条款增删时，同时检查 `docs/ie/rebuild/02-coverage.md` 的追踪表是否需要更新。
 
+修改 system prompt 或请求侧运行时协议时，不进入 self-function 草案同步链；按 `docs/ie/rebuild/07-system-prompt.md` 的分层判断归属，并重新生成提示词预览。旧 system 中出现过的行为规则必须在该文档中有保留、迁移或拒绝理由。
+
 ## 七、未决事项
 
 | 事项 | 说明 |
@@ -126,6 +134,6 @@ diff -rq data/skills ~/.n0n/builtin-skills
 
 旧体系按失效倾向切分（捷径偏好、不确定性、安全、代码质量、通信），导致同一个动作的规则散落多章且要求不一致——"删除文件"在旧 `F3:19`、`F3:29`、`F2:52` 三处被规定，一处要求确认、一处要求告知。新体系按动作对象切分，使一个动作的全部义务集中在一处。
 
-标准正文不含具体工具命令，命令集中在附录 A。这样环境或项目变化时只改附录，不触动要求条款。能由工具接口自身说明的内容（参数语义、返回结构、限额、产物位置）标准与附录都不收录。
+标准正文不含具体工具命令。附录 A 规定工具链的识别方法，并提供带适用条件的示例；项目指令与仓库配置决定实际命令。这样环境或项目变化时不必改正文契约。能由工具接口自身说明的内容（参数语义、返回结构、限额、产物位置）标准与附录都不收录。
 
 方案选型的要求是透明而非决定权转移：默认公示不暂停，只在涉及不可逆动作、结构变更、范围显著变化时才等答复。理由是把常规判断推回用户会使确认贬值，真正需要介入时反而被淹没。

@@ -22,6 +22,7 @@ import { buildEnvironmentContext } from "./context-env.ts";
 import { getPrompt } from "./prompts";
 import type { CodeShowResult } from "./schema.ts";
 import { showConfig } from "./show-config.ts";
+import { CODE_RUNTIME_PROTOCOL } from "./tail-anchor.ts";
 
 export interface HeadlessOptions {
 	/** 任务指令 */
@@ -61,10 +62,12 @@ export interface HeadlessResult {
 
 function buildHeadlessHint(): string {
 	return [
+		CODE_RUNTIME_PROTOCOL,
+		"",
 		"You are running in HEADLESS mode — there is no human to interact with.",
 		"You MUST complete the task autonomously. Do NOT call show with `ask user question` or `request user assistance` type.",
 		"If uncertain, make your best judgment and proceed.",
-		"First, use `observe` to understand the codebase, then implement the fix, then verify.",
+		"Complete the user's requested outcome end to end within the available permissions. Use retrieval, implementation, and validation only when the task requires them.",
 		"Call show with `final report` type when done.",
 	].join("\n");
 }

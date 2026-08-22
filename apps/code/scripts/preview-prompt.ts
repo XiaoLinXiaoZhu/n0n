@@ -10,6 +10,7 @@
  *
  * 用法：
  *   bun run apps/code/scripts/preview-prompt.ts
+ *   bun run apps/code/scripts/preview-prompt.ts --repository-skills
  *   bun run apps/code/scripts/preview-prompt.ts --user "修复登录 bug"
  */
 
@@ -23,7 +24,11 @@ import {
 	PlainRenderer,
 } from "@n0n/core";
 import { makeToolkit } from "@n0n/tools";
-import { loadInitSkills, toSkill } from "@n0n/skill";
+import {
+	loadInitSkills,
+	loadInitSkillsFromDirs,
+	toSkill,
+} from "@n0n/skill";
 import type {
 	DomainMessage,
 	LLMClient,
@@ -37,6 +42,7 @@ import type {
 import { getPrompt } from "../src/prompts";
 import { buildEnvironmentContext } from "../src/context-env.ts";
 import { showConfig } from "../src/show-config.ts";
+import { CODE_TAIL_ANCHOR } from "../src/tail-anchor.ts";
 
 // ── CLI 参数 ──
 
@@ -49,12 +55,14 @@ const userMessage = getArg(
 	"--user",
 	"项目里的 auth 模块最近频繁报 token 过期，帮我排查一下原因，如果能修就顺手修了。",
 );
+const useRepositorySkills = process.argv.includes("--repository-skills");
 
 // ── 输出路径（git 跟踪） ──
 
 const workspace = process.cwd();
 const previewDir = resolve(workspace, "apps/code/scripts");
 const outPath = resolve(previewDir, "PREVIEW.md");
+const repositorySkillsDir = resolve(import.meta.dir, "../../../data/skills");
 
 // ── Mock LLMClient ──
 // 截获 agentLoop 发来的第一次 stream() 请求，导出后用 show(final report) 结束循环。
@@ -107,7 +115,12 @@ const mockClient: LLMClient = {
 
 const baseSystemPrompt = getPrompt();
 
-const initSkills = await loadInitSkills();
+const initSkills = useRepositorySkills
+	? await loadInitSkillsFromDirs([repositorySkillsDir])
+	: await loadInitSkills();
+const skillSource = useRepositorySkills
+	? "repository data/skills"
+	: "installed runtime";
 const systemMessage: DomainMessage = {
 	type: "system_with_skill",
 	content: baseSystemPrompt,
@@ -133,7 +146,13 @@ const envContext = buildEnvironmentContext(workspace);
 const history: DomainMessage[] = [
 	systemMessage,
 	{ type: "cache_breakpoint" } as DomainMessage,
-	{ type: "user_input", content: userMessage, context: envContext || null, hint: null, mentionedSkills: [] },
+	{
+		type: "user_input",
+		content: userMessage,
+		context: envContext || null,
+		hint: CODE_TAIL_ANCHOR,
+		mentionedSkills: [],
+	},
 ];
 
 // ── 驱动 agentLoop — mock client 在第一次 stream() 时截获请求 ──
@@ -175,7 +194,10 @@ const sections: string[] = [];
 
 sections.push("# Code Agent — System Prompt & Fewshot Preview");
 sections.push(
-	"> Captured via mock client through real agentLoop. Regenerate: `bun run apps/code/scripts/preview-prompt.ts`",
+	`> Captured via mock client through real agentLoop. Skill source: ${skillSource}.`,
+);
+sections.push(
+	"> Regenerate from repository source: `bun run apps/code/scripts/preview-prompt.ts --repository-skills`",
 );
 sections.push("");
 
@@ -232,12 +254,18 @@ sections.push("");
 
 // Token 预算分解
 const systemFormatted = formatPrompt([systemMessage], tags);
-const systemChars = systemFormatted.reduce((n, m) => n + m.content.length, 0);
+const systemChars = systemFormatted
+	.filter((message) => message.role === "system")
+	.reduce((total, message) => total + message.content.length, 0);
+const initSkillChars = systemFormatted
+	.filter((message) => message.role === "user")
+	.reduce((total, message) => total + message.content.length, 0);
 const toolDefChars = toolDefs.reduce(
 	(s, t) => s + t.description.length + JSON.stringify(t.parameters).length,
 	0,
 );
 const envContextChars = envContext?.length ?? 0;
+const totalPrefixChars = totalChars + toolDefChars;
 
 sections.push("## Token Budget Breakdown");
 sections.push("");
@@ -245,6 +273,9 @@ sections.push("| Component | Approx Tokens | Chars |");
 sections.push("|-----------|--------------|-------|");
 sections.push(
 	`| System prompt | ~${Math.round(systemChars / 4).toLocaleString()} | ${systemChars.toLocaleString()} |`,
+);
+sections.push(
+	`| Init skills (user message) | ~${Math.round(initSkillChars / 4).toLocaleString()} | ${initSkillChars.toLocaleString()} |`,
 );
 sections.push(
 	`| Tool definitions | ~${Math.round(toolDefChars / 4).toLocaleString()} | ${toolDefChars.toLocaleString()} (${toolDefs.length} tools) |`,
@@ -256,7 +287,7 @@ sections.push(
 	`| User input | ~${Math.round(userMessage.length / 4)} | ${userMessage.length} |`,
 );
 sections.push(
-	`| **Total prefix** | **~${Math.round(totalChars / 4).toLocaleString()}** | **${totalChars.toLocaleString()}** |`,
+	`| **Total prefix (messages + tools)** | **~${Math.round(totalPrefixChars / 4).toLocaleString()}** | **${totalPrefixChars.toLocaleString()}** |`,
 );
 sections.push("");
 
@@ -331,6 +362,9 @@ console.log(
 	`  System prompt:    ~${Math.round(systemChars / 4).toLocaleString()} tokens (${systemChars.toLocaleString()} chars)`,
 );
 console.log(
+	`  Init skills:      ~${Math.round(initSkillChars / 4).toLocaleString()} tokens (${initSkillChars.toLocaleString()} chars)`,
+);
+console.log(
 	`  Tool definitions: ~${Math.round(toolDefChars / 4).toLocaleString()} tokens (${toolDefs.length} tools)`,
 );
 console.log(
@@ -341,5 +375,5 @@ console.log(
 );
 console.log("  ────────────────────────────");
 console.log(
-	`  Total prefix:     ~${Math.round(totalChars / 4).toLocaleString()} tokens (${totalChars.toLocaleString()} chars)`,
+	`  Total prefix:     ~${Math.round(totalPrefixChars / 4).toLocaleString()} tokens (${totalPrefixChars.toLocaleString()} chars)`,
 );

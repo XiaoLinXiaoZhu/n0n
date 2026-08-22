@@ -11,10 +11,12 @@
  */
 
 import codeDefault from "./code.md" with { type: "text" };
+import code20260821 from "./code-2026-0821.md" with { type: "text" };
 
 /** 版本号 → 提示词文本。空字符串 key 为默认版本。 */
 export const prompts: Record<string, string> = {
 	"": codeDefault,
+	"2026-08-21": code20260821,
 };
 
 /** 列出所有可用版本 */

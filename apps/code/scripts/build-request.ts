@@ -33,6 +33,7 @@ import type {
 import { getPrompt } from "../src/prompts";
 import { buildEnvironmentContext } from "../src/context-env.ts";
 import { showConfig } from "../src/show-config.ts";
+import { CODE_TAIL_ANCHOR } from "../src/tail-anchor.ts";
 
 // ── CLI 参数 ──
 
@@ -124,7 +125,13 @@ const envContext = buildEnvironmentContext(workspace);
 const history: DomainMessage[] = [
 	systemMessage,
 	{ type: "cache_breakpoint" } as DomainMessage,
-	{ type: "user_input", content: userMessage, context: envContext || null, hint: null, mentionedSkills: [] },
+	{
+		type: "user_input",
+		content: userMessage,
+		context: envContext || null,
+		hint: CODE_TAIL_ANCHOR,
+		mentionedSkills: [],
+	},
 ];
 
 // ── 驱动 agentLoop ──

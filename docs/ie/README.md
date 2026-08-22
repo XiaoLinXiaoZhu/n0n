@@ -4,7 +4,7 @@
 
 将 DFMEA（设计失效模式与影响分析）方法论引入 n0n agent 系统的提示词/skill 设计。
 
-n0n 是一个编码 agent，接收用户请求，通过 LLM + 工具链完成任务。从工业工程的视角，n0n 是一条**产线**。当前系统的提示词组织是将基础规则放在 system、将 init skill 作为独立 user 消息发送——它"能工作"，但有结构性缺陷。IE 提供的正是解决这些缺陷的组织方式。
+n0n 是一个编码 agent，接收用户请求，通过 LLM + 工具链完成任务。从工业工程的视角，n0n 是一条**产线**。当前提示词只在 system 中保留角色定义，长期行为标准由 init skill 作为独立 user 消息发送，运行时协议随当前请求发送。IE 提供的是这些行为标准的组织与验收方法。
 
 **本次修订的核心**：引入 self-function 体系（F0-F5 共 6 个 IE 驱动功能文档）替代现有的碎片 standard skill。F0 作为"用户动态约束容器"统一处理用户加载的 task/directive/capability skill。
 
