@@ -30,6 +30,7 @@ import type {
 	TagAdapter,
 } from "@n0n/types";
 
+import { buildCodeSystemPrompt } from "../src/model-guidance.ts";
 import { getPrompt } from "../src/prompts";
 import { buildEnvironmentContext } from "../src/context-env.ts";
 import { showConfig } from "../src/show-config.ts";
@@ -78,7 +79,7 @@ const mockClient: LLMClient = {
 
 		const callId = "preview_done";
 		const args = JSON.stringify({
-			type: "final report",
+			type: "qualified delivery",
 			content: "Request capture complete.",
 		});
 
@@ -98,7 +99,10 @@ const mockClient: LLMClient = {
 
 // ── 复用 repl.ts 的初始化流程 ──
 
-const baseSystemPrompt = getPrompt();
+const baseSystemPrompt = buildCodeSystemPrompt(
+	getPrompt(),
+	mockClient.modelId,
+);
 
 const initSkills = await loadInitSkills();
 const systemMessage: DomainMessage = {

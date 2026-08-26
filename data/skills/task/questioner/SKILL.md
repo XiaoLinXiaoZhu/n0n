@@ -17,7 +17,7 @@ activation: manual
 
 ### 1. 确认领域 → 定调
 
-用 `show(ask user question)` 确认：
+用 `show(customer information required)` 确认：
 
 - 对方是什么领域的专家？
 - 用户和对方什么关系？（陌生人 / 同事 / 上级 / 社区求助）
@@ -84,7 +84,7 @@ AI 不需要知道具体是谁——「对方是什么领域的专家」足以�
 
 ### 5. 用户确认
 
-用 `show(ask user question)` 提交初稿，附简要说明（为什么这样写、用了什么语气）。等待用户反馈。
+用 `show(customer decision required)` 提交初稿，附简要说明（为什么这样写、用了什么语气）。等待用户反馈。
 
 ### 6. 根据反馈修订
 
@@ -96,7 +96,7 @@ AI 不需要知道具体是谁——「对方是什么领域的专家」足以�
 
 ### 8. 交付
 
-将最终邮件写入 `.n0n/manual/<主题>.md`，主题即文件名。用 `show(final report)` 报告文件路径和简要摘要。
+将最终邮件写入 `.n0n/manual/<主题>.md`，主题即文件名。用 `show(qualified delivery)` 报告文件路径和简要摘要。
 
 ## 反面示例
 

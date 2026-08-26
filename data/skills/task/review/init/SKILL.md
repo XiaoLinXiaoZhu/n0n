@@ -11,7 +11,7 @@ activation: manual
 
 ### 1. 确定比较基准
 
-用户指定的固定点——commit SHA、分支名、tag、`main`、`HEAD~N` 等。如果用户没指定，用 `show(ask user question)` 询问："对比什么——分支、commit、还是 main？"
+用户指定的固定点——commit SHA、分支名、tag、`main`、`HEAD~N` 等。如果用户没指定，用 `show(customer information required)` 询问："对比什么——分支、commit、还是 main？"
 
 确定后执行：
 
@@ -27,7 +27,7 @@ git log <fixed-point>..HEAD --oneline
 1. commit message 中的 issue 引用（`#123`、`Closes #45`）
 2. 用户传入的路径参数
 3. `docs/`、`specs/` 下与分支名或功能匹配的文件
-4. 都找不到 → 用 `show(ask user question)` 询问用户。用户说没有 → 记录"无 spec"
+4. 都找不到 → 用 `show(customer information required)` 询问用户。用户说没有 → 记录"无 spec"
 
 ### 3. 识别 standards 来源
 
@@ -41,7 +41,8 @@ git log <fixed-point>..HEAD --oneline
 
 ### 4. 产出概览
 
-**退出 → 提交 `show(final report)`，格式：**
+作为完整 review 管线的准备阶段时，用 `show(production record)` 提交以下上下文并继续 review-spec 和/或 review-standards。
+只有客户明确只要求收集审查上下文时，才用 `show(qualified delivery)`：
 
 ```
 【阶段】Review Init

@@ -252,9 +252,9 @@ const scenarios: Scenario[] = [
 				call: {
 					id: "tc_7",
 					tool: "show",
-					args: { type: "final report", content: "Task done" },
+					args: { type: "qualified delivery", content: "Task done" },
 				},
-				cleanedResult: { type: "final report", content: "Task done" },
+				cleanedResult: { type: "qualified delivery", content: "Task done" },
 			},
 		],
 	},

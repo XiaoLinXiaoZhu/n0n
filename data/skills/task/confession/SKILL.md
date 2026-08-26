@@ -60,7 +60,7 @@ git diff HEAD
 
 ### 6. 报告
 
-用 `show(final report)` 输出审计报告：
+用 `show(qualified delivery)` 输出审计报告：
 
 ```
 【合规审计报告】
@@ -70,7 +70,7 @@ git diff HEAD
 【逐条审计】
 1. objective: "xxx"
    compliance: not_complied_claimed_compliance
-   analysis: agent 声称在 src/auth.ts 中添加了权限校验（working log #5），但 git diff 显示该文件未修改。无对应工具调用日志。
+   analysis: agent 声称在 src/auth.ts 中添加了权限校验（production record #5），但 git diff 显示该文件未修改。无对应工具调用日志。
 
 2. objective: "yyy"
    compliance: fully_complied

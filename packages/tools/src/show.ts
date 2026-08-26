@@ -5,7 +5,12 @@
  * 外部调用方（repl.ts / headless.ts）拿到结果后自行决定是否重新启动循环。
  */
 
-import type { ShowToolCall, ShowToolResult, ToolDefinition } from "@n0n/types";
+import {
+	ShowArgsSchema,
+	type ShowToolCall,
+	type ShowToolResult,
+	type ToolDefinition,
+} from "@n0n/types";
 
 // ── 配置类型 ──
 
@@ -16,6 +21,15 @@ export interface ShowTypeConfig {
 	typeDesc: string;
 	/** 该 type 下 content 的格式说明（写入工具顶层 description）；为空则不输出该行 */
 	contentDesc: string;
+}
+
+/** 根据 app 提供的 type 配置构造真实执行期参数校验。 */
+export function makeShowArgsSchema(config: ShowTypeConfig[]) {
+	const allowedTypes = new Set(config.map((item) => item.value));
+	return ShowArgsSchema.refine((args) => allowedTypes.has(args.type), {
+		path: ["type"],
+		message: `Unsupported show type. Expected one of: ${[...allowedTypes].join(", ")}`,
+	});
 }
 
 // ── 工具定义生成 ──
@@ -43,7 +57,7 @@ export function makeShowTool(config: ShowTypeConfig[]): ToolDefinition {
 		"Type values:",
 		typeDocs,
 		"",
-		"Validation is enforced — non-conforming calls will be rejected.",
+		"The schema validates the type and content fields. You remain responsible for choosing the correct type and providing content that satisfies the active production standard.",
 	].join("\n");
 
 	const typeEnum = config.map((c) => c.value);

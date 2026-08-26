@@ -46,7 +46,7 @@ skill-name/
 
 ### 1. 收集需求
 
-用 `show(ask user question)` 逐项询问：
+用 `show(customer information required)` 逐项询问：
 
 - 这个 skill 覆盖什么任务/领域？
 - 具体触发场景和关键词是什么？
@@ -64,7 +64,7 @@ skill-name/
 
 - 读者是 agent——用祈使句下指令，不写面向人类的解释。
 - 每个步骤明确关联工具（observe/reason/act）和 show type。
-- 退出条件用 `show(final report)` 格式模板定义。
+- 退出条件必须与实际质量终态一致；只有成功条件完整满足时才定义 `show(qualified delivery)`。
 - 使用中文。
 
 ### 4. 何时拆分文件
@@ -76,12 +76,12 @@ skill-name/
 
 ### 5. 审查
 
-用 `show(ask user question)` 呈现草案，请用户审阅。检查清单：
+用 `show(customer decision required)` 呈现草案，请用户审阅。检查清单：
 
 - [ ] description 包含触发条件，覆盖用户场景
 - [ ] activation 字段正确（init 需配 order，manual 需配触发词在 description 中）
 - [ ] 无时间敏感信息（日期、版本号等容易过期的内容）
-- [ ] 有正确的 show type 使用（中间步骤用 working log，最终步骤用 final report，需要用户决策时用 ask user question）
+- [ ] show type 与客户下一步任务或实际质量终态一致；工作日志不按步骤数量强制产生
 - [ ] 引用只一层深，附件平铺在同级目录
 
-**退出 → 提交 `show(final report)`**，包含 skill 路径和概要。
+**退出 → 提交 `show(qualified delivery)`**，包含 skill 路径和概要。

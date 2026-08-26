@@ -39,6 +39,7 @@ import type {
 	TagAdapter,
 } from "@n0n/types";
 
+import { buildCodeSystemPrompt } from "../src/model-guidance.ts";
 import { getPrompt } from "../src/prompts";
 import { buildEnvironmentContext } from "../src/context-env.ts";
 import { showConfig } from "../src/show-config.ts";
@@ -65,7 +66,7 @@ const outPath = resolve(previewDir, "PREVIEW.md");
 const repositorySkillsDir = resolve(import.meta.dir, "../../../data/skills");
 
 // ── Mock LLMClient ──
-// 截获 agentLoop 发来的第一次 stream() 请求，导出后用 show(final report) 结束循环。
+// 截获 agentLoop 发来的第一次 stream() 请求，导出后用合格交付结束循环。
 
 interface CapturedRequest {
 	messages: DomainMessage[];
@@ -88,10 +89,10 @@ const mockClient: LLMClient = {
 			tools: request.tools ?? [],
 		};
 
-		// 返回一个 show(final report) 工具调用，让 agentLoop 正常结束
+		// 返回一个合格交付工具调用，让 agentLoop 正常结束
 		const callId = "preview_done";
 		const args = JSON.stringify({
-			type: "final report",
+			type: "qualified delivery",
 			content: "Preview capture complete.",
 		});
 
@@ -113,7 +114,10 @@ const mockClient: LLMClient = {
 // ── 复用 repl.ts 的完整初始化流程 ──
 // 以下代码与 repl.ts startCodeRepl 中的初始化部分保持一致
 
-const baseSystemPrompt = getPrompt();
+const baseSystemPrompt = buildCodeSystemPrompt(
+	getPrompt(),
+	mockClient.modelId,
+);
 
 const initSkills = useRepositorySkills
 	? await loadInitSkillsFromDirs([repositorySkillsDir])

@@ -1,5 +1,8 @@
 # Self-Function 标准现状差距分析（工程记录）
 
+> 状态：历史基线。本文审查的是重建前的 F0-F5 标准；所列差距的现行处置见
+> `rebuild-2/00-derivation-record.md` 与 `data/skills/self-function/production-quality/SKILL.md`。
+
 本文是工程记录层文档，不注入运行时。目的：把现行 self-function 标准（`data/skills/self-function/` 6 个 SKILL.md）逐条对照 `docs/ie/self-function-ground-truth.md`，列出差距、证据与影响，作为后续受控修订的输入。
 
 本文只做诊断，不提出改造方案，也不修改任何标准文件。

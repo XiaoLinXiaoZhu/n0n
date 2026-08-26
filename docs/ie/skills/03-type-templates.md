@@ -1,5 +1,8 @@
 # Skill 编写规范（二）：四类正文骨架
 
+> 状态：历史工程快照。本文依赖的旧 self-function 结构与 show 类型已经被重建；
+> 当前分类与加载说明见 `../../../packages/skills/README.md`。
+
 本文用途：规定四个分类各自的正文结构、语气与验收判据。frontmatter、命名、体量等对四类一致的要求见 `02-authoring-spec.md`，本文不重复。
 
 地位：本文是 `00-ground-truth.md` 的下游产物，与它冲突的以它为准。形如 `R9` 的引用指向该文的推论编号。

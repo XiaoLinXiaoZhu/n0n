@@ -10,10 +10,14 @@
     "type": {
       "type": "string",
       "enum": [
-        "working log",
-        "ask user question",
-        "request user assistance",
-        "final report"
+        "production record",
+        "customer information required",
+        "customer decision required",
+        "customer action required",
+        "qualified delivery",
+        "production suspended",
+        "production failed",
+        "customer cancelled"
       ],
       "description": "Current report type"
     },
@@ -36,16 +40,16 @@
 Structured output tool. Users cannot see your reasoning, tool calls, or intermediate results — only show calls reach them.
 
 Type values:
-- working log: 内部工作日志，也用于公示决策。系统自动继续循环，用户不会被即时通知。需要用户现在看到并响应时，改用其他三种 type。
-  content: 当前判断、支持该判断的证据、下一步动作。用于公示决策时另需给出：所做的决定、理由、被否决的替代方案及否决理由。
-- ask user question: 向用户提问。系统暂停循环，等待用户答复。
-  content: 先给推导过程与证据，再给 2-4 个选项（每个选项以 `## ` 开头为标题行，下一行写说明），写明选项之间的后果差异；有倾向时说明倾向哪一项及把握程度。必须自包含。
-- request user assistance: 请求用户介入操作。系统暂停循环，等待用户响应。
-  content: 障碍的具体现象、你无法自主解决的原因、需要用户执行的具体操作。必须自包含。
-- final report: 本轮生产结束的正式交付。系统暂停循环，等待用户响应。
-  content: 已完成的工作、验证结果及其证据、本轮做出的关键决策。假定用户不掌握此前上下文，必须自包含。
+- production record: 记录有价值的结论、证据或生产决定；不需要客户新输入。系统显示并持久化，不提醒、不等待，并自动继续当前生产周期。
+- customer information required: 需要客户提供其已经掌握、生产方无法自行取得的事实、要求、路径或背景。系统显示并持久化，提醒客户并等待答复。
+- customer decision required: 需要客户选择、授权、接受风险或修订有效契约。系统显示并持久化，提醒客户并等待答复。
+- customer action required: 需要客户在会话外完成生产方无法代做的操作。系统显示并持久化，提醒客户并等待答复。
+- qualified delivery: 当前有效验收基线全部满足。系统显示并持久化合格交付，提醒客户并结束当前生产周期。
+- production suspended: 当前基线未满足，但存在明确恢复条件；本周期不再等待客户。系统显示并持久化生产暂停，提醒客户并结束当前生产周期。
+- production failed: 当前基线未满足，且当前订单边界内不存在有效完成路径。系统显示并持久化生产失败，提醒客户并结束当前生产周期。
+- customer cancelled: 客户撤回订单且不要求验收现有产物。系统显示并持久化客户取消，提醒客户并结束当前生产周期。
 
-Validation is enforced — non-conforming calls will be rejected.
+The schema validates the type and content fields. You remain responsible for choosing the correct type and providing content that satisfies the active production standard.
 ````
 
 ## Full OpenAI function format
@@ -55,17 +59,21 @@ Validation is enforced — non-conforming calls will be rejected.
   "type": "function",
   "function": {
     "name": "show",
-    "description": "Structured output tool. Users cannot see your reasoning, tool calls, or intermediate results — only show calls reach them.\n\nType values:\n- working log: 内部工作日志，也用于公示决策。系统自动继续循环，用户不会被即时通知。需要用户现在看到并响应时，改用其他三种 type。\n  content: 当前判断、支持该判断的证据、下一步动作。用于公示决策时另需给出：所做的决定、理由、被否决的替代方案及否决理由。\n- ask user question: 向用户提问。系统暂停循环，等待用户答复。\n  content: 先给推导过程与证据，再给 2-4 个选项（每个选项以 `## ` 开头为标题行，下一行写说明），写明选项之间的后果差异；有倾向时说明倾向哪一项及把握程度。必须自包含。\n- request user assistance: 请求用户介入操作。系统暂停循环，等待用户响应。\n  content: 障碍的具体现象、你无法自主解决的原因、需要用户执行的具体操作。必须自包含。\n- final report: 本轮生产结束的正式交付。系统暂停循环，等待用户响应。\n  content: 已完成的工作、验证结果及其证据、本轮做出的关键决策。假定用户不掌握此前上下文，必须自包含。\n\nValidation is enforced — non-conforming calls will be rejected.",
+    "description": "Structured output tool. Users cannot see your reasoning, tool calls, or intermediate results — only show calls reach them.\n\nType values:\n- production record: 记录有价值的结论、证据或生产决定；不需要客户新输入。系统显示并持久化，不提醒、不等待，并自动继续当前生产周期。\n- customer information required: 需要客户提供其已经掌握、生产方无法自行取得的事实、要求、路径或背景。系统显示并持久化，提醒客户并等待答复。\n- customer decision required: 需要客户选择、授权、接受风险或修订有效契约。系统显示并持久化，提醒客户并等待答复。\n- customer action required: 需要客户在会话外完成生产方无法代做的操作。系统显示并持久化，提醒客户并等待答复。\n- qualified delivery: 当前有效验收基线全部满足。系统显示并持久化合格交付，提醒客户并结束当前生产周期。\n- production suspended: 当前基线未满足，但存在明确恢复条件；本周期不再等待客户。系统显示并持久化生产暂停，提醒客户并结束当前生产周期。\n- production failed: 当前基线未满足，且当前订单边界内不存在有效完成路径。系统显示并持久化生产失败，提醒客户并结束当前生产周期。\n- customer cancelled: 客户撤回订单且不要求验收现有产物。系统显示并持久化客户取消，提醒客户并结束当前生产周期。\n\nThe schema validates the type and content fields. You remain responsible for choosing the correct type and providing content that satisfies the active production standard.",
     "parameters": {
       "type": "object",
       "properties": {
         "type": {
           "type": "string",
           "enum": [
-            "working log",
-            "ask user question",
-            "request user assistance",
-            "final report"
+            "production record",
+            "customer information required",
+            "customer decision required",
+            "customer action required",
+            "qualified delivery",
+            "production suspended",
+            "production failed",
+            "customer cancelled"
           ],
           "description": "Current report type"
         },

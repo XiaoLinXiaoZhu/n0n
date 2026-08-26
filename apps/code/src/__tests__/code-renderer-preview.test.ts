@@ -186,40 +186,41 @@ describe("CodeRenderer 流式 write 预览", () => {
 });
 
 describe("formatShowResult 单元测试", () => {
-	test("final report 仅 content", () => {
+	test("qualified delivery 仅 content", () => {
 		const md = formatShowResult({
-			type: "final report",
+			type: "qualified delivery",
 			content: "done",
 		} satisfies CodeShowResult);
-		expect(md).toContain("# ✅ 任务完成");
+		expect(md).toContain("# ✅ 合格交付");
 		expect(md).toContain("done");
 	});
 
-	test("final report 完整 content", () => {
+	test("production failed 完整 content", () => {
 		const md = formatShowResult({
-			type: "final report",
-			content: "done",
+			type: "production failed",
+			content: "无法完成",
 		} satisfies CodeShowResult);
-		expect(md).toContain("done");
+		expect(md).toContain("# ❌ 生产失败");
+		expect(md).toContain("无法完成");
 	});
 
-	test("ask user question 完整 content", () => {
+	test("customer decision required 完整 content", () => {
 		const md = formatShowResult({
-			type: "ask user question",
+			type: "customer decision required",
 			content: "选哪个？\n## A\n影响A\n\n## B\n影响B",
 		} satisfies CodeShowResult);
-		expect(md).toContain("# ❓ 需要确认");
+		expect(md).toContain("# ❓ 需要客户决定");
 		expect(md).toContain("选哪个？");
 		expect(md).toContain("## A");
 		expect(md).toContain("## B");
 	});
 
-	test("ask user question 检查列表", () => {
+	test("customer information required 完整 content", () => {
 		const md = formatShowResult({
-			type: "ask user question",
+			type: "customer information required",
 			content: "需要帮助\n## 检查项1\n详情1\n\n## 检查项2\n详情2",
 		} satisfies CodeShowResult);
-		expect(md).toContain("# ❓ 需要确认");
+		expect(md).toContain("# ❓ 需要客户信息");
 		expect(md).toContain("## 检查项1");
 		expect(md).toContain("## 检查项2");
 	});

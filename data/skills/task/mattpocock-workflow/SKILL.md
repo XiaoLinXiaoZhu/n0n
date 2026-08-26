@@ -85,17 +85,19 @@ session 已存在时，`@mwf` 自动恢复上下文。
 | "状态" / "进度" / "怎么样了" | `status` |
 | "继续" / "下一个" | 推断当前阶段并继续 |
 
-意图不明确时，用 `show(ask user question)` 询问用户想进入哪个阶段。
+意图不明确时，用 `show(customer information required)` 询问用户想进入哪个阶段。
 
 ## Session 维护
 
-`@mwf` 在上下文中维护一个 session 对象。子 skill 不直接修改 session 的顶层状态——它们在 `show(working log/final report)` 中报告变更，由 `@mwf` 负责更新 session。
+`@mwf` 在上下文中维护一个 session 对象。子 skill 不直接修改 session 的顶层状态——它们在 `show(production record)` 中报告阶段产物，
+由 `@mwf` 更新 session 并继续管线。只有当前客户订单的完整验收基线已经满足时，父流程才使用质量终态。
 
 Session 在以下情况重置：
 - 用户明确说"重新开始"、"换个事情"
 - plan 阶段产出新的 plan（覆盖旧 session）
 
-> **关于 `act` / `show`**：子 skill 通过 `show(working log/final report)` 报告进度，由 `@mwf` 用 `act` 执行状态变更。子 skill 不直接修改 session 顶层状态。
+> **关于 `act` / `show`**：子 skill 通过 `show(production record)` 报告阶段产物，由 `@mwf` 用 `act` 执行状态变更并继续。
+> 子 skill 不直接修改 session 顶层状态，也不把阶段结束冒充为整个订单的质量终态。
 
 ---
 

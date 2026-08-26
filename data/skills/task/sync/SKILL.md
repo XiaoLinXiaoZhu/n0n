@@ -65,7 +65,7 @@ activation: manual
 
 扫描指定范围内的代码，识别需要标注的位置（未完成的功能、已知问题、临时方案）。用 `write` 重写文件，在相关代码最近位置插入标注。
 
-不猜测未确认的状态——不确定时用 `show(ask user question)` 询问。
+不猜测未确认的状态——不确定时用 `show(customer information required)` 询问。
 
 ### 2. 决策文档
 
@@ -77,4 +77,4 @@ activation: manual
 
 ### 3. 总结汇报
 
-退出 → `show(final report)`：** 标注清单和决策文档路径。
+退出 → `show(qualified delivery)`：** 标注清单和决策文档路径。

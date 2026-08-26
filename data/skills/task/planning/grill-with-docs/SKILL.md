@@ -52,6 +52,9 @@ activation: manual
 
 ## 交互节奏
 
-- 每个问题一个 `show(ask user question)`，呈现问题、推荐答案和备选答案
-- 用户回答后 `show(working log)` 记录决策和依据
+- 每个问题只请求一种客户参与：询问客户掌握的事实、要求或背景时用 `show(customer information required)`；
+  需要客户决定业务结果、订单范围、公共契约、授权、重大风险或修订契约时用 `show(customer decision required)`；
+  需要客户执行外部操作时用 `show(customer action required)`。呈现问题、推荐答案和真实备选答案
+- 客户答复形成会改变范围、公共契约、风险或后续方案的可复查决定时，才用 `show(production record)` 记录决定和依据；
+  普通事实答复直接更新文档，不为每个问题固定生成记录
 - 文档更新（write）在决策确定时立即执行，不等到会话结束

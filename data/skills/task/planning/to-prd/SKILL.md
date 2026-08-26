@@ -18,9 +18,9 @@ activation: manual
 
 勾勒需要构建或修改的主要模块。积极寻找可以提取为"接口简单、可独立测试"的深模块。
 
-用 `show(ask user question)` 呈现模块划分，请用户确认：
-- 这些模块划分符合预期吗？
-- 哪些模块需要写测试？
+技术模块划分和测试策略由生产方依据现有代码、项目口径和风险负责决定。
+只有模块边界会改变客户理解的产品范围、公共契约或交付拆分时，才用 `show(customer decision required)`
+呈现这些客户可见差异并请求确认。
 
 ### 3. 撰写 PRD
 
@@ -43,7 +43,7 @@ activation: manual
 例外：prototype 产出的状态机/Schema/类型定义可内联，注明来源。
 
 ## 测试决策
-哪些模块需要测试、只测外部行为不测实现细节、参考代码库中的类似测试。
+依据风险和项目现状说明哪些行为需要测试；只测外部行为不测实现细节，并参考代码库中的类似测试。
 
 ## 不在范围内
 明确列出不做什么。
@@ -54,6 +54,6 @@ activation: manual
 
 ### 4. 发布
 
-用 `show(ask user question)` 呈现 PRD 草案让用户审阅。确认后写入文件或发布到 issue tracker。
+用 `show(customer decision required)` 呈现 PRD 草案让用户审阅。确认后写入文件或发布到 issue tracker。
 
-**退出 → 提交 `show(final report)`**，包含 PRD 路径和内容概要。
+**退出 → 提交 `show(qualified delivery)`**，包含 PRD 路径和内容概要。

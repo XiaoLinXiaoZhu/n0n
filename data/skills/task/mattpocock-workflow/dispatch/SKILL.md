@@ -42,9 +42,10 @@ session 中存在至少一个 `afk-ready` 或 `pending` 状态的 issue。
 - 验收条件
 
 实现过程中，如果发现：
-- **issue 定义不足** → 用 `show(ask user question)` 向用户补充确认（类似 resolve-hitl 但范围更窄）
+- **issue 定义不足** → 用 `show(customer information required)` 向用户补充事实、要求或背景（类似 resolve-hitl 但范围更窄）
 - **发现新的依赖** → 更新 session 中的依赖关系
-- **发现可以拆分更细** → 用 `show(ask user question)` 询问用户是否要拆分
+- **发现可以拆分更细** → 在不改变订单范围和客户承担工作的前提下由生产方更新拆分；
+  只有拆分会改变交付范围、公共契约或新增客户工作时才请求客户决定
 
 **验收条件检查**：实现后用 `act` 逐条验证验收条件。全部通过才算完成。
 
@@ -67,7 +68,7 @@ issue 完成后，用 `reason` 检查哪些 issue 被它阻塞。如果被阻塞
 
 ### 4. 继续循环
 
-用 `show(ask user question)` 询问用户：
+若客户要求逐项决定下一步，或下一个可执行项会改变客户承担的范围或风险，用 `show(customer decision required)`：
 
 ```
 MWF-01 已完成（<验收结果>）
@@ -79,15 +80,24 @@ HITL 等待处理：MWF-03（HITL blocked）
 
 用户选择后继续循环。
 
-**退出 → 提交 `show(final report)`，格式：**
+若订单已经授权按依赖顺序完成全部 AFK issue，则当前 issue 完成后用 `show(production record)` 提交阶段产物并自主继续：
 
 ```
 【阶段】Dispatch
-【已执行】<issue id> — <状态: done / in-progress / hitl-blocked>
-【验收结果】<通过/失败（失败原因）>
+【已执行】<issue id> — done
+【验收结果】<逐项证据>
 【新解除的阻塞】<issue id> 从 blocked 变为 afk-ready
 【当前可执行列表】<afk-ready 的 issue id>
-【下一步】继续 dispatch / resolve-hitl / status
+【下一步】继续 dispatch / 转入 resolve-hitl
 ```
 
-如果所有 issue 都已完成 → 提交 `show(final report)`，包含完整的 session 总结。
+终态按实际 session 状态判定：
+
+- 所有必交 issue 均完成且验收通过：`show(qualified delivery)`，包含完整 session 总结；
+- 客户显式移除部分必交 issue：先将范围修订更新为有效契约；剩余范围全部验收通过后使用
+  `show(qualified delivery)`，正文明确说明范围修订已先更新有效契约；
+- 只剩有明确解除条件的阻塞项，且本周期不再等待：`show(production suspended)`；
+- 验收失败且没有当前订单内的有效恢复路径：`show(production failed)`；
+- 客户撤回整个订单且不要求验收现有产物：`show(customer cancelled)`。
+
+`in-progress`、`hitl-blocked` 或验收失败不得放入 `qualified delivery`。

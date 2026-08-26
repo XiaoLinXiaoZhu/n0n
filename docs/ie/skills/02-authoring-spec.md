@@ -1,5 +1,8 @@
 # Skill 编写规范（一）：元契约
 
+> 状态：历史工程快照。本文涉及的 self-function 七章、order 占位和命名问题对应重建前结构；
+> 当前分类与加载说明见 `../../../packages/skills/README.md`。
+
 本文用途：规定对全部四个分类都生效的 skill 编写要求。各分类各自的正文骨架见 `03-type-templates.md`。
 
 地位：本文是 `00-ground-truth.md` 的下游产物。与它冲突的以它为准。本文中形如 `R8` 的引用指向该文的推论编号。

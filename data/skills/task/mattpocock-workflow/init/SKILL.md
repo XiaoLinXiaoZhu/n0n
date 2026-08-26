@@ -28,7 +28,9 @@ alias: mwf-init
 
 ### 2. 分项配置
 
-用 `show(ask user question)` 逐项引导用户配置，**一次一项**。每项先解释（这是什么、为什么需要），再展示选项和默认值，等用户确认后再进入下一项。
+先用 `observe` 取得仓库中可见的事实。只有客户掌握而生产方无法取得的现状、要求或路径，
+才用 `show(customer information required)` 请求；只有配置会改变客户工作流、公共契约或长期维护取舍时，
+才在解释后果和建议后使用 `show(customer decision required)`。一条等待消息只请求一种客户责任。
 
 #### A — Issue tracker
 
@@ -74,7 +76,9 @@ alias: mwf-init
 | `ready-for-human` | `ready-for-human` | 需要人类实现 |
 | `wontfix` | `wontfix` | 不做 |
 
-询问用户是否有自定标签需要映射。默认直接使用角色名作为标签。
+先从现有 issue tracker 和项目文档检查自定标签。无法访问而客户掌握现状时，
+用 `show(customer information required)` 请求现有标签；取得事实后，只有映射存在真实语义取舍时才请求客户决定。
+没有自定标签或不存在实质取舍时，默认直接使用角色名作为标签。
 
 写入 `docs/agents/triage-labels.md`，参考 [triage-labels.md](references/triage-labels.md)。
 
@@ -112,7 +116,8 @@ alias: mwf-init
 
 ### 4. 完成
 
-**退出 → 提交 `show(final report)`，格式：**
+作为完整 `@mwf` 管线的一部分时，用 `show(production record)` 提交以下阶段产物并继续 Plan。
+只有客户直接调用 `@mwf-init`，且本次订单只要求完成初始化时，才用 `show(qualified delivery)`：
 
 ```
 【阶段】Init — 完成

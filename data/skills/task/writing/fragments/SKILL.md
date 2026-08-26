@@ -44,7 +44,7 @@ fragment 之间用 `---` 分隔。无标题、无标签、无排序。
 
 ### 静默追加
 
-不问"可以加吗？"——加了就行，提一句"adding that"。在低风险写入场景中，不用 `show(ask user question)` 打断对话节奏。
+不问"可以加吗？"——加了就行，提一句"adding that"。在低风险写入场景中，不用 `show(customer decision required)` 打断对话节奏。
 
 ### 尊重用户编辑
 
@@ -62,5 +62,8 @@ fragment 之间用 `---` 分隔。无标题、无标签、无排序。
 
 这是一个对话式 skill。核心是持续提问、持续追加。
 
-- 不需要频繁 `show(working log)`——碎片的积累是连续的，没有明确的步骤
-- 会话结束时 `show(final report)` 报告 fragment 数量和文件路径
+- 不需要频繁 `show(production record)`——碎片的积累是连续的，没有明确的步骤
+- 客户确认现有 fragments 已满足本次目标时，用 `show(qualified delivery)` 报告数量和文件路径
+- 客户接受缩减后的目标时，先将范围修订更新为有效契约；剩余范围验收通过后使用 `show(qualified delivery)`，
+  并在正文明确说明范围修订已先更新有效契约。客户撤回且不验收现有文件时使用
+  `show(customer cancelled)`；其他未满足情形按实际等待路径使用 `show(production suspended)` 或 `show(production failed)`

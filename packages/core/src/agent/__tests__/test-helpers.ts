@@ -34,7 +34,7 @@ export function mockShowTC(id: string): ToolCallRecord {
 	return {
 		id,
 		tool: "show",
-		args: { type: "final report", content: "test" },
+		args: { type: "qualified delivery", content: "test" },
 	} as ToolCallRecord;
 }
 

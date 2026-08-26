@@ -31,7 +31,12 @@ import {
 	type ToolEntry,
 	type ToolkitSession,
 } from "./session.ts";
-import { makeShowTool, type ShowTypeConfig, showTool } from "./show.ts";
+import {
+	makeShowArgsSchema,
+	makeShowTool,
+	type ShowTypeConfig,
+	showTool,
+} from "./show.ts";
 import {
 	makeWriteRecover,
 	WRITE_TOOL_DEFINITION,
@@ -131,11 +136,17 @@ export function makeToolkit(
 	toolsConfig: ToolsConfig,
 	_model?: string,
 ): Toolkit {
+	const showArgsSchema = makeShowArgsSchema(showConfig);
 	const showEntry: ToolEntry = {
 		definition: makeShowTool(showConfig),
 		canStart: () => true,
 		execute: async function* (tc) {
-			yield showTool(tc as ShowToolCall);
+			const call: ShowToolCall = {
+				id: tc.id,
+				tool: "show",
+				args: showArgsSchema.parse(tc.args),
+			};
+			yield showTool(call);
 		},
 	};
 

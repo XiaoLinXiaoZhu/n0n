@@ -3,7 +3,7 @@
  *
  * 与 cli REPL 的区别：
  * - System prompt 为 code.md（代码 agent 而非 workflow builder）
- * - Show schema 为 CodeShowSchema（working log / ask user question / request user assistance / final report）
+ * - Show schema 区分非终态客户任务与质量终态
  * - Context 注入项目结构和 git 状态，而非 workflow 列表
  */
 
@@ -25,15 +25,22 @@ import { makeToolkit } from "@n0n/tools";
 import type { DomainMessage, LLMClient, Skill } from "@n0n/types";
 import { CodeRenderer } from "../code-renderer.ts";
 import { buildEnvironmentContext } from "../context-env.ts";
+import { buildCodeSystemPrompt } from "../model-guidance.ts";
 import type { UserInputConfig } from "../multiline-input/config.ts";
 import type { NotifyConfig } from "../notify-sound.ts";
 import { getPrompt } from "../prompts/index.ts";
 import type { CodeShowResult } from "../schema.ts";
-import { showConfig } from "../show-config.ts";
+import {
+	noCustomerParticipationShowConfig,
+	showConfig,
+} from "../show-config.ts";
 import { ShowWriter } from "../show-writer.ts";
 import { parseAndInjectSkills } from "../skill-inject.ts";
 import { createStdinController } from "../stdin-controller.ts";
-import { CODE_TAIL_ANCHOR } from "../tail-anchor.ts";
+import {
+	CODE_TAIL_ANCHOR,
+	NO_CUSTOMER_PARTICIPATION_HINT,
+} from "../tail-anchor.ts";
 import { UserPrompter } from "../user-prompter.ts";
 import { handleShowResult } from "./handle-result.ts";
 import { createHeartbeatKeeper } from "./heartbeat.ts";
@@ -86,8 +93,11 @@ export async function startCodeRepl(
 
 	// ── 依赖组装 ──
 
-	const baseSystemPrompt = getPrompt(promptVersion);
 	const { client, toolsConfig, agentConfig } = options;
+	const baseSystemPrompt = buildCodeSystemPrompt(
+		getPrompt(promptVersion),
+		client.modelId,
+	);
 
 	const initSkills = await loadInitSkills();
 	const systemSkills: Skill[] = initSkills.map(toSkill);
@@ -97,7 +107,11 @@ export async function startCodeRepl(
 		skills: systemSkills,
 	};
 	const notifyConfig = options.notifyConfig ?? { enabled: false };
-	const toolkit = makeToolkit(showConfig, toolsConfig, client.modelId);
+	const toolkit = makeToolkit(
+		exitAfterInitialInput ? noCustomerParticipationShowConfig : showConfig,
+		toolsConfig,
+		client.modelId,
+	);
 
 	const canInteract = typeof process.stdin.setRawMode === "function";
 	const renderer = canInteract
@@ -231,7 +245,9 @@ export async function startCodeRepl(
 					makeUserInput(
 						finalText,
 						skillResult.mentionedSkills ?? [],
-						CODE_TAIL_ANCHOR,
+						exitAfterInitialInput
+							? NO_CUSTOMER_PARTICIPATION_HINT
+							: CODE_TAIL_ANCHOR,
 						context,
 					),
 				);
@@ -302,15 +318,16 @@ export async function startCodeRepl(
 				continue;
 			}
 
-			const outcome = handleShowResult(ir, history, showWriter, notifyConfig);
+			const outcome = handleShowResult(ir, showWriter, notifyConfig);
 			switch (outcome.action) {
-				case "prompt":
+				case "wait_for_customer":
 					userInput = await promptNext();
 					break;
 				case "auto_resume":
+					history.push(outcome.historyEntry);
 					autoResume = true;
 					continue;
-				case "continue":
+				case "terminal":
 					userInput = await promptNext();
 					break;
 			}

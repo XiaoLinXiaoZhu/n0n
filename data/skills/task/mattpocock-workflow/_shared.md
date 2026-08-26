@@ -14,7 +14,7 @@
 | `title` | `string` | 简短描述 |
 | `description` | `string` | 端到端行为描述，不写具体文件路径 |
 | `acceptanceCriteria` | `string[]` | 验收条件清单 |
-| `type` | `"AFK" \| "HITL"` | 是否需要人类参与 |
+| `type` | `"AFK" \| "HITL"` | 是否需要客户参与 |
 | `status` | `IssueStatus` | 当前生命周期阶段（见下） |
 | `blockedBy` | `string[]` | 被哪些 issue id 阻塞，空数组表示无阻塞 |
 | `blocking` | `string[]` | 阻塞哪些 issue id |
@@ -63,7 +63,7 @@
 - `pending` — 刚创建，尚未评估
 - `afk-ready` — 已充分定义，agent 可直接实现
 - `in-progress` — 正在被执行
-- `hitl-blocked` — 需要人类决策/设计审查，暂停
+- `hitl-blocked` — 缺少客户独占信息，或等待客户对业务结果、范围、公共契约、授权、重大风险或契约要求的设计验收承担责任
 - `hitl-resolved` — HITL 已解决，可重新分类为 afk-ready
 - `done` — 完成并通过验收
 - `wontfix` — 决定不做
@@ -100,14 +100,14 @@ Session 由 `@mwf` 在上下文中维护，子 skill 通过上下文读取和更
 四个核心阶段 + 一个辅助阶段：
 1. **plan** — 质询+PRD
 2. **split** — 拆分为纵向切片 issue
-3. **resolve-hitl** — 盘问人类，将 HITL 转为 AFK
+3. **resolve-hitl** — 取得必要的客户信息、决定或操作，将 HITL 转为 AFK
 4. **dispatch** — 消费/执行 issue
 
 ## 5. 命名约定
 
 - issue id: `MWF-01`, `MWF-02`...（按创建顺序递增）
 - 在 `@mwf` 上下文中用 `this session` 引用当前 session
-- 子 skill 结束时通过 `show(final report)` 报告 session 状态变更
+- 子 skill 作为完整管线阶段时通过 `show(production record)` 报告 session 状态变更，由父流程继续并判定订单终态
 
 ---
 

@@ -6,6 +6,6 @@ role: user
 
 --- content ---
 <system_warning>
-Plain text replies are invisible to the user. If you drafted a response they should read, put it in a show(final report) call — that's the only channel that reaches them. (2/5 idle rounds)
+Plain text replies are invisible to the user. Put user-facing content in show and select the type from the real next action or terminal state. (2/5 idle rounds)
 </system_warning>
 ```

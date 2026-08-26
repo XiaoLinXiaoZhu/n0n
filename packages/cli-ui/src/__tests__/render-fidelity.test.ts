@@ -91,7 +91,7 @@ describe("RichRenderer 虚拟终端保真测试", () => {
 
 		// 含中文的 show 工具参数
 		const json =
-			'{"type":"final report","content":"已完成 PR #61 的清理：1. 关闭 PR #61，附带说明关闭原因（核心功能已被 PR #75/#76 覆盖，分支严重过时）2. 删除远程分支"}';
+			'{"type":"qualified delivery","content":"已完成 PR #61 的清理：1. 关闭 PR #61，附带说明关闭原因（核心功能已被 PR #75/#76 覆盖，分支严重过时）2. 删除远程分支"}';
 		const chunks = randomChunks(json, 123);
 		renderer.toolCallArgStart(0, "show");
 		for (const chunk of chunks) {
@@ -229,7 +229,7 @@ describe("RichRenderer 虚拟终端保真测试", () => {
 		renderer.roundStart(1, 10, 3);
 
 		const json =
-			'{"type":"working log","content":"关闭并清理远程分支和本地引用完成所有操作"}';
+			'{"type":"production record","content":"关闭并清理远程分支和本地引用完成所有操作"}';
 		const chunks = randomChunks(json, 77);
 		renderer.toolCallArgStart(0, "show");
 		for (const chunk of chunks) {

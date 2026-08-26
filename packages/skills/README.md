@@ -6,9 +6,10 @@
 
 **Skill**：一个文件夹 + SKILL.md，承载可按需激活的指令集。
 
-**System Prompt**：始终存在于上下文中的基础指令。定义系统架构约束、工具定义、安全边界、沟通规范。是模型行为的"地基"。
+**System Prompt**：始终存在于上下文中的角色和模型级基础指令。
 
-**激活 (Activation)**：Skill 被加载到上下文中的动作。分为 auto（模型可自主发现）、manual（需用户 `@name` 显式唤起）和 init（启动时自动加载，拼接进 system prompt）。
+**激活 (Activation)**：Skill 被加载到上下文中的动作。分为 auto（模型可自主发现）、manual（需用户 `@name` 显式唤起）
+和 init（启动时自动加载，作为稳定上下文前缀发送）。
 
 **堆叠 (Stacking)**：多个 skill 同时激活，各自生效。典型场景：一个 directive + 一个 task 同时生效。
 
@@ -16,20 +17,21 @@
 
 ## 四种 Skill 类型
 
-### Standard（标准）
+### Self-Function（生产质量标准）
 
-无论执行什么任务都适用的底层规则和规范。不指向任何具体任务，是模型行为的常驻约束。
+无论执行什么任务都适用的生产质量契约。不指向具体任务，定义委托责任、阶段、证据、沟通和质量终态。
 
 类比：厨房卫生规范——无论做什么菜都要遵守。
 
 **核心特征**：
 - 不包含"请执行 X"这样的任务指令
-- 是一组并行生效的约束/准则
-- 通常应该始终激活（auto），甚至可以考虑并入 system prompt
+- 由上位质量关系推导要求和合格判据
+- 以 init 方式在生产周期开始时自动生效
 
-**与系统的关系**：作为 init skill 启动时自动加载（activation: init），约束模型在使用 write/act 时的行为——写什么样的代码、如何操作 git、如何处理错误。不编排工具使用顺序，不定义 show 格式。
+**与系统的关系**：作为 init skill 启动时自动加载（activation: init）。质量标准定义
+`show` 类型的语义和合格判据；工具接口只定义枚举、参数和循环行为。
 
-**典型代表**：coding（编码实践）、git（工作流规范）
+**当前代表**：`self-function/production-quality`
 
 ### Task（任务）
 
@@ -43,7 +45,8 @@
 - 有明确的起点和终点（任务完成即结束）
 - 将重复出现的任务抽取为可复用的标准化流程
 
-**与系统的关系**：编排 observe/reason/act 三个工具的使用顺序。每个步骤天然映射到某种工具类型。每个中间步骤通过 `show(working log)` 记录进展，最终步骤通过 `show(final report)` 交付。
+**与系统的关系**：编排 observe/reason/act 三个工具的使用顺序。生产记录只在形成有信息价值的关键进展时发送；
+等待型消息由客户下一步任务决定，终态由产物与当前验收基线的关系决定，不能把“流程结束”直接等同于合格交付。
 
 **典型代表**：bugfix（修 bug）、refactor（重构）、review（代码审查）、disk-cleanup（清理磁盘）、triage（分诊 issue）、to-prd（生成 PRD）、handoff（生成交接文档）
 
@@ -59,10 +62,10 @@
 - 可以与任何 task 堆叠使用
 
 **两个子方向**：
-- **Show 调制器**：改变 working log 的使用频率和内容格式（research、step）
+- **Show 调制器**：改变 production record 的使用时机和内容格式（research、step）
 - **视角/模式调制器**：改变模型的输出视角或交互角色（zoom-out 上升抽象层、grill-me 反转为提问者）
 
-**与系统的关系**：调制 working log 的频率和格式，或约束 observe/reason/act 的使用范围。
+**与系统的关系**：调制 production record 的触发条件和格式，或约束 observe/reason/act 的使用范围。
 
 **典型代表**：research（高频汇报+证据链条）、step（通用高频汇报）、zoom-out（上升抽象层）、grill-me（穷举式提问）
 
@@ -88,23 +91,24 @@
 
 例：disk-cleanup 作为 task 时包含清理 SOP，同时内嵌了 capability 内容（Bun Shell 避坑指南）和参考知识（NVIDIA 驱动目录）。
 
-## Standard 与 System Prompt 的关系
+## Self-Function 与 System Prompt 的关系
 
-Standard 类型的 skill 和 system prompt 在功能上有重叠——都是"不论做什么任务都适用的规则"。区别在于：
+Self-Function 与 system prompt 分别承担质量契约和模型角色，职责不同：
 
-| | System Prompt | Standard Skill |
+| | System Prompt | Self-Function |
 |---|---|---|
 | 加载方式 | 始终存在 | 启动时自动加载（init 类型） |
-| 内容性质 | 系统架构约束、工具定义、安全边界 | 编码实践、工作流规范 |
-| 变更频率 | 低（动系统基础设施） | 高（迭代做事方法） |
+| 内容性质 | 角色和模型级提示 | 生产责任、阶段、证据和合格判据 |
+| 变更频率 | 低 | 受控修订 |
 | 迭代方式 | 需改 system prompt 代码 | 改 SKILL.md 文件 |
 
-将频繁迭代的规范放在 skill 中而非 system prompt 中，可以加快迭代速度。
+工具事实、运行时协议、项目口径和实现偏好各由自己的来源维护，
+不复制进 system prompt 或质量标准。
 
 ## Skill 堆叠规则
 
 - Directive + Task 可以堆叠（例：@step + @bugfix）
 - 多个 Directive 可以堆叠（例：@step + @zoom-out）
 - 多个 Task 通常不堆叠（同时执行两个任务的 SOP 会冲突）
-- Standard 和 Capability 可以与任何类型堆叠
-- Directive 不能覆盖 system prompt 的安全约束
+- Self-Function 和 Capability 可以与任何类型堆叠
+- Directive 不能覆盖 Self-Function 的质量责任、系统权限或安全边界

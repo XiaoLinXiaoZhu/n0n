@@ -6,12 +6,28 @@
 
 n0n 是一个编码 agent，接收用户请求，通过 LLM + 工具链完成任务。从工业工程的视角，n0n 是一条**产线**。当前提示词只在 system 中保留角色定义，长期行为标准由 init skill 作为独立 user 消息发送，运行时协议随当前请求发送。IE 提供的是这些行为标准的组织与验收方法。
 
-**本次修订的核心**：引入 self-function 体系（F0-F5 共 6 个 IE 驱动功能文档）替代现有的碎片 standard skill。F0 作为"用户动态约束容器"统一处理用户加载的 task/directive/capability skill。
+**当前实现**：以一份可索引的 Self-Function 生产质量标准约束每份客户订单。
+标准从委托关系、阶段证据链、风险、沟通和质量终态推导要求，不再按历史失效倾向拆成 F0-F5，
+也不把工具、项目或模型偏好写成质量条款。
 
 ## 文档索引
 
+当前规范与重建记录：
+
 | 文档 | 内容 |
 |------|------|
+| [Self-Function ground truth](self-function-ground-truth.md) | 当前上位概念基准 |
+| [重建 2 推导记录](rebuild-2/00-derivation-record.md) | 从 ground truth 到关系模型和现行标准的推导 |
+| [现行标准入口](rebuild-2/01-self-function-standard-draft.md) | 指向唯一运行时规范正文 |
+| [重建 2 Review 导航](rebuild-2/02-review-guide.md) | 关系追踪、边界案例和实现审查顺序 |
+| [实现偏好](rebuild-2/03-implementation-preferences.md) | 工具、项目、编辑、隔离和模型适配的非规范性偏好 |
+| [show 类型关系推导](rebuild-2/04-show-type-derivation.md) | 从四类最小协议核到八个机器可辨叶子的推导与边界 |
+| [IE-AI 功能约束分享报告](rebuild-2/05-ie-ai-functional-constraints.md) | 面向其他 AI 系统的通用推导、分层、迁移和验证方法 |
+
+以下文档是旧 F0-F5 方案的历史工程输入，不再描述当前规范或运行时：
+
+| 文档 | 历史内容 |
+|------|----------|
 | [背景](background.md) | 现有系统的问题诊断 |
 | [目标](goals.md) | 设计目标、6 条关键原则 |
 | [方法论](methodology.md) | IE/DFMEA 在编码 agent 中的应用、S/O/D 评分锚点 |
@@ -22,25 +38,15 @@ n0n 是一个编码 agent，接收用户请求，通过 LLM + 工具链完成任
 | [思考流程规格](thinking-spec.md) | 6 步流程（含 F0 处理） + 边界裁定 |
 | [实施规划](implementation-plan.md) | self-function 体系实施步骤、预演、目录结构变更 |
 
-## 体系规模
+## 当前结构
 
-6 个功能（F0-F5）、25 个子功能、31 条失效链。
-
-## 核心架构：self-function 替代 standard
-
-```
-当前:  51 个碎片 standard skill → 散装规则
-目标:   6 个 self-function (F0-F5) → 每个是一份完整的 IE 作业指导书
-          含: 功能定义 + DFMEA 表格片段 + 预防措施 + 探测方式
-
-F0 = 用户动态约束容器（task/directive/capability skill → 提取约束 → DFMEA 遍历）
-F1 = 对抗捷径偏好（假设显式化 + 后果陈述 + 困难识别）
-F2 = 暴露不确定性（歧义追问 + 关键告知 + 理解传播）
-F3 = 安全执行操作
-F4 = 代码正确可维护
-F5 = 规范工具与通信
-```
+- 唯一质量标准：`data/skills/self-function/production-quality/SKILL.md`
+- 条件化运行时偏好：`data/skills/directive/implementation-preferences/SKILL.md`
+- 用户可见消息：record、request、delivery、non-delivery 四类协议核，展开为八个机器可辨叶子
+- 工具和项目事实：由工具接口、运行时协议和项目上下文分别提供
 
 ## 一句话结论
 
-Agent 任务和工业生产共享同一个结构：**输入不完整、返工成本高、失效在交付后才被发现**。工业工程为这个结构积累了七十年的方法——把经验固化成功能-失效-措施的三层映射，让每次 LLM 调用（"新工人上岗"）读完文档就能达到合格线。
+Agent 任务和工业生产共享同一个结构：**输入不完整、返工成本高、失效在交付后才被发现**。
+因此应先建立委托、责任、阶段、证据和验收关系，再由这些关系推导质量要求，
+而不是为每个历史摩擦点追加一条孤立规则。

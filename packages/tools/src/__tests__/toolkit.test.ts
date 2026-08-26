@@ -17,9 +17,9 @@ const config = {
 
 const showConfig = [
 	{
-		value: "final report",
-		typeDesc: "final",
-		contentDesc: "report",
+		value: "production record",
+		typeDesc: "continue",
+		contentDesc: "record",
 	},
 ];
 
@@ -82,12 +82,29 @@ describe("Toolkit session", () => {
 		const job = session.createJob({
 			id: "call_show",
 			tool: "show",
-			args: { type: "final report", content: "done" },
+			args: { type: "production record", content: "done" },
 		} as ToolCallRecord);
 
 		const events = await collect(job);
 		expect(events).toHaveLength(1);
 		expect(events[0]?.type).toBe("tool_result");
+	});
+
+	it("show 拒绝配置之外的 type", async () => {
+		const session = makeToolkit(showConfig, config).bind();
+		const job = session.createJob({
+			id: "show-invalid-type",
+			tool: "show",
+			args: { type: "working log", content: "done" },
+		});
+		const events = [];
+		for await (const event of job.run()) events.push(event);
+
+		expect(events).toHaveLength(1);
+		expect(events[0]?.type).toBe("tool_arg_error");
+		if (events[0]?.type === "tool_arg_error") {
+			expect(events[0].error.kind).toBe("invalid_args");
+		}
 	});
 
 	it("未知工具恢复为 unknown_tool", async () => {

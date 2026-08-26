@@ -1,8 +1,7 @@
 /**
  * Headless 模式 — 单次执行后退出，用于 Harbor 评测等非交互场景
  *
- * 接收一条 instruction，驱动 agentLoop 执行到 final report 或超时，
- * 不等待用户输入，ask user question / request user assistance 自动回复 "proceed with your best judgment"。
+ * 客户在周期开始时一次性提供全部要求和输入，之后不再提供信息、作出决定或完成操作。
  *
  * 输出 JSON 结果到 stdout，日志输出到 stderr。
  */
@@ -19,10 +18,14 @@ import { loadInitSkills, toSkill } from "@n0n/skill";
 import { makeToolkit } from "@n0n/tools";
 import type { DomainMessage, LLMClient, Skill } from "@n0n/types";
 import { buildEnvironmentContext } from "./context-env.ts";
+import { buildCodeSystemPrompt } from "./model-guidance.ts";
 import { getPrompt } from "./prompts";
 import type { CodeShowResult } from "./schema.ts";
-import { showConfig } from "./show-config.ts";
-import { CODE_RUNTIME_PROTOCOL } from "./tail-anchor.ts";
+import { noCustomerParticipationShowConfig } from "./show-config.ts";
+import { formatShowResult } from "./show-formatter.ts";
+import { isCodeTerminalShowType } from "./show-types.ts";
+import { ShowWriter } from "./show-writer.ts";
+import { NO_CUSTOMER_PARTICIPATION_HINT } from "./tail-anchor.ts";
 
 export interface HeadlessOptions {
 	/** 任务指令 */
@@ -58,18 +61,8 @@ export interface HeadlessResult {
 	durationMs: number;
 	/** 错误信息（如果有） */
 	error: string | null;
-}
-
-function buildHeadlessHint(): string {
-	return [
-		CODE_RUNTIME_PROTOCOL,
-		"",
-		"You are running in HEADLESS mode — there is no human to interact with.",
-		"You MUST complete the task autonomously. Do NOT call show with `ask user question` or `request user assistance` type.",
-		"If uncertain, make your best judgment and proceed.",
-		"Complete the user's requested outcome end to end within the available permissions. Use retrieval, implementation, and validation only when the task requires them.",
-		"Call show with `final report` type when done.",
-	].join("\n");
+	/** show 记录的持久化目录 */
+	sessionDir: string;
 }
 
 export async function runHeadless(
@@ -87,15 +80,17 @@ export async function runHeadless(
 	const startTime = Date.now();
 
 	// 构建 system prompt（含 init skills，拼装下沉到 format-prompt）
-	const basePrompt = getPrompt(promptVersion);
-	const effectivePrompt = systemPromptPrefix
-		? `${systemPromptPrefix}\n\n${basePrompt}`
-		: basePrompt;
+	const effectivePrompt = buildCodeSystemPrompt(
+		getPrompt(promptVersion),
+		options.client.modelId,
+		systemPromptPrefix,
+	);
 	const initSkills = await loadInitSkills();
 	const systemSkills: Skill[] = initSkills.map(toSkill);
 
 	const renderer = new PlainRenderer();
 	const sessionDir = createSessionDir(paths.sessions);
+	const showWriter = new ShowWriter(sessionDir);
 	const abortController = new AbortController();
 
 	// 超时控制
@@ -111,7 +106,11 @@ export async function runHeadless(
 		},
 	);
 	const client = options.client;
-	const toolkit = makeToolkit(showConfig, toolsConfig, client.modelId);
+	const toolkit = makeToolkit(
+		noCustomerParticipationShowConfig,
+		toolsConfig,
+		client.modelId,
+	);
 	const envContext = buildEnvironmentContext(paths.workspace);
 
 	let history: DomainMessage[] = [
@@ -125,14 +124,12 @@ export async function runHeadless(
 			type: "user_input",
 			content: instruction,
 			context: envContext || null,
-			hint: buildHeadlessHint(),
+			hint: NO_CUSTOMER_PARTICIPATION_HINT,
 			mentionedSkills: [],
 		},
 	];
 
 	let rounds = 0;
-	const MAX_BLOCKED_RETRIES = 3;
-	let blockedCount = 0;
 
 	try {
 		while (true) {
@@ -141,7 +138,6 @@ export async function runHeadless(
 				toolkit,
 				max_iterations,
 				renderer,
-				confirmFn: async () => "y",
 				signal: abortController.signal,
 			});
 
@@ -158,22 +154,28 @@ export async function runHeadless(
 					rounds,
 					durationMs: Date.now() - startTime,
 					error: agentResult.report ?? "Agent terminated without result",
+					sessionDir,
 				};
 			}
 
-			if (ir.type === "final report") {
+			showWriter.write(ir);
+			console.error(formatShowResult(ir).trimEnd());
+
+			if (isCodeTerminalShowType(ir.type)) {
+				const success = ir.type === "qualified delivery";
 				return {
-					success: true,
+					success,
 					result: ir,
 					report: agentResult.report ?? null,
 					rounds,
 					durationMs: Date.now() - startTime,
-					error: null,
+					error: success ? null : `Quality terminal state: ${ir.type}`,
+					sessionDir,
 				};
 			}
 
-			if (ir.type === "working log") {
-				// working log 状态：自动继续
+			if (ir.type === "production record") {
+				// production record 状态：自动继续
 				history.push({
 					type: "user_input",
 					content: "",
@@ -185,33 +187,20 @@ export async function runHeadless(
 			}
 
 			if (
-				ir.type === "ask user question" ||
-				ir.type === "request user assistance"
+				ir.type === "customer information required" ||
+				ir.type === "customer decision required" ||
+				ir.type === "customer action required"
 			) {
-				blockedCount++;
-				if (blockedCount >= MAX_BLOCKED_RETRIES) {
-					return {
-						success: false,
-						result: ir,
-						report:
-							"Agent requested assistance too many times in headless mode",
-						rounds,
-						durationMs: Date.now() - startTime,
-						error: `Agent requested help ${blockedCount} times in headless mode`,
-					};
-				}
-				// 根据 type 给出不同的自动回复
-				const hint =
-					ir.type === "ask user question"
-						? "You are in headless/autonomous mode. There is no human available. Make your best choice and proceed to complete the task."
-						: "You are in headless/autonomous mode. There is no human to assist you. Try to resolve the issue on your own and proceed.";
-				history.push({
-					type: "user_input",
-					content: "",
-					context: null,
-					hint,
-					mentionedSkills: [],
-				});
+				return {
+					success: false,
+					result: null,
+					report: `Invalid waiting show type in a production cycle without later customer participation: ${ir.type}`,
+					rounds,
+					durationMs: Date.now() - startTime,
+					error:
+						"Runtime protocol violation: the agent requested unavailable customer participation instead of returning production suspended or production failed.",
+					sessionDir,
+				};
 			}
 		}
 	} catch (err) {
@@ -226,6 +215,7 @@ export async function runHeadless(
 			error: abortController.signal.aborted
 				? `Timeout after ${timeoutMs}ms`
 				: message,
+			sessionDir,
 		};
 	} finally {
 		clearTimeout(timer);

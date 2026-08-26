@@ -1,5 +1,9 @@
 # CTQ 转换与功能定义
 
+> 状态：历史工程记录。本文描述已被
+> `rebuild-2/00-derivation-record.md` 与现行 `production-quality` 标准取代的 F0-F5 方案，
+> 不再定义当前规范或运行时行为。
+
 ## VOC → CTQ 转换
 
 将 9 组 VOC 转换为 7 个关键质量特性（CTQ）：

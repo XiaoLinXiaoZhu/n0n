@@ -21,13 +21,15 @@ activation: manual
 
 ## 前置
 
-用户提供原始素材文件。如果没指定输出路径，用 `show(ask user question)` 询问一次。
+用户提供原始素材文件。如果没指定输出路径，用 `show(customer information required)` 询问一次。
 
 ## 循环
 
 ### 1. 起始 beat
 
-从原始素材中写出 2-3 个候选起始 beat，每个是不同的入口。用 `show(ask user question)` 呈现，附带每个选项可能导向的后续方向预览。
+从原始素材中写出具有实质方向差异的候选起始 beat。候选数量由素材中真实存在的入口决定；
+存在多个可行入口时，用 `show(customer decision required)` 呈现，并附每个选项可能导向的后续方向预览。
+只有一个可行入口时，不制造决定请求；按该入口继续，并仅在结论值得客户复查时用 `show(production record)` 说明依据和影响。
 
 用户选一个。
 
@@ -39,7 +41,9 @@ activation: manual
 
 ### 3. 提供下一步选项
 
-observe 重读文章文件（用户可能已编辑）。然后提供 2-3 个候选下一步 beat，每个是不同的方向。用 `show(ask user question)` 呈现。
+observe 重读文章文件（用户可能已编辑）。然后提供素材和当前文章真正支持的下一步方向，
+存在多个实质方向时用 `show(customer decision required)` 呈现；只有一个可行方向时直接继续，
+候选数量由实质分歧决定。
 
 ### 4. 循环
 
@@ -54,4 +58,4 @@ observe 重读文章文件（用户可能已编辑）。然后提供 2-3 个候�
 
 ## 完成
 
-**退出 → 提交 `show(final report)`**，包含文章路径和 beat 列表概要。
+**退出 → 提交 `show(qualified delivery)`**，包含文章路径和 beat 列表概要。

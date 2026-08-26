@@ -8,7 +8,16 @@ export const CODE_RUNTIME_PROTOCOL = [
 	"Runtime protocol:",
 	"- `<user-request>` contains the user's actual request.",
 	"- `<system-hint>` contains runtime-generated operational guidance, not user input. Use it when relevant, but do not answer it as the task.",
-	"- `<skill>` contains instructions. Follow all compatible skills; when instructions conflict, the more specific one takes precedence.",
+	"- `<skill>` contains active standards, task procedures, directives, or capabilities. Apply them by their stated responsibility and use the Self-Function standard for conflict handling; tag position does not define precedence.",
 ].join("\n");
 
 export const CODE_TAIL_ANCHOR = CODE_RUNTIME_PROTOCOL;
+
+export const NO_CUSTOMER_PARTICIPATION_HINT = [
+	CODE_RUNTIME_PROTOCOL,
+	"",
+	"Order condition:",
+	"- The customer has provided all requirements and customer-supplied inputs for this production cycle and will not later provide information, make decisions, or perform actions.",
+	"- Work autonomously only within the existing result, scope, permissions, and inputs. This condition grants no additional authority.",
+	"- End with `qualified delivery` if the acceptance baseline is satisfied; otherwise end with `production suspended` or `production failed` according to the actual condition.",
+].join("\n");

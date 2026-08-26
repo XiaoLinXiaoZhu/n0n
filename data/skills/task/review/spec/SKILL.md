@@ -29,7 +29,7 @@ review-init 已完成，你已知道 diff 命令和 spec 来源。如果无 spec
 
 ### 3. 产出报告
 
-**退出 → 提交 `show(final report)`，格式：**
+**退出 → 提交 `show(qualified delivery)`，格式：**
 
 ```
 【阶段】Review Spec

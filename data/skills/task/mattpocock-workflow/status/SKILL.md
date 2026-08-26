@@ -25,7 +25,7 @@ alias: mwf-status
 | pending | N | 待评估 |
 | afk-ready | N | 可执行 |
 | in-progress | N | 正在执行 |
-| hitl-blocked | N | 等待人类 |
+| hitl-blocked | N | 等待客户责任 |
 | hitl-resolved | N | 已解决待重分类 |
 | done | N | 已完成 |
 | wontfix | N | 不做 |
@@ -59,4 +59,4 @@ MWF-01 [done] ──→ MWF-02 [afk-ready] ──→ MWF-03 [hitl-blocked] ← �
 | 全部 done | "全部完成！🎉" |
 | 空 session | "还没有 session，建议用 @mwf plan 开始" |
 
-**退出 → 提交 `show(final report)`，格式同上。**
+**退出 → 提交 `show(qualified delivery)`，格式同上。**

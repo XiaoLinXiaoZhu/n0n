@@ -1,5 +1,5 @@
 /**
- * Agent 结果处理 — 四种 show type 的响应逻辑
+ * Agent 结果处理 — 用户可见消息的循环控制
  *
  * 独立于主循环，便于单独测试各状态的流转行为。
  */
@@ -9,15 +9,15 @@ import { parseDsl } from "@n0n/shared";
 import type { DomainMessage } from "@n0n/types";
 import type { NotifyConfig } from "../notify-sound.ts";
 import { playNotifySound } from "../notify-sound.ts";
+import { PRODUCTION_RECORD_NUDGE_TEXT } from "../production-record-nudge.ts";
 import type { CodeShowResult } from "../schema.ts";
 import type { ShowWriter } from "../show-writer.ts";
-import { WORKING_NUDGE_TEXT } from "../working-nudge.ts";
 
 /** 结果处理后的循环控制 */
 export type HandleResultOutcome =
-	| { action: "prompt"; userInput: string }
+	| { action: "wait_for_customer" }
 	| { action: "auto_resume"; historyEntry: DomainMessage }
-	| { action: "continue" };
+	| { action: "terminal" };
 
 function makeUserInput(content: string, hint?: string | null): DomainMessage {
 	return {
@@ -34,15 +34,21 @@ function makeUserInput(content: string, hint?: string | null): DomainMessage {
  */
 export function handleShowResult(
 	ir: CodeShowResult,
-	history: DomainMessage[],
 	showWriter: ShowWriter,
 	notifyConfig: NotifyConfig,
+	notify: (config: NotifyConfig) => void = playNotifySound,
 ): HandleResultOutcome {
 	showWriter.write(ir);
 
 	switch (ir.type) {
-		case "ask user question": {
-			writeln(`${style.yellow("?")} ${ir.content}`);
+		case "customer information required": {
+			writeln(`${style.yellow("?")} 需要客户信息: ${ir.content}`);
+			writeln();
+			notify(notifyConfig);
+			return { action: "wait_for_customer" };
+		}
+		case "customer decision required": {
+			writeln(`${style.yellow("?")} 需要客户决定: ${ir.content}`);
 			writeln();
 			const blockItems = parseDsl(ir.content);
 			for (const [i, item] of blockItems.entries()) {
@@ -52,33 +58,46 @@ export function handleShowResult(
 				}
 			}
 			writeln();
-			playNotifySound(notifyConfig);
-			return { action: "prompt", userInput: "" };
+			notify(notifyConfig);
+			return { action: "wait_for_customer" };
 		}
-		case "request user assistance": {
-			writeln(`${style.yellow("?")} ${ir.content}`);
+		case "customer action required": {
+			writeln(`${style.yellow("↗")} 需要客户操作: ${ir.content}`);
 			writeln();
-			playNotifySound(notifyConfig);
-			return { action: "prompt", userInput: "" };
+			notify(notifyConfig);
+			return { action: "wait_for_customer" };
 		}
-		case "working log": {
-			writeln(`${style.cyan("⏳")} 进行中: ${ir.content}`);
+		case "production record": {
+			writeln(`${style.cyan("⏳")} 生产记录: ${ir.content}`);
 			writeln();
-			history.push(makeUserInput("", WORKING_NUDGE_TEXT));
 			return {
 				action: "auto_resume",
-				historyEntry: makeUserInput("", WORKING_NUDGE_TEXT),
+				historyEntry: makeUserInput("", PRODUCTION_RECORD_NUDGE_TEXT),
 			};
 		}
-		case "final report": {
-			writeln(`${style.green("✓")} 完成: ${ir.content}`);
+		case "qualified delivery": {
+			writeln(`${style.green("✓")} 合格交付: ${ir.content}`);
 			writeln();
-			playNotifySound(notifyConfig);
-			return { action: "prompt", userInput: "" };
+			notify(notifyConfig);
+			return { action: "terminal" };
 		}
-		default: {
-			const _exhaustive: never = ir.type;
-			return { action: "continue" };
+		case "production suspended": {
+			writeln(`${style.yellow("!")} 生产暂停: ${ir.content}`);
+			writeln();
+			notify(notifyConfig);
+			return { action: "terminal" };
+		}
+		case "production failed": {
+			writeln(`${style.red("✗")} 生产失败: ${ir.content}`);
+			writeln();
+			notify(notifyConfig);
+			return { action: "terminal" };
+		}
+		case "customer cancelled": {
+			writeln(`${style.gray("■")} 客户取消: ${ir.content}`);
+			writeln();
+			notify(notifyConfig);
+			return { action: "terminal" };
 		}
 	}
 }
