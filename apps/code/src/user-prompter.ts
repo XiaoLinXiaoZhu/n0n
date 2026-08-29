@@ -7,7 +7,7 @@
  */
 
 import { createInterface } from "node:readline";
-import { label, style } from "@n0n/cli-ui";
+import { label, style, write, writeln } from "@n0n/cli-ui";
 import { readMultilineInput } from "./multiline-input";
 import type { UserInputConfig } from "./multiline-input/config.ts";
 import type { StdinController } from "./stdin-controller.ts";
@@ -75,7 +75,7 @@ export class UserPrompter {
 
 		const s = this.stdin;
 		return new Promise<string>((resolve) => {
-			process.stderr.write(question);
+			write(question);
 			let line = "";
 
 			const disconnect = s.connectInput((data: string) => {
@@ -83,7 +83,7 @@ export class UserPrompter {
 					const code = data.charCodeAt(i);
 					if (code === 17) {
 						// Ctrl+Q → abort
-						process.stderr.write("\n");
+						writeln();
 						s.abortAgent();
 						disconnect();
 						resolve("n");
@@ -91,7 +91,7 @@ export class UserPrompter {
 					}
 					if (code === 13) {
 						// Enter
-						process.stderr.write("\n");
+						writeln();
 						disconnect();
 						resolve(line);
 						return;

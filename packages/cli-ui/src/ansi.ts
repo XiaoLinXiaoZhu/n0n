@@ -79,14 +79,28 @@ export function showCursor(): void {
 	out.write("\x1b[?25h");
 }
 
+/**
+ * 将裸 \n 规范化为 \r\n（已带 \r 的保留不动）。
+ *
+ * 原因：终端（尤其 Windows ConPTY 在 raw mode 下）对裸 \n 只做换行、不回到列 0。
+ * 若渲染层依赖 "\n 自动回列 0"（CRLF 语义），每一行都会从上一行结束列继续，
+ * 表现为"模型输出前不顶格、逐行向右漂移、流式重绘错位"。
+ * 显式 \r\n 在两种终端行为下都安全：
+ *   - LF-only 终端：\r 回列 0 + \n 换行 → 正确；
+ *   - CRLF 终端：\r 回列 0 + \n（被翻译为 \r\n）→ 列 0 两次，无害。
+ */
+function normalizeCRLF(text: string): string {
+	return text.replace(/(?<!\r)\n/g, "\r\n");
+}
+
 /** 写入 stderr（不换行） */
 export function write(text: string): void {
-	out.write(text);
+	out.write(normalizeCRLF(text));
 }
 
 /** 写入 stderr（换行） */
 export function writeln(text = ""): void {
-	out.write(`${text}\n`);
+	out.write(normalizeCRLF(`${text}\r\n`));
 }
 
 /**
