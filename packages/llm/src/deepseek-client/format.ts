@@ -13,6 +13,8 @@ import type {
 } from "./types.ts";
 import { rewriteParagraphs } from "./utils.ts";
 
+const ENABLE_REASONING_REWRITE = false;
+
 /** 将 PromptMessage 数组转换为 DeepSeek API 消息格式 */
 export function toDeepSeekMessages(
 	promptMessages: PromptMessage[],
@@ -31,7 +33,7 @@ export function toDeepSeekMessages(
 
 			case "assistant": {
 				const reasoningContent = msg.reasoning
-					? { reasoning_content: rewriteParagraphs(msg.reasoning) }
+					? { reasoning_content: ENABLE_REASONING_REWRITE ? rewriteParagraphs(msg.reasoning) : msg.reasoning }
 					: {};
 				if (msg.toolCalls?.length) {
 					const toolCalls: DeepSeekToolCall[] = msg.toolCalls.map((tc) => ({
