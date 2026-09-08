@@ -42,7 +42,7 @@ import {
 	NO_CUSTOMER_PARTICIPATION_HINT,
 } from "../tail-anchor.ts";
 import { UserPrompter } from "../user-prompter.ts";
-import { handleShowResult } from "./handle-result.ts";
+import { handleShowResults } from "./handle-result.ts";
 import { createHeartbeatKeeper } from "./heartbeat.ts";
 
 export interface CodeReplOptions {
@@ -306,10 +306,10 @@ export async function startCodeRepl(
 				continue;
 			}
 
-			const ir = agentResult.result;
+			const results = agentResult.results;
 			writeln();
 
-			if (ir == null) {
+			if (results.length === 0) {
 				writeln(`${style.red("✗")} Agent 异常终止`);
 				if (agentResult.report) writeln(style.gray(`  ${agentResult.report}`));
 				writeln();
@@ -317,7 +317,7 @@ export async function startCodeRepl(
 				continue;
 			}
 
-			const outcome = handleShowResult(ir, showWriter, notifyConfig);
+			const outcome = handleShowResults(results, showWriter, notifyConfig);
 			switch (outcome.action) {
 				case "wait_for_customer":
 					userInput = await promptNext();

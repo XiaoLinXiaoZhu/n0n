@@ -101,3 +101,49 @@ export function handleShowResult(
 		}
 	}
 }
+
+/**
+ * 按顺序处理同一轮的多个 show 结果。
+ *
+ * 每条 show 都独立完成渲染、持久化和通知；循环控制按
+ * terminal > wait_for_customer > auto_resume 聚合。
+ * 全部为 production record 时只注入一次自动继续提示。
+ */
+export function handleShowResults(
+	results: readonly CodeShowResult[],
+	showWriter: ShowWriter,
+	notifyConfig: NotifyConfig,
+	notify: (config: NotifyConfig) => void = playNotifySound,
+): HandleResultOutcome {
+	if (results.length === 0) {
+		throw new Error("handleShowResults requires at least one show result");
+	}
+
+	let finalAction: "auto_resume" | "wait_for_customer" | "terminal" =
+		"auto_resume";
+	let autoResumeEntry: DomainMessage | null = null;
+
+	for (const ir of results) {
+		const outcome = handleShowResult(ir, showWriter, notifyConfig, notify);
+		if (outcome.action === "terminal") {
+			finalAction = "terminal";
+			continue;
+		}
+		if (outcome.action === "wait_for_customer") {
+			if (finalAction !== "terminal") finalAction = "wait_for_customer";
+			continue;
+		}
+		if (autoResumeEntry === null) autoResumeEntry = outcome.historyEntry;
+	}
+
+	if (finalAction === "auto_resume") {
+		if (autoResumeEntry === null) {
+			throw new Error("auto_resume outcome is missing a history entry");
+		}
+		return { action: "auto_resume", historyEntry: autoResumeEntry };
+	}
+	if (finalAction === "wait_for_customer") {
+		return { action: "wait_for_customer" };
+	}
+	return { action: "terminal" };
+}

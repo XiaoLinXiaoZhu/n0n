@@ -82,3 +82,20 @@ export function isCodeTerminalShowType(
 ): type is CodeTerminalShowType {
 	return terminalTypes.has(type);
 }
+
+export type CodeWaitShowType = Extract<
+	CodeShowDefinition,
+	{ lifecycle: "wait" }
+>["value"];
+
+export const CODE_WAIT_SHOW_TYPES = CODE_SHOW_DEFINITIONS.filter(
+	(definition) => definition.lifecycle === "wait",
+).map((definition) => definition.value) as CodeWaitShowType[];
+
+const waitTypes = new Set<CodeShowType>(CODE_WAIT_SHOW_TYPES);
+
+export function isCodeWaitShowType(
+	type: CodeShowType,
+): type is CodeWaitShowType {
+	return waitTypes.has(type);
+}

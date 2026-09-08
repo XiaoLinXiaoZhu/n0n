@@ -23,7 +23,7 @@ import { getPrompt } from "./prompts";
 import type { CodeShowResult } from "./schema.ts";
 import { noCustomerParticipationShowConfig } from "./show-config.ts";
 import { formatShowResult } from "./show-formatter.ts";
-import { isCodeTerminalShowType } from "./show-types.ts";
+import { isCodeTerminalShowType, isCodeWaitShowType } from "./show-types.ts";
 import { ShowWriter } from "./show-writer.ts";
 import { NO_CUSTOMER_PARTICIPATION_HINT } from "./tail-anchor.ts";
 
@@ -146,9 +146,9 @@ export async function runHeadless(
 
 			history = agentResult.history;
 			rounds++;
-			const ir = agentResult.result;
+			const results = agentResult.results;
 
-			if (ir == null) {
+			if (results.length === 0) {
 				// Agent 异常终止
 				return {
 					success: false,
@@ -161,43 +161,33 @@ export async function runHeadless(
 				};
 			}
 
-			showWriter.write(ir);
-			console.error(formatShowResult(ir).trimEnd());
+			for (const ir of results) {
+				showWriter.write(ir);
+				console.error(formatShowResult(ir).trimEnd());
+			}
 
-			if (isCodeTerminalShowType(ir.type)) {
-				const success = ir.type === "qualified delivery";
+			const terminal = results
+				.filter((ir) => isCodeTerminalShowType(ir.type))
+				.at(-1);
+			if (terminal) {
+				const success = terminal.type === "qualified delivery";
 				return {
 					success,
-					result: ir,
+					result: terminal,
 					report: agentResult.report ?? null,
 					rounds,
 					durationMs: Date.now() - startTime,
-					error: success ? null : `Quality terminal state: ${ir.type}`,
+					error: success ? null : `Quality terminal state: ${terminal.type}`,
 					sessionDir,
 				};
 			}
 
-			if (ir.type === "production record") {
-				// production record 状态：自动继续
-				history.push({
-					type: "user_input",
-					content: "",
-					context: null,
-					hint: "继续",
-					mentionedSkills: [],
-				});
-				continue;
-			}
-
-			if (
-				ir.type === "customer information required" ||
-				ir.type === "customer decision required" ||
-				ir.type === "customer action required"
-			) {
+			const wait = results.find((ir) => isCodeWaitShowType(ir.type));
+			if (wait) {
 				return {
 					success: false,
 					result: null,
-					report: `Invalid waiting show type in a production cycle without later customer participation: ${ir.type}`,
+					report: `Invalid waiting show type in a production cycle without later customer participation: ${wait.type}`,
 					rounds,
 					durationMs: Date.now() - startTime,
 					error:
@@ -205,6 +195,15 @@ export async function runHeadless(
 					sessionDir,
 				};
 			}
+
+			// 全部为 production record：自动继续
+			history.push({
+				type: "user_input",
+				content: "",
+				context: null,
+				hint: "继续",
+				mentionedSkills: [],
+			});
 		}
 	} catch (err) {
 		const message =

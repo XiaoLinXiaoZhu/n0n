@@ -33,7 +33,10 @@ import { parseStream, type StreamingResult } from "./streaming.ts";
 // ── 结果类型 ──
 
 export interface AgentResult<T = unknown> {
+	/** 首个 show 结果；兼容旧调用方，优先使用 results。 */
 	result: T | null;
+	/** 本轮返回的全部 show 结果，按本轮工具调度顺序排列。 */
+	results: T[];
 	report: string | null;
 	history: DomainMessage[];
 	/** 本轮使用的工具定义列表（供 heartbeat 重建缓存前缀） */
@@ -72,6 +75,7 @@ export async function agentLoop<T = unknown>(
 			renderer.aborted();
 			return {
 				result: null,
+				results: [],
 				report: null,
 				history: messages,
 				tools: toolkit.tools,
@@ -145,6 +149,7 @@ export async function agentLoop<T = unknown>(
 			await runPromise;
 			return {
 				result: null,
+				results: [],
 				report:
 					"Agent terminated: stream parsing failed without producing a result",
 				history: messages,
@@ -169,6 +174,7 @@ export async function agentLoop<T = unknown>(
 			else renderer.agentTerminated(outcome.reason);
 			return {
 				result: null,
+				results: [],
 				report: outcome.report,
 				history: messages,
 				tools: toolkit.tools,
@@ -185,6 +191,7 @@ export async function agentLoop<T = unknown>(
 				renderer.agentTerminated("max idle rounds exceeded (no tool calls)");
 				return {
 					result: null,
+					results: [],
 					report: `Agent terminated: max idle rounds exceeded. Last content: ${(result.accumulator.content || "").slice(0, 200)}`,
 					history: messages,
 					tools: toolkit.tools,
@@ -238,18 +245,23 @@ export async function agentLoop<T = unknown>(
 			messages.push(pair.result);
 		}
 
-		// ── 7. 检测 show 调用 → 终止循环并返回结果 ──
+		// ── 7. 检测 show 调用 → 终止循环并按顺序返回全部结果 ──
+		const showResults: T[] = [];
 		for (const job of scheduler.orderedJobs()) {
 			if (job.status === "completed" && job.result.tool === "show") {
-				renderer.roundEnd(roundUsage);
-				renderer.showAccepted();
-				return {
-					result: job.result.cleanedResult as T,
-					report: null,
-					history: messages,
-					tools: toolkit.tools,
-				};
+				showResults.push(job.result.cleanedResult as T);
 			}
+		}
+		if (showResults.length > 0) {
+			renderer.roundEnd(roundUsage);
+			renderer.showAccepted();
+			return {
+				result: showResults[0] ?? null,
+				results: showResults,
+				report: null,
+				history: messages,
+				tools: toolkit.tools,
+			};
 		}
 
 		renderer.roundEnd(roundUsage);
@@ -257,6 +269,7 @@ export async function agentLoop<T = unknown>(
 
 	return {
 		result: null,
+		results: [],
 		report: `Agent terminated: max iterations (${maxIter}) exceeded`,
 		history: messages,
 		tools: toolkit.tools,

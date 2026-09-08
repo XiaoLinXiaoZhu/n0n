@@ -1,7 +1,7 @@
 /**
  * show 工具 — agent 唯一的结构化输出
  *
- * 每次调用 show 时，agentLoop 终止并返回结果。
+ * 每次调用 show 时，agentLoop 终止并返回该轮全部 show 结果。
  * 外部调用方（repl.ts / headless.ts）拿到结果后自行决定是否重新启动循环。
  */
 
