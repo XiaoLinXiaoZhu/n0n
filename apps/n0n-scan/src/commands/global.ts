@@ -5,9 +5,8 @@
  * --detail：使用黑名单过滤，展示更完整的工具列表
  */
 
-import { execFileSync, execSync } from "node:child_process";
 import { readdirSync } from "node:fs";
-import { resolvePlatform } from "@n0n/shared";
+import { type RunCommandFn, resolvePlatform, runCommand } from "@n0n/shared";
 import { loadPathToolsConfig, type PathToolsConfig } from "../config/load.ts";
 
 const IS_WINDOWS = process.platform === "win32";
@@ -18,8 +17,8 @@ const EXE_EXTENSIONS = IS_WINDOWS
 export async function globalCommand(detail = false): Promise<void> {
 	const sections: string[] = [];
 
-	sections.push(osSection());
-	sections.push(runtimesSection());
+	sections.push(await osSection(runCommand));
+	sections.push(await runtimesSection(runCommand));
 	sections.push(pathToolsSection(detail));
 
 	console.log(sections.join("\n\n"));
@@ -27,19 +26,23 @@ export async function globalCommand(detail = false): Promise<void> {
 
 // ── OS ──
 
-function osSection(): string {
+async function osSection(runCommandFn: RunCommandFn): Promise<string> {
 	const lines = ["[OS]"];
 	if (IS_WINDOWS) {
 		try {
-			const ver = execSync("ver", { encoding: "utf8" }).trim();
-			lines.push(ver);
+			const { stdout } = await runCommandFn(["cmd", "/c", "ver"], {
+				timeoutMs: 5000,
+			});
+			lines.push(stdout.trim());
 		} catch {
 			lines.push(`Platform: ${process.platform} ${process.arch}`);
 		}
 	} else {
 		try {
-			const uname = execSync("uname -srm", { encoding: "utf8" }).trim();
-			lines.push(uname);
+			const { stdout } = await runCommandFn(["uname", "-srm"], {
+				timeoutMs: 5000,
+			});
+			lines.push(stdout.trim());
 		} catch {
 			lines.push(`Platform: ${process.platform} ${process.arch}`);
 		}
@@ -51,9 +54,9 @@ function osSection(): string {
 
 // ── Runtimes ──
 
-type RuntimeGroup = "shell" | "js" | "python";
+export type RuntimeGroup = "shell" | "js" | "python";
 
-interface RuntimeDef {
+export interface RuntimeDef {
 	name: string;
 	group: RuntimeGroup;
 	/** 版本探测命令 */
@@ -169,13 +172,24 @@ const RUNTIME_DEFS: RuntimeDef[] = [
 	},
 ];
 
-interface ProbeResult {
+export interface ProbeResult {
 	def: RuntimeDef;
 	available: boolean;
 	version: string | null;
 }
 
-function probeRuntime(def: RuntimeDef): ProbeResult {
+export async function probeRuntimes(
+	runCommandFn: RunCommandFn = runCommand,
+): Promise<ProbeResult[]> {
+	return Promise.all(
+		RUNTIME_DEFS.map((def) => probeRuntime(def, runCommandFn)),
+	);
+}
+
+async function probeRuntime(
+	def: RuntimeDef,
+	runCommandFn: RunCommandFn,
+): Promise<ProbeResult> {
 	const base: ProbeResult = { def, available: false, version: null };
 
 	if (def.platforms && !def.platforms.includes(resolvePlatform())) {
@@ -183,11 +197,10 @@ function probeRuntime(def: RuntimeDef): ProbeResult {
 	}
 
 	try {
-		const output = execFileSync(def.cmd, def.args, {
-			encoding: "utf8",
-			timeout: 5000,
-			stdio: ["pipe", "pipe", "pipe"],
-		}).trim();
+		const { stdout } = await runCommandFn([def.cmd, ...def.args], {
+			timeoutMs: 5000,
+		});
+		const output = stdout.trim();
 
 		const match = output.match(def.versionPattern);
 		const version = match?.[1] ?? null;
@@ -200,10 +213,10 @@ function probeRuntime(def: RuntimeDef): ProbeResult {
 	}
 }
 
-function runtimesSection(): string {
+async function runtimesSection(runCommandFn: RunCommandFn): Promise<string> {
 	const lines = ["[Exec Runtimes] (use as `runtime` param in exec tool)"];
 
-	const results = RUNTIME_DEFS.map(probeRuntime);
+	const results = await probeRuntimes(runCommandFn);
 	const available = results.filter((r) => r.available);
 
 	// 按分组输出，每组标注首选

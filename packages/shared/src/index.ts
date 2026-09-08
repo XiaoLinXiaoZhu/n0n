@@ -1,8 +1,9 @@
 /**
- * @n0n/shared — 跨包共享的纯工具函数
+ * @n0n/shared — 跨包共享的工具函数
  *
+ * 大部分函数是纯函数，通过参数接收所需上下文；
+ * process.ts 提供受控的子进程执行辅助。
  * 不依赖任何配置或运行时状态。
- * 所有函数都是纯函数，通过参数接收所需上下文。
  *
  * 注意：format-prompt 已迁移至独立包 @n0n/format-prompt。
  */
@@ -30,6 +31,14 @@ export {
 } from "./frontmatter.ts";
 // DSL Parser
 export { parseDsl } from "./parse-dsl.ts";
+// Process
+export type {
+	RunCommandErrorDetails,
+	RunCommandFn,
+	RunCommandOptions,
+	RunCommandResult,
+} from "./process.ts";
+export { RunCommandError, runCommand } from "./process.ts";
 // StreamAccumulator
 export { StreamAccumulator } from "./stream-accumulator.ts";
 // Tags

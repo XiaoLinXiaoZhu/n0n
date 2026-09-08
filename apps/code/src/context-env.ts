@@ -8,16 +8,24 @@
  * CLI 不可用时静默跳过，不影响 agent 启动。
  */
 
-import { execFileSync } from "node:child_process";
+import { type RunCommandFn, runCommand } from "@n0n/shared";
 
-function execCli(args: readonly string[], cwd: string): string | null {
+export interface BuildEnvironmentContextOptions {
+	/** 注入的 runCommand 实现；默认使用 @n0n/shared 的真实实现（测试用） */
+	runCommandFn?: RunCommandFn;
+}
+
+async function execCli(
+	args: readonly string[],
+	cwd: string,
+	runCommandFn: RunCommandFn,
+): Promise<string | null> {
 	try {
-		return execFileSync("n0n", args, {
-			encoding: "utf8",
-			timeout: 15_000,
+		const { stdout } = await runCommandFn(["n0n", ...args], {
 			cwd,
-			stdio: ["pipe", "pipe", "pipe"],
-		}).trim();
+			timeoutMs: 15_000,
+		});
+		return stdout.trim();
 	} catch {
 		return null;
 	}
@@ -31,14 +39,28 @@ function formatSection(label: string, output: string | null): string {
 /**
  * 收集环境信息并格式化为 context 字符串。
  *
+ * 三个 CLI 调用互相独立，并行执行。调用方应在真正需要 context 时
+ * 才调用本函数，避免阻塞交互式 prompt 的显示。
+ *
  * @param workspace 工作目录路径
+ * @param options.runCommandFn 注入的 runCommand 实现（测试用）
  * @returns 格式化后的环境信息；CLI 不可用时返回空字符串
  */
-export function buildEnvironmentContext(workspace: string): string {
+export async function buildEnvironmentContext(
+	workspace: string,
+	options: BuildEnvironmentContextOptions = {},
+): Promise<string> {
+	const runCommandFn = options.runCommandFn ?? runCommand;
+	const [globalOutput, projectOutput, skillOutput] = await Promise.all([
+		execCli(["scan", "global"], workspace, runCommandFn),
+		execCli(["scan", "project"], workspace, runCommandFn),
+		execCli(["skill"], workspace, runCommandFn),
+	]);
+
 	const sections = [
-		formatSection("n0n scan global", execCli(["scan", "global"], workspace)),
-		formatSection("n0n scan project", execCli(["scan", "project"], workspace)),
-		formatSection("n0n skill", execCli(["skill"], workspace)),
+		formatSection("n0n scan global", globalOutput),
+		formatSection("n0n scan project", projectOutput),
+		formatSection("n0n skill", skillOutput),
 	];
 
 	return sections.filter(Boolean).join("\n\n");

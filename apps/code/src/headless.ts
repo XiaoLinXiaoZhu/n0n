@@ -40,6 +40,8 @@ export interface HeadlessOptions {
 	systemPromptPrefix?: string;
 	/** 提示词版本（如 "0.2"）；不传则使用默认版本 */
 	promptVersion?: string;
+	/** 已收集的环境上下文；提供时跳过 buildEnvironmentContext */
+	envContext?: string;
 	/** LLM Client 实例 */
 	client: LLMClient;
 	/** Agent 配置 */
@@ -111,7 +113,8 @@ export async function runHeadless(
 		toolsConfig,
 		client.modelId,
 	);
-	const envContext = buildEnvironmentContext(paths.workspace);
+	const envContext =
+		options.envContext ?? (await buildEnvironmentContext(paths.workspace));
 
 	let history: DomainMessage[] = [
 		{

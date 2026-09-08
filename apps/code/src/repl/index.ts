@@ -147,7 +147,6 @@ export async function startCodeRepl(
 		let history: DomainMessage[];
 		let userInput: string | null;
 		let isFirstInput: boolean;
-		let envContext: string | null = null;
 
 		if (resumeFile) {
 			try {
@@ -169,13 +168,11 @@ export async function startCodeRepl(
 				writeln(style.gray("  将以全新对话启动。"));
 				writeln();
 				isFirstInput = true;
-				envContext = buildEnvironmentContext(paths.workspace);
 				history = [systemMessage, { type: "cache_breakpoint" }];
 				userInput = initialInput ?? (await prompter.prompt());
 			}
 		} else {
 			isFirstInput = true;
-			envContext = buildEnvironmentContext(paths.workspace);
 			history = [systemMessage, { type: "cache_breakpoint" }];
 			userInput = initialInput ?? (await prompter.prompt());
 		}
@@ -239,7 +236,9 @@ export async function startCodeRepl(
 					);
 				}
 				const finalText = skillResult.cleanedText || userInput;
-				const context = isFirstInput ? envContext : null;
+				const context = isFirstInput
+					? await buildEnvironmentContext(paths.workspace)
+					: null;
 				isFirstInput = false;
 				history.push(
 					makeUserInput(

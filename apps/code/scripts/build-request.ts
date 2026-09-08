@@ -124,7 +124,7 @@ const toolsConfig = buildToolsConfig(
 
 const toolkit = makeToolkit(showConfig, toolsConfig, mockClient.modelId);
 
-const envContext = buildEnvironmentContext(workspace);
+const envContext = await buildEnvironmentContext(workspace);
 
 const history: DomainMessage[] = [
 	systemMessage,

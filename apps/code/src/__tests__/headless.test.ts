@@ -55,6 +55,7 @@ function makeOptions(client: LLMClient) {
 	const workspace = mkdtempSync(join(tmpdir(), "n0n-headless-"));
 	return {
 		instruction: "完成测试订单",
+		envContext: "",
 		paths: resolveBasePaths(workspace),
 		timeoutMs: 5_000,
 		client,
