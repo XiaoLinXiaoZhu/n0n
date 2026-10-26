@@ -23,6 +23,7 @@ n0n 是一个编码 agent，接收用户请求，通过 LLM + 工具链完成任
 | [实现偏好](rebuild-2/03-implementation-preferences.md) | 工具、项目、编辑、隔离和模型适配的非规范性偏好 |
 | [show 类型关系推导](rebuild-2/04-show-type-derivation.md) | 从四类最小协议核到八个机器可辨叶子的推导与边界 |
 | [IE-AI 功能约束分享报告](rebuild-2/05-ie-ai-functional-constraints.md) | 面向其他 AI 系统的通用推导、分层、迁移和验证方法 |
+| [消息就地定义](rebuild-2/06-inline-definition.md) | 自包含的落位方式：证据相邻与脚注引用是两种不同关系 |
 
 以下文档是旧 F0-F5 方案的历史工程输入，不再描述当前规范或运行时：
 

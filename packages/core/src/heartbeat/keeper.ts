@@ -59,7 +59,7 @@ export interface HeartbeatConfig {
 }
 
 const DEFAULT_INTERVAL_MS = 240_000; // 4 分钟
-const DEFAULT_MAX_COUNT = 10;
+const DEFAULT_MAX_COUNT = 3;
 const DEFAULT_CACHE_TTL_MS = 300_000; // 5 分钟
 
 // ── HeartbeatKeeper ──
