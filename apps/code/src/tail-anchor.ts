@@ -11,7 +11,7 @@ export const CODE_RUNTIME_PROTOCOL = [
 	"- `<skill>` contains active standards, task procedures, directives, or capabilities. Apply them by their stated responsibility and use the Self-Function standard for conflict handling; tag position does not define precedence.",
 ].join("\n");
 
-export const CODE_TAIL_ANCHOR = CODE_RUNTIME_PROTOCOL;
+export const CODE_TAIL_ANCHOR = "";
 
 export const NO_CUSTOMER_PARTICIPATION_HINT = [
 	CODE_RUNTIME_PROTOCOL,
