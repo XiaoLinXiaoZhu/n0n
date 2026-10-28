@@ -20,11 +20,6 @@ import type { DomainMessage, LLMClient, Skill } from "@n0n/types";
 import { buildEnvironmentContext } from "./context-env.ts";
 import { buildCodeSystemPrompt } from "./model-guidance.ts";
 import { getPrompt } from "./prompts";
-import type { CodeShowResult } from "./schema.ts";
-import { noCustomerParticipationShowConfig } from "./show-config.ts";
-import { formatShowResult } from "./show-formatter.ts";
-import { isCodeTerminalShowType, isCodeWaitShowType } from "./show-types.ts";
-import { ShowWriter } from "./show-writer.ts";
 import { NO_CUSTOMER_PARTICIPATION_HINT } from "./tail-anchor.ts";
 
 export interface HeadlessOptions {
@@ -51,10 +46,10 @@ export interface HeadlessOptions {
 }
 
 export interface HeadlessResult {
-	/** agent 是否成功完成 */
+	/** agent 是否成功完成（循环无错误结束） */
 	success: boolean;
-	/** agent 的 show 结果 */
-	result: CodeShowResult | null;
+	/** 自然结束时的最终助手文本 */
+	result: string | null;
 	/** agent 的 report */
 	report: string | null;
 	/** 循环轮次 */
@@ -63,8 +58,17 @@ export interface HeadlessResult {
 	durationMs: number;
 	/** 错误信息（如果有） */
 	error: string | null;
-	/** show 记录的持久化目录 */
+	/** 会话目录 */
 	sessionDir: string;
+}
+
+/** 从 history 中取最后一条助手文本（自然结束时的最终内容）。 */
+function lastAssistantText(history: readonly DomainMessage[]): string | null {
+	for (let i = history.length - 1; i >= 0; i--) {
+		const message = history[i];
+		if (message?.type === "assistant_text") return message.content;
+	}
+	return null;
 }
 
 export async function runHeadless(
@@ -92,13 +96,12 @@ export async function runHeadless(
 
 	const renderer = new PlainRenderer();
 	const sessionDir = createSessionDir(paths.sessions);
-	const showWriter = new ShowWriter(sessionDir);
 	const abortController = new AbortController();
 
 	// 超时控制
 	const timer = setTimeout(() => abortController.abort(), timeoutMs);
 
-	// 构建 Toolkit
+	// 构建 Toolkit — 无客户后续参与，不提供 customer://
 	const toolsConfig = buildToolsConfig(
 		options.agentConfig,
 		options.securityConfig,
@@ -107,16 +110,13 @@ export async function runHeadless(
 			sessionDir,
 		},
 	);
+	toolsConfig.allowCustomer = false;
 	const client = options.client;
-	const toolkit = makeToolkit(
-		noCustomerParticipationShowConfig,
-		toolsConfig,
-		client.modelId,
-	);
+	const toolkit = makeToolkit(toolsConfig, client.modelId);
 	const envContext =
 		options.envContext ?? (await buildEnvironmentContext(paths.workspace));
 
-	let history: DomainMessage[] = [
+	const history: DomainMessage[] = [
 		{
 			type: "system_with_skill",
 			content: effectivePrompt,
@@ -132,79 +132,29 @@ export async function runHeadless(
 		},
 	];
 
-	let rounds = 0;
-
 	try {
-		while (true) {
-			const agentResult = await agentLoop<CodeShowResult>(history, {
-				client,
-				toolkit,
-				max_iterations,
-				renderer,
-				signal: abortController.signal,
-			});
+		const agentResult = await agentLoop(history, {
+			client,
+			toolkit,
+			max_iterations,
+			renderer,
+			signal: abortController.signal,
+		});
 
-			history = agentResult.history;
-			rounds++;
-			const results = agentResult.results;
-
-			if (results.length === 0) {
-				// Agent 异常终止
-				return {
-					success: false,
-					result: null,
-					report: agentResult.report ?? null,
-					rounds,
-					durationMs: Date.now() - startTime,
-					error: agentResult.report ?? "Agent terminated without result",
-					sessionDir,
-				};
-			}
-
-			for (const ir of results) {
-				showWriter.write(ir);
-				console.error(formatShowResult(ir).trimEnd());
-			}
-
-			const terminal = results
-				.filter((ir) => isCodeTerminalShowType(ir.type))
-				.at(-1);
-			if (terminal) {
-				const success = terminal.type === "qualified delivery";
-				return {
-					success,
-					result: terminal,
-					report: agentResult.report ?? null,
-					rounds,
-					durationMs: Date.now() - startTime,
-					error: success ? null : `Quality terminal state: ${terminal.type}`,
-					sessionDir,
-				};
-			}
-
-			const wait = results.find((ir) => isCodeWaitShowType(ir.type));
-			if (wait) {
-				return {
-					success: false,
-					result: null,
-					report: `Invalid waiting show type in a production cycle without later customer participation: ${wait.type}`,
-					rounds,
-					durationMs: Date.now() - startTime,
-					error:
-						"Runtime protocol violation: the agent requested unavailable customer participation instead of returning production suspended or production failed.",
-					sessionDir,
-				};
-			}
-
-			// 全部为 production record：自动继续
-			history.push({
-				type: "user_input",
-				content: "",
-				context: null,
-				hint: "继续",
-				mentionedSkills: [],
-			});
-		}
+		const rounds = 1;
+		const error = agentResult.report ?? null;
+		const finalText =
+			error == null ? lastAssistantText(agentResult.history) : null;
+		if (finalText !== null) console.error(finalText.trimEnd());
+		return {
+			success: error == null,
+			result: finalText,
+			report: agentResult.report ?? null,
+			rounds,
+			durationMs: Date.now() - startTime,
+			error,
+			sessionDir,
+		};
 	} catch (err) {
 		const message =
 			err instanceof Error ? err.message : String(err ?? "Unknown error");
@@ -212,7 +162,7 @@ export async function runHeadless(
 			success: false,
 			result: null,
 			report: null,
-			rounds,
+			rounds: 1,
 			durationMs: Date.now() - startTime,
 			error: abortController.signal.aborted
 				? `Timeout after ${timeoutMs}ms`

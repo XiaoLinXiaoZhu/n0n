@@ -2,39 +2,48 @@
  * core agent 测试公共工具
  *
  * Mock ToolCallRecord / ToolResult / PipelineJob 工厂函数。
+ * 唯一工具为 `post`，后端由 uri scheme 路由（exec:// / write:// / customer://）。
  */
 
 import type { ToolJob } from "@n0n/tools";
-import type { ToolCallRecord, ToolResult } from "@n0n/types";
+import type {
+	CustomerKind,
+	ToolArgErrorMessage,
+	ToolCallRecord,
+	ToolResult,
+} from "@n0n/types";
 import type { PipelineJob } from "../scheduler.ts";
 
 // ── Mock ToolCallRecord 工厂 ──
 
-export function mockExecTC(id: string, script = "echo hi"): ToolCallRecord {
-	return { id, tool: "observe", args: { script } } as ToolCallRecord;
+export function mockExecTC(id: string, body = "echo hi"): ToolCallRecord {
+	return {
+		id,
+		tool: "post",
+		args: { uri: "exec://sh/probe", body },
+	} as ToolCallRecord;
 }
 
 export function mockWriteTC(id: string, path: string): ToolCallRecord {
 	return {
 		id,
-		tool: "write",
-		args: { path, content: "test" },
+		tool: "post",
+		args: { uri: `write://${path}`, body: "test" },
 	} as ToolCallRecord;
 }
 
 export function mockPathExclusiveTC(id: string, path: string): ToolCallRecord {
-	return {
-		id,
-		tool: "write",
-		args: { path, content: "test" },
-	} as ToolCallRecord;
+	return mockWriteTC(id, path);
 }
 
-export function mockShowTC(id: string): ToolCallRecord {
+export function mockCustomerTC(
+	id: string,
+	kind: CustomerKind = "question",
+): ToolCallRecord {
 	return {
 		id,
-		tool: "show",
-		args: { type: "qualified delivery", content: "test" },
+		tool: "post",
+		args: { uri: `customer://${kind}`, body: "test" },
 	} as ToolCallRecord;
 }
 
@@ -55,14 +64,18 @@ export function mockResult(tc: ToolCallRecord): ToolResult {
 export function mockExecResult(tc: ToolCallRecord): ToolResult {
 	return {
 		type: "tool_result",
-		tool: "observe",
+		tool: "post",
 		call: tc,
 		status: "completed",
+		scheme: "exec",
+		claim: "probe",
+		runtime: "sh",
+		cwd: "/tmp",
 		exitCode: 0,
 		stdout: "output",
 		stderr: "",
 		durationMs: 100,
-	} as ToolResult;
+	} as unknown as ToolResult;
 }
 
 // ── Mock PipelineJob 工厂 ──
@@ -85,8 +98,10 @@ export function mockCompletedJob(
 	};
 }
 
-// biome-ignore lint/suspicious/noExplicitAny: test mock flexibility
-export function mockFailedJob(tc: ToolCallRecord, argError: any): PipelineJob {
+export function mockFailedJob(
+	tc: ToolCallRecord,
+	argError: ToolArgErrorMessage,
+): PipelineJob {
 	const job: ToolJob = {
 		call: tc,
 		canStart: () => true,

@@ -142,12 +142,15 @@ describe("heartbeat integration", () => {
 				messages,
 				tools: [
 					{
-						name: "observe",
-						description: "Execute a command",
+						name: "post",
+						description: "Post to a target via uri",
 						parameters: {
 							type: "object" as const,
-							properties: { script: { type: "string" } },
-							required: ["script"],
+							properties: {
+								uri: { type: "string" },
+								body: { type: "string" },
+							},
+							required: ["uri", "body"],
 						},
 					},
 				],

@@ -1,5 +1,4 @@
 // biome-ignore-all lint/style/noNonNullAssertion: test assertions on known-shape results
-// biome-ignore-all lint/suspicious/noExplicitAny: test mocks use any for flexibility
 /**
  * ExecutionScheduler 单元测试
  *
@@ -13,27 +12,34 @@ import type { ToolJob } from "@n0n/tools";
 import type { CanStartFn, ToolCallRecord, ToolStreamEvent } from "@n0n/types";
 import { ExecutionScheduler, type SchedulerEvents } from "../scheduler.ts";
 import {
+	mockCustomerTC,
 	mockExecTC,
 	mockPathExclusiveTC,
 	mockResult,
-	mockShowTC,
 	mockWriteTC,
 } from "./test-helpers.ts";
 
 // ── canStart 策略 ──
 
-/** write: 同 path 互斥，且不能与无 path 的工具并行 */
+/** post write://: 同 path 互斥，且不能与无 path 的工具并行 */
 const pathExclusive: CanStartFn = (self, active) => {
-	const path = (self.args as { path?: string }).path;
+	const path = filePathOf(self);
 	for (const a of active) {
-		const aPath = (a.args as { path?: string }).path;
+		const aPath = filePathOf(a);
 		if (aPath === undefined) return false;
 		if (aPath === path) return false;
 	}
 	return true;
 };
 
-/** show: 无条件并行 */
+/** 从 write:// uri 提取路径；非 write scheme 返回 undefined */
+function filePathOf(tc: ToolCallRecord): string | undefined {
+	const { uri } = tc.args;
+	if (!uri.startsWith("write://")) return undefined;
+	return decodeURIComponent(uri.slice("write://".length));
+}
+
+/** customer://: 无条件并行 */
 const always: CanStartFn = () => true;
 
 function makeJob(
@@ -155,7 +161,7 @@ describe("ExecutionScheduler", () => {
 			expect(jobs[0]!.status).toBe("completed");
 		});
 
-		it("多个不冲突的 write 并行执行", async () => {
+		it("多个不冲突的 write:// 并行执行", async () => {
 			const { executor, log, resolve } = createControllableExecutor();
 			const scheduler = new ExecutionScheduler();
 
@@ -187,7 +193,7 @@ describe("ExecutionScheduler", () => {
 			).toBe(true);
 		});
 
-		it("相同路径的 write 串行执行", async () => {
+		it("相同路径的 write:// 串行执行", async () => {
 			const { executor, log, resolve } = createControllableExecutor();
 			const scheduler = new ExecutionScheduler();
 
@@ -263,7 +269,7 @@ describe("ExecutionScheduler", () => {
 			await runPromise;
 		});
 
-		it("write 在有 exec active 时被阻塞", async () => {
+		it("write:// 在有 exec active 时被阻塞", async () => {
 			const { executor, log, resolve } = createControllableExecutor();
 			const scheduler = new ExecutionScheduler();
 
@@ -293,15 +299,15 @@ describe("ExecutionScheduler", () => {
 		});
 	});
 
-	describe("show 无条件执行", () => {
-		it("show 可与任何工具并行", async () => {
+	describe("customer:// 无条件执行", () => {
+		it("customer:// 可与任何工具并行", async () => {
 			const { executor, log, resolve } = createControllableExecutor();
 			const scheduler = new ExecutionScheduler();
 
 			scheduler.enqueue(
 				makeJob(executor, mockPathExclusiveTC("e1", "a.ts"), pathExclusive),
 			);
-			scheduler.enqueue(makeJob(executor, mockShowTC("r1"), always));
+			scheduler.enqueue(makeJob(executor, mockCustomerTC("r1"), always));
 			scheduler.seal();
 
 			const runPromise = scheduler.run();

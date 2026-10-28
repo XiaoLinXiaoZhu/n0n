@@ -31,15 +31,15 @@ describe("toResponseInput", () => {
 					toolCalls: [
 						{
 							id: "call_1",
-							tool: "observe",
-							args: { path: "README.md" },
+							tool: "post",
+							args: { uri: "write://README.md", body: "" },
 						},
 					],
 				},
 				{
 					role: "tool",
 					toolCallId: "call_1",
-					toolName: "observe",
+					toolName: "post",
 					content: "file contents",
 				},
 			]),
@@ -56,8 +56,8 @@ describe("toResponseInput", () => {
 				type: "function_call",
 				id: "fc_1",
 				call_id: "call_1",
-				name: "observe",
-				arguments: '{"path":"README.md"}',
+				name: "post",
+				arguments: '{"uri":"write://README.md","body":""}',
 			},
 			{
 				type: "function_call_output",
@@ -74,7 +74,13 @@ describe("toResponseInput", () => {
 					role: "assistant",
 					content: "working",
 					reasoningSignature: "some-other-provider",
-					toolCalls: [{ id: "call_2", tool: "reason", args: { input: "x" } }],
+					toolCalls: [
+						{
+							id: "call_2",
+							tool: "post",
+							args: { uri: "customer://question", body: "x" },
+						},
+					],
 				},
 			]),
 		).toEqual([
@@ -82,8 +88,8 @@ describe("toResponseInput", () => {
 			{
 				type: "function_call",
 				call_id: "call_2",
-				name: "reason",
-				arguments: '{"input":"x"}',
+				name: "post",
+				arguments: '{"uri":"customer://question","body":"x"}',
 			},
 		]);
 	});
@@ -94,12 +100,12 @@ describe("toResponseTools", () => {
 		expect(
 			toResponseTools([
 				{
-					name: "observe",
-					description: "Read data",
+					name: "post",
+					description: "Post to a target via uri",
 					parameters: {
 						type: "object",
-						properties: { path: { type: "string" } },
-						required: ["path"],
+						properties: { uri: { type: "string" }, body: { type: "string" } },
+						required: ["uri", "body"],
 						additionalProperties: false,
 					},
 				},
@@ -107,12 +113,12 @@ describe("toResponseTools", () => {
 		).toEqual([
 			{
 				type: "function",
-				name: "observe",
-				description: "Read data",
+				name: "post",
+				description: "Post to a target via uri",
 				parameters: {
 					type: "object",
-					properties: { path: { type: "string" } },
-					required: ["path"],
+					properties: { uri: { type: "string" }, body: { type: "string" } },
+					required: ["uri", "body"],
 					additionalProperties: false,
 				},
 			},

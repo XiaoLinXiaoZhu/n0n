@@ -33,7 +33,6 @@ import type {
 import { buildCodeSystemPrompt } from "../src/model-guidance.ts";
 import { getPrompt } from "../src/prompts";
 import { buildEnvironmentContext } from "../src/context-env.ts";
-import { showConfig } from "../src/show-config.ts";
 import { CODE_TAIL_ANCHOR } from "../src/tail-anchor.ts";
 
 // ── CLI 参数 ──
@@ -79,11 +78,11 @@ const mockClient: LLMClient = {
 
 		const callId = "preview_done";
 		const args = JSON.stringify({
-			type: "qualified delivery",
-			content: "Request capture complete.",
+			uri: "customer://question",
+			body: "请求捕获完成。继续吗？\n推荐：继续",
 		});
 
-		yield { type: "tool_call_delta", index: 0, id: callId, name: "show", arguments: "" };
+		yield { type: "tool_call_delta", index: 0, id: callId, name: "post", arguments: "" };
 		yield { type: "tool_call_delta", index: 0, arguments: args };
 		yield { type: "done", finishReason: "tool_calls", usage: null };
 	},
@@ -122,7 +121,7 @@ const toolsConfig = buildToolsConfig(
 	{ workspace, sessionDir },
 );
 
-const toolkit = makeToolkit(showConfig, toolsConfig, mockClient.modelId);
+const toolkit = makeToolkit(toolsConfig, mockClient.modelId);
 
 const envContext = await buildEnvironmentContext(workspace);
 

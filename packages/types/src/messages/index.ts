@@ -21,7 +21,6 @@ export type {
 // ── 元数据/控制 ──
 export type {
 	CacheBreakpointMessage,
-	IdleNudgeMessage,
 	TokenUsageMessage,
 	TurnFeedbackMessage,
 } from "./base.ts";
@@ -38,23 +37,22 @@ export type {
 export type { CanStartFn } from "./scheduling.ts";
 // ── Tool 侧 ──
 export type {
-	ActToolCall,
+	// Customer
+	CustomerCompleted,
+	CustomerKind,
 	// Exec
 	ExecToolResult,
 	ExecutionArtifactRef,
 	MakeCall,
 	MakeResult,
 	MakeResultBase,
-	ObserveToolCall,
 	PartialToolCallRecord,
-	ReasonToolCall,
-	// Show
-	ShowToolCall,
-	ShowToolResult,
+	// 注册表
+	PostArgs,
+	PostToolCall,
 	ToolCallRecord,
 	ToolCallRecordMap,
 	ToolExecOutcome,
-	// 注册表
 	ToolMap,
 	ToolName,
 	ToolOutputChunk,
@@ -66,7 +64,6 @@ export type {
 	WriteFailed,
 	WriteRecovered,
 	WriteRecoverFailed,
-	WriteToolCall,
 	WriteToolResult,
 } from "./tools";
 // ── User 侧 ──
@@ -88,7 +85,6 @@ import type {
 } from "./assistant.ts";
 import type {
 	CacheBreakpointMessage,
-	IdleNudgeMessage,
 	TokenUsageMessage,
 	TurnFeedbackMessage,
 } from "./base.ts";
@@ -120,6 +116,5 @@ export type DomainMessage =
 	| ToolArgErrorMessage
 	// 流程控制与元数据
 	| TurnFeedbackMessage
-	| IdleNudgeMessage
 	| CacheBreakpointMessage
 	| TokenUsageMessage;

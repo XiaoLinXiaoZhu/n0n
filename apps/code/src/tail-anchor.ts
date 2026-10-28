@@ -19,5 +19,5 @@ export const NO_CUSTOMER_PARTICIPATION_HINT = [
 	"Order condition:",
 	"- The customer has provided all requirements and customer-supplied inputs for this production cycle and will not later provide information, make decisions, or perform actions.",
 	"- Work autonomously only within the existing result, scope, permissions, and inputs. This condition grants no additional authority.",
-	"- End with `qualified delivery` if the acceptance baseline is satisfied; otherwise end with `production suspended` or `production failed` according to the actual condition.",
+	"- End your turn with a natural summary in your content and no tool call.",
 ].join("\n");

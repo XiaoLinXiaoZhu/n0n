@@ -2,8 +2,9 @@
  * CodeRenderer — code app 特化渲染器
  *
  * 继承 RichRenderer 的全部终端渲染能力，额外增加：
- * - write 工具流式预览：在参数流式传输过程中，增量解析 partial JSON，
- *   将已有的 content 实时写入目标文件，让编辑器自动检测变化实现实时预览。
+ * - post 工具 write:// 流式预览：在参数流式传输过程中，增量解析 partial JSON，
+ *   仅当 uri 解析为 write:// scheme 时，将已有的 body 实时写入目标文件，
+ *   让编辑器自动检测变化实现实时预览。exec:// 与 customer:// 不产生预览。
  *
  * 设计原则：
  * - 利用指令式事件模型，不新增 Renderer 接口
@@ -14,23 +15,19 @@ import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { dirname, isAbsolute, resolve } from "node:path";
 import { RichRenderer, type RichRendererOptions } from "@n0n/cli-ui";
 import type { BaseWorkspacePaths } from "@n0n/shared";
+import { parsePostUri } from "@n0n/tools";
 import type { ToolCallRecord } from "@n0n/types";
 import { parse as parsePartialJSON } from "partial-json";
 
-/** 流式预览模式 — 基于字段到达顺序 */
-type PreviewMode = "unknown" | "path-first" | "content-first";
-
-/** 单个 write 工具调用的流式预览状态 */
-interface WritePreview {
+/** 单个 post 工具调用的流式预览状态 */
+interface PostPreview {
 	/** 累积的 JSON 参数字符串 */
 	args: string;
-	/** 解析出的目标文件路径。path-first 模式下，path 值在 content 出现前持续更新，content 出现后锁定；content-first 模式下始终为 null */
+	/** 解析出的目标文件路径（仅 write:// uri）；uri 锁定后不再变化 */
 	targetPath: string | null;
-	/** 字段到达顺序判定 */
-	mode: PreviewMode;
-	/** content-first 模式下使用的临时预览路径 */
-	tempPreviewPath: string | null;
-	/** 上一次写入的 content 长度（用于去重，避免内容未变时重复写入） */
+	/** body 字段已出现 → uri 锁定，不再更新 targetPath（防截断值产生垃圾文件） */
+	uriLocked: boolean;
+	/** 上一次写入的 body 长度（用于去重，避免内容未变时重复写入） */
 	lastContentLength: number;
 	/** 上一次写入时间戳（用于节流） */
 	lastWriteTime: number;
@@ -40,36 +37,33 @@ interface WritePreview {
 const THROTTLE_MS = 100;
 
 export interface CodeRendererOptions extends RichRendererOptions {
-	/** 当前会话目录，用于存放尚未解析出目标路径的流式预览 */
+	/** 当前会话目录（write:// 预览不再需要临时目录，保留字段以兼容调用方） */
 	sessionDir: string;
 }
 
-/** partial-json 解析出的 write 工具参数（字段可能不完整） */
-function isWritePreviewArgs(v: unknown): v is Record<string, unknown> {
+/** partial-json 解析出的 post 工具参数（字段可能不完整） */
+function isPostPreviewArgs(v: unknown): v is Record<string, unknown> {
 	return v !== null && typeof v === "object" && !Array.isArray(v);
 }
 
 export class CodeRenderer extends RichRenderer {
-	/** 活跃的 write 预览（index → preview state） */
-	private previews = new Map<number, WritePreview>();
-	private readonly sessionDir: string;
+	/** 活跃的 write:// 预览（index → preview state） */
+	private previews = new Map<number, PostPreview>();
 
 	constructor(
 		private readonly paths: BaseWorkspacePaths,
 		options: CodeRendererOptions,
 	) {
 		super(options);
-		this.sessionDir = options.sessionDir;
 	}
 
 	override toolCallArgStart(index: number, name: string): void {
 		super.toolCallArgStart(index, name);
-		if (name === "write") {
+		if (name === "post") {
 			this.previews.set(index, {
 				args: "",
 				targetPath: null,
-				mode: "unknown",
-				tempPreviewPath: null,
+				uriLocked: false,
 				lastContentLength: -1,
 				lastWriteTime: 0,
 			});
@@ -89,9 +83,17 @@ export class CodeRenderer extends RichRenderer {
 	override toolCallArgEnd(index: number, tc: ToolCallRecord): void {
 		super.toolCallArgEnd(index, tc);
 
-		if (tc.tool === "write") {
-			const filePath = this.resolvePath(tc.args.path);
-			this.writeFile(filePath, tc.args.content);
+		if (tc.tool === "post") {
+			// 最终写入仅对 write:// uri；exec/customer 无文件落盘
+			// （uri 畸形时静默跳过 — 该错误由工具执行侧转成 tool_arg_error）
+			try {
+				const parsed = parsePostUri(tc.args.uri);
+				if (parsed.scheme === "write") {
+					this.writeFile(this.resolvePath(parsed.path), tc.args.body);
+				}
+			} catch {
+				// 预览写入失败不应中断渲染流程
+			}
 		}
 		this.previews.delete(index);
 	}
@@ -113,12 +115,14 @@ export class CodeRenderer extends RichRenderer {
 	// ── 内部方法 ──
 
 	/**
-	 * 从累积的 partial JSON 中提取 path/content，写入目标文件。
-	 * @param force 是否强制写入（跳过节流，用于 streamEnd/argEnd）
+	 * 从累积的 partial JSON 中提取 uri/body，写入目标文件。
+	 * 仅当 uri 可解析为 write:// scheme 时预览；target path 取解析后的 path，
+	 * body 出现后 uri 锁定，避免截断的 uri 值产生垃圾文件。
+	 * @param force 是否强制写入（跳过节流，用于 streamEnd）
 	 */
 	private flushPreview(
-		index: number,
-		preview: WritePreview,
+		_index: number,
+		preview: PostPreview,
 		force: boolean,
 	): void {
 		const now = Date.now();
@@ -127,7 +131,7 @@ export class CodeRenderer extends RichRenderer {
 		let parsed: Record<string, unknown> | null = null;
 		try {
 			const result = parsePartialJSON(preview.args);
-			if (isWritePreviewArgs(result)) {
+			if (isPostPreviewArgs(result)) {
 				parsed = result;
 			}
 		} catch {
@@ -135,55 +139,34 @@ export class CodeRenderer extends RichRenderer {
 		}
 		if (!parsed) return;
 
-		const pathStr =
-			typeof parsed.path === "string" && parsed.path.length > 0
-				? parsed.path
+		const uriStr =
+			typeof parsed.uri === "string" && parsed.uri.length > 0
+				? parsed.uri
 				: undefined;
-		const contentStr =
-			typeof parsed.content === "string" ? parsed.content : undefined;
-		const hasPath = pathStr !== undefined;
-		const hasContent = contentStr !== undefined;
+		const bodyStr = typeof parsed.body === "string" ? parsed.body : undefined;
 
-		// 首次信号判定 mode
-		if (preview.mode === "unknown") {
-			if (hasPath && !hasContent) {
-				// path 先到 — path-first，但 targetPath 会在后续持续更新
-				preview.mode = "path-first";
-			} else if (hasContent && !hasPath) {
-				// content 先到 — 使用临时预览路径，永不锁定 path
-				preview.mode = "content-first";
-				preview.tempPreviewPath = resolve(
-					this.sessionDir,
-					"write-stream-previews",
-					`write-stream-preview-${index}`,
-				);
-			} else if (hasPath && hasContent) {
-				// 同时出现 — path 应已完整，直接锁定
-				preview.mode = "path-first";
-				preview.targetPath = this.resolvePath(pathStr);
+		// uri 未锁定时，随流入持续解析；只有 write:// 才参与预览。
+		// body 出现时 uri 已完整（uri key 先于 body 到达），此刻锁定。
+		if (!preview.uriLocked && uriStr !== undefined) {
+			try {
+				const parsedUri = parsePostUri(uriStr);
+				if (parsedUri.scheme === "write") {
+					preview.targetPath = this.resolvePath(parsedUri.path);
+				}
+			} catch {
+				// uri 尚未完整或不支持的 scheme — 保持现状，等待更多数据
 			}
-			// 两者都未出现 → 保持 unknown，等待更多数据
+		}
+		if (!preview.uriLocked && bodyStr !== undefined) {
+			preview.uriLocked = true;
 		}
 
-		// path-first 模式下，content 未出现前持续更新 targetPath
-		if (preview.mode === "path-first" && hasPath && !hasContent) {
-			preview.targetPath = this.resolvePath(pathStr);
-		}
-
-		// 写入路由
-		if (contentStr !== undefined) {
-			if (preview.mode === "path-first" && preview.targetPath) {
-				if (contentStr.length !== preview.lastContentLength) {
-					preview.lastContentLength = contentStr.length;
-					preview.lastWriteTime = now;
-					this.writeFile(preview.targetPath, contentStr);
-				}
-			} else if (preview.mode === "content-first" && preview.tempPreviewPath) {
-				if (contentStr.length !== preview.lastContentLength) {
-					preview.lastContentLength = contentStr.length;
-					preview.lastWriteTime = now;
-					this.writeFile(preview.tempPreviewPath, contentStr);
-				}
+		// 写入：仅 write://（targetPath 存在）且 body 已到达
+		if (bodyStr !== undefined && preview.targetPath) {
+			if (bodyStr.length !== preview.lastContentLength) {
+				preview.lastContentLength = bodyStr.length;
+				preview.lastWriteTime = now;
+				this.writeFile(preview.targetPath, bodyStr);
 			}
 		}
 	}

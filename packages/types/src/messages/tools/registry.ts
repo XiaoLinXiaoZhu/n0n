@@ -1,20 +1,16 @@
 /**
  * 工具类型注册表 — SSoT
  *
- * ToolMap 定义了所有工具名到参数类型的映射。
+ * ToolMap 定义了所有工具名到参数类型的映射。唯一工具为 `post`。
  * MakeCall / MakeResult 辅助类型消除具体定义中的样板代码。
  */
 
-import type { ExecArgs, ShowArgs, WriteArgs } from "../../tool-args.ts";
+import type { PostArgs } from "../../tool-args.ts";
 
 // ── 核心注册表 ──
 
 export interface ToolMap {
-	observe: ExecArgs;
-	reason: ExecArgs;
-	act: ExecArgs;
-	write: WriteArgs;
-	show: ShowArgs;
+	post: PostArgs;
 }
 
 export type ToolName = keyof ToolMap;
@@ -59,11 +55,7 @@ export type ToolCallRecordMap = {
 };
 
 // 快捷导出
-export type ObserveToolCall = ToolCallRecordMap["observe"];
-export type ReasonToolCall = ToolCallRecordMap["reason"];
-export type ActToolCall = ToolCallRecordMap["act"];
-export type WriteToolCall = ToolCallRecordMap["write"];
-export type ShowToolCall = ToolCallRecordMap["show"];
+export type PostToolCall = ToolCallRecordMap["post"];
 
 /**
  * 截断恢复失败的不完整工具调用记录。

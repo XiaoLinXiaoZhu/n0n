@@ -238,11 +238,6 @@ const scenarios: Scenario[] = [
 	},
 	// ── special messages ──
 	{
-		file: "idle-nudge",
-		title: "idle_nudge 消息",
-		messages: [{ type: "idle_nudge", idleCount: 2, maxIdleRounds: 5 }],
-	},
-	{
 		file: "show-result",
 		title: "show tool_result",
 		messages: [

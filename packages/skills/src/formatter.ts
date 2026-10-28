@@ -38,7 +38,7 @@ export function formatSkillContents(contents: SkillContent[]): string {
 
 			const resourceInfo =
 				s.resources.length > 0
-					? `\n额外资源（使用 observe 按需读取）：\n${s.resources.map((p) => `  - ${p}`).join("\n")}`
+					? `\n额外资源（按需用 post 执行 exec:// 读取）：\n${s.resources.map((p) => `  - ${p}`).join("\n")}`
 					: "";
 
 			return [

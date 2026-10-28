@@ -11,7 +11,9 @@
 
 import type { Toolkit } from "@n0n/tools";
 import type {
+	AssistantTextMessage,
 	DomainMessage,
+	GenericUserTextMessage,
 	LLMClient,
 	PartialToolCallRecord,
 	Renderer,
@@ -33,9 +35,9 @@ import { parseStream, type StreamingResult } from "./streaming.ts";
 // ── 结果类型 ──
 
 export interface AgentResult<T = unknown> {
-	/** 首个 show 结果；兼容旧调用方，优先使用 results。 */
+	/** 首个 customer:// 请求结果；兼容旧调用方，优先使用 results。 */
 	result: T | null;
-	/** 本轮返回的全部 show 结果，按本轮工具调度顺序排列。 */
+	/** 本轮返回的全部 customer:// 请求结果，按本轮工具调度顺序排列；自然结束时为空。 */
 	results: T[];
 	report: string | null;
 	history: DomainMessage[];
@@ -49,7 +51,6 @@ export interface AgentOptions<_T = unknown> {
 	/** 工具集实例 — 由 app 层通过 makeToolkit 构造并注入 */
 	toolkit: Toolkit;
 	max_iterations?: number;
-	max_idle_rounds?: number;
 	renderer?: Renderer;
 	confirmFn?: (question: string) => Promise<string>;
 	signal?: AbortSignal;
@@ -62,13 +63,11 @@ export async function agentLoop<T = unknown>(
 	options: AgentOptions<T>,
 ): Promise<AgentResult<T>> {
 	const maxIter = options.max_iterations ?? 50;
-	const maxIdleRounds = options.max_idle_rounds ?? 5;
 	const renderer: Renderer = options.renderer ?? new PlainRenderer();
 	const client = options.client;
 	const toolkit = options.toolkit;
 	const toolSession = toolkit.bind(options.confirmFn);
 	const messages: DomainMessage[] = [...history];
-	let idleCount = 0;
 
 	for (let iter = 0; iter < maxIter; iter++) {
 		if (options.signal?.aborted) {
@@ -158,7 +157,7 @@ export async function agentLoop<T = unknown>(
 		}
 
 		// ── 2. 分类本轮结果，决定后续动作 ──
-		const outcome = classifyRound(result, idleCount, maxIdleRounds);
+		const outcome = classifyRound(result);
 
 		const roundUsage = result.accumulator.usage;
 		const roundFinishReason = result.accumulator.finishReason ?? "unknown";
@@ -181,29 +180,18 @@ export async function agentLoop<T = unknown>(
 			};
 		}
 
-		if (outcome.action === "idle") {
+		if (outcome.action === "natural_end") {
 			scheduler.seal();
 			messages.push(outcome.assistantMessage);
 			pushTokenUsage(messages, roundUsage, roundFinishReason);
-			idleCount++;
-			if (idleCount >= maxIdleRounds) {
-				renderer.roundEnd(roundUsage);
-				renderer.agentTerminated("max idle rounds exceeded (no tool calls)");
-				return {
-					result: null,
-					results: [],
-					report: `Agent terminated: max idle rounds exceeded. Last content: ${(result.accumulator.content || "").slice(0, 200)}`,
-					history: messages,
-					tools: toolkit.tools,
-				};
-			}
-			messages.push({
-				type: "idle_nudge",
-				idleCount,
-				maxIdleRounds: maxIdleRounds,
-			});
 			renderer.roundEnd(roundUsage);
-			continue;
+			return {
+				result: null,
+				results: [],
+				report: null,
+				history: messages,
+				tools: toolkit.tools,
+			};
 		}
 
 		if (outcome.action === "retry_truncated") {
@@ -216,7 +204,6 @@ export async function agentLoop<T = unknown>(
 		}
 
 		// outcome.action === "execute_tools"
-		idleCount = 0;
 
 		// ── 3. 截断恢复 + seal ──
 		const truncation = await recoverTruncatedCalls(result, toolSession.recover);
@@ -245,19 +232,23 @@ export async function agentLoop<T = unknown>(
 			messages.push(pair.result);
 		}
 
-		// ── 7. 检测 show 调用 → 终止循环并按顺序返回全部结果 ──
-		const showResults: T[] = [];
+		// ── 7. 检测 customer:// 请求 → 终止循环并按顺序返回全部结果 ──
+		const customerRequests: T[] = [];
 		for (const job of scheduler.orderedJobs()) {
-			if (job.status === "completed" && job.result.tool === "show") {
-				showResults.push(job.result.cleanedResult as T);
+			if (
+				job.status === "completed" &&
+				job.result.tool === "post" &&
+				job.result.scheme === "customer"
+			) {
+				customerRequests.push(job.result as unknown as T);
 			}
 		}
-		if (showResults.length > 0) {
+		if (customerRequests.length > 0) {
 			renderer.roundEnd(roundUsage);
-			renderer.showAccepted();
+			renderer.customerAccepted();
 			return {
-				result: showResults[0] ?? null,
-				results: showResults,
+				result: customerRequests[0] ?? null,
+				results: customerRequests,
 				report: null,
 				history: messages,
 				tools: toolkit.tools,
@@ -283,24 +274,20 @@ type RoundOutcome =
 			action: "exit";
 			reason: string;
 			report: string | null;
-			assistantMessage?: import("@n0n/types").AssistantTextMessage;
+			assistantMessage?: AssistantTextMessage;
 	  }
 	| {
-			action: "idle";
-			assistantMessage: import("@n0n/types").AssistantTextMessage;
+			action: "natural_end";
+			assistantMessage: AssistantTextMessage;
 	  }
 	| {
 			action: "retry_truncated";
-			assistantMessage: import("@n0n/types").AssistantTextMessage;
-			retryMessage: import("@n0n/types").GenericUserTextMessage;
+			assistantMessage: AssistantTextMessage;
+			retryMessage: GenericUserTextMessage;
 	  }
 	| { action: "execute_tools" };
 
-function classifyRound(
-	result: StreamingResult,
-	_idleCount: number,
-	_maxIdleRounds: number,
-): RoundOutcome {
+function classifyRound(result: StreamingResult): RoundOutcome {
 	const hasReadyTools = result.readyTools.size > 0;
 	const hasIncomplete =
 		result.accumulator.toolCalls.size > result.readyTools.size;
@@ -356,7 +343,7 @@ function classifyRound(
 
 	if (!hasAnyTools) {
 		return {
-			action: "idle",
+			action: "natural_end",
 			assistantMessage: {
 				type: "assistant_text",
 				content: acc.content ?? "",

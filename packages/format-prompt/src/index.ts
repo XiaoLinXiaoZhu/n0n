@@ -32,13 +32,12 @@ import type {
 	ToolResult,
 } from "@n0n/types";
 import { affectsSubsequent } from "./config.ts";
+import { formatCustomerResult } from "./format-customer.ts";
 import { formatExecResult } from "./format-exec.ts";
-import { formatIdleNudge } from "./format-idle-nudge.ts";
-import { formatShowResult } from "./format-show.ts";
+import { formatFileResult } from "./format-file.ts";
 import { formatSkills } from "./format-skill.ts";
 import { formatToolArgError } from "./format-tool-arg-error.ts";
 import { formatTurnFeedback } from "./format-turn-feedback.ts";
-import { formatWriteResult } from "./format-write.ts";
 import type { FormattedToolResult } from "./utils.ts";
 
 // ── tool result 分发 ──
@@ -48,18 +47,16 @@ function toolResultToStructured(
 	tags: TagAdapter,
 	msgIndex: number,
 ): FormattedToolResult {
-	switch (msg.tool) {
-		case "observe":
-		case "reason":
-		case "act":
+	switch (msg.scheme) {
+		case "exec":
 			return formatExecResult(msg, tags, msgIndex);
 		case "write":
-			return formatWriteResult(msg, tags, msgIndex);
-		case "show":
-			return formatShowResult(msg, tags, msgIndex);
+			return formatFileResult(msg, tags, msgIndex);
+		case "customer":
+			return formatCustomerResult(msg, tags, msgIndex);
 		default: {
 			const _exhaustive: never = msg;
-			throw new Error(`Unknown tool`);
+			throw new Error(`Unknown tool scheme`);
 		}
 	}
 }
@@ -233,13 +230,6 @@ export function formatPrompt(
 				});
 				break;
 			}
-
-			case "idle_nudge":
-				result.push({
-					role: "user",
-					content: formatIdleNudge(msg, tags, i),
-				});
-				break;
 
 			case "user_input": {
 				const isLatestRound = originalIndex > lastAtcIndex;

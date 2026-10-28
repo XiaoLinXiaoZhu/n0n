@@ -8,7 +8,7 @@
  */
 
 import { afterEach, describe, expect, test } from "bun:test";
-import type { ExecArgs, ToolCallRecord } from "@n0n/types";
+import type { PostArgs, ToolCallRecord } from "@n0n/types";
 import {
 	randomChunks,
 	restoreStderr,
@@ -30,9 +30,9 @@ describe("RichRenderer 虚拟终端保真测试", () => {
 		renderer.roundStart(1, 10, 3);
 
 		// 流式 tool call
-		const json = '{"script":"echo hello","runtime":"cmd"}';
+		const json = '{"uri":"exec://cmd/probe","body":"echo hello"}';
 		const chunks = randomChunks(json, 42);
-		renderer.toolCallArgStart(0, "exec");
+		renderer.toolCallArgStart(0, "post");
 		for (const chunk of chunks) {
 			renderer.toolCallArgChunk(0, chunk);
 		}
@@ -40,19 +40,23 @@ describe("RichRenderer 虚拟终端保真测试", () => {
 
 		renderer.toolExecStart("call_1", {
 			id: "call_1",
-			tool: "observe",
-			args: { script: "echo hello", runtime: "cmd" },
+			tool: "post",
+			args: JSON.parse(json),
 		});
 		renderer.toolExecEnd("call_1", {
 			status: "completed",
 			result: {
 				type: "tool_result" as const,
-				tool: "observe",
+				tool: "post",
+				scheme: "exec" as const,
+				claim: "probe",
+				runtime: "cmd",
+				cwd: "C:\\",
 				status: "completed" as const,
 				call: {
 					id: "call_1",
-					tool: "observe",
-					args: { script: "echo hello", runtime: "cmd" },
+					tool: "post",
+					args: JSON.parse(json),
 				},
 				stdout: "hello",
 				stderr: "",
@@ -69,15 +73,15 @@ describe("RichRenderer 虚拟终端保真测试", () => {
 			expect(line).not.toContain("(streaming");
 		}
 
-		// 应有结果行
+		// 应有结果行（claim 为标签）
 		const hasResult = cleanLines.some(
-			(l) => l.includes("observe") && l.includes("exit=0"),
+			(l) => l.includes("probe") && l.includes("exit=0"),
 		);
 		expect(hasResult).toBe(true);
 
-		// 不应有重复的 "▸ exec" 行
+		// 不应有重复的 "▸ post" 行
 		const toolHeaders = cleanLines.filter((l) =>
-			l.trimStart().startsWith("▸ exec"),
+			l.trimStart().startsWith("▸ post"),
 		);
 		expect(toolHeaders.length).toBe(1);
 	});
@@ -89,11 +93,11 @@ describe("RichRenderer 虚拟终端保真测试", () => {
 
 		renderer.roundStart(1, 10, 3);
 
-		// 含中文的 show 工具参数
+		// 含中文的 customer 参数
 		const json =
-			'{"type":"qualified delivery","content":"已完成 PR #61 的清理：1. 关闭 PR #61，附带说明关闭原因（核心功能已被 PR #75/#76 覆盖，分支严重过时）2. 删除远程分支"}';
+			'{"uri":"customer://form","body":"已完成 PR #61 的清理：1. 关闭 PR #61，附带说明关闭原因（核心功能已被 PR #75/#76 覆盖，分支严重过时）2. 删除远程分支"}';
 		const chunks = randomChunks(json, 123);
-		renderer.toolCallArgStart(0, "show");
+		renderer.toolCallArgStart(0, "post");
 		for (const chunk of chunks) {
 			renderer.toolCallArgChunk(0, chunk);
 		}
@@ -101,16 +105,18 @@ describe("RichRenderer 虚拟终端保真测试", () => {
 
 		renderer.toolExecStart("call_1", {
 			id: "call_1",
-			tool: "show",
+			tool: "post",
 			args: JSON.parse(json),
 		});
 		renderer.toolExecEnd("call_1", {
 			status: "completed",
 			result: {
 				type: "tool_result" as const,
-				tool: "show",
-				call: { id: "call_1", tool: "show", args: JSON.parse(json) },
-				cleanedResult: null,
+				tool: "post",
+				scheme: "customer" as const,
+				kind: "form" as const,
+				status: "completed" as const,
+				call: { id: "call_1", tool: "post", args: JSON.parse(json) },
 			},
 		});
 
@@ -124,7 +130,7 @@ describe("RichRenderer 虚拟终端保真测试", () => {
 
 		// 不应有重复的工具头
 		const toolHeaders = cleanLines.filter((l) =>
-			l.trimStart().startsWith("▸ show"),
+			l.trimStart().startsWith("▸ post"),
 		);
 		expect(toolHeaders.length).toBe(1);
 	});
@@ -135,7 +141,7 @@ describe("RichRenderer 虚拟终端保真测试", () => {
 		restoreStderr(saved);
 
 		// 用不同种子跑同一场景，收集最终画面
-		const json = '{"script":"ls -la","runtime":"cmd","waitfor":"30"}';
+		const json = '{"uri":"exec://cmd/ls?waitfor=30","body":"ls -la"}';
 		const finalScreens: string[][] = [];
 
 		for (const seed of [1, 42, 100, 999, 65535]) {
@@ -145,31 +151,35 @@ describe("RichRenderer 虚拟终端保真测试", () => {
 
 			renderer.roundStart(1, 10, 3);
 			const chunks = randomChunks(json, seed);
-			renderer.toolCallArgStart(0, "exec");
+			renderer.toolCallArgStart(0, "post");
 			for (const chunk of chunks) {
 				renderer.toolCallArgChunk(0, chunk);
 			}
 			const tc: ToolCallRecord = {
 				id: "call_1",
-				tool: "observe",
-				args: JSON.parse(json) as ExecArgs,
+				tool: "post",
+				args: JSON.parse(json) as PostArgs,
 			};
 			renderer.toolCallArgEnd(0, tc);
 			renderer.streamEnd();
 			renderer.toolExecStart("call_1", {
 				id: "call_1",
-				tool: "observe",
+				tool: "post",
 				args: JSON.parse(json),
 			});
 			renderer.toolExecEnd("call_1", {
 				status: "completed",
 				result: {
 					type: "tool_result" as const,
-					tool: "observe",
+					tool: "post",
+					scheme: "exec" as const,
+					claim: "ls",
+					runtime: "cmd",
+					cwd: "C:\\",
 					status: "completed" as const,
 					call: {
 						id: "call_1",
-						tool: "observe",
+						tool: "post",
 						args: JSON.parse(json),
 					},
 					stdout: "output",
@@ -199,17 +209,17 @@ describe("RichRenderer 虚拟终端保真测试", () => {
 		renderer.roundStart(1, 10, 3);
 
 		// 每次只发 1 个字符
-		const json = '{"script":"echo hi"}';
+		const json = '{"uri":"exec://sh/hi","body":"echo hi"}';
 		for (let i = 0; i < json.length; i++) {
-			if (i === 0) renderer.toolCallArgStart(0, "exec");
+			if (i === 0) renderer.toolCallArgStart(0, "post");
 			renderer.toolCallArgChunk(0, json[i] as string);
 		}
 		renderer.streamEnd();
 
 		renderer.toolExecStart("call_1", {
 			id: "call_1",
-			tool: "observe",
-			args: { script: "echo hi" },
+			tool: "post",
+			args: JSON.parse(json),
 		});
 
 		const lines = vt.getVisibleLines();
@@ -229,9 +239,9 @@ describe("RichRenderer 虚拟终端保真测试", () => {
 		renderer.roundStart(1, 10, 3);
 
 		const json =
-			'{"type":"production record","content":"关闭并清理远程分支和本地引用完成所有操作"}';
+			'{"uri":"customer://question","body":"关闭并清理远程分支和本地引用完成所有操作"}';
 		const chunks = randomChunks(json, 77);
-		renderer.toolCallArgStart(0, "show");
+		renderer.toolCallArgStart(0, "post");
 		for (const chunk of chunks) {
 			renderer.toolCallArgChunk(0, chunk);
 		}
@@ -239,16 +249,18 @@ describe("RichRenderer 虚拟终端保真测试", () => {
 
 		renderer.toolExecStart("call_1", {
 			id: "call_1",
-			tool: "show",
+			tool: "post",
 			args: JSON.parse(json),
 		});
 		renderer.toolExecEnd("call_1", {
 			status: "completed",
 			result: {
 				type: "tool_result" as const,
-				tool: "show",
-				call: { id: "call_1", tool: "show", args: JSON.parse(json) },
-				cleanedResult: null,
+				tool: "post",
+				scheme: "customer" as const,
+				kind: "question" as const,
+				status: "completed" as const,
+				call: { id: "call_1", tool: "post", args: JSON.parse(json) },
 			},
 		});
 
@@ -261,7 +273,7 @@ describe("RichRenderer 虚拟终端保真测试", () => {
 		}
 
 		// 应有结果行
-		const hasResult = cleanLines.some((l) => l.includes("show"));
+		const hasResult = cleanLines.some((l) => l.includes("customer"));
 		expect(hasResult).toBe(true);
 	});
 

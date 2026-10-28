@@ -12,13 +12,6 @@ export interface TurnFeedbackMessage {
 	detail: string;
 }
 
-// ── 空转提示 ──
-export interface IdleNudgeMessage {
-	type: "idle_nudge";
-	idleCount: number;
-	maxIdleRounds: number;
-}
-
 // ── 缓存断点 ──
 /** 显式标记提示词缓存断点位置。client 层在此处设置 cache_control，提升前缀稳定性。 */
 export interface CacheBreakpointMessage {

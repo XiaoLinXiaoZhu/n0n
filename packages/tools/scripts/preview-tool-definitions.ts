@@ -10,7 +10,6 @@
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { resolvePlatform } from "@n0n/shared";
-import { showConfig } from "../../../apps/code/src/show-config.ts";
 import { makeToolkit } from "../src";
 
 const MODEL = "claude-sonnet-4-20250514";
@@ -19,7 +18,6 @@ mkdirSync(PREVIEW_DIR, { recursive: true });
 
 // 构建完整 toolkit（触发环境探测，与生产一致）
 const toolkit = makeToolkit(
-	showConfig,
 	{
 		workspace: process.cwd(),
 		sessionDir: join(

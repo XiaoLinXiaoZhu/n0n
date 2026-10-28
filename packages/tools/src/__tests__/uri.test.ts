@@ -1,0 +1,146 @@
+import { describe, expect, it } from "bun:test";
+import { parsePostUri } from "../uri.ts";
+
+describe("parsePostUri — exec scheme", () => {
+	it("解析 exec://<runtime>/<claim>", () => {
+		expect(parsePostUri("exec://sh/read-config")).toEqual({
+			scheme: "exec",
+			runtime: "sh",
+			claim: "read-config",
+		});
+	});
+
+	it("解析 query：cwd / waitfor / max_output_tokens", () => {
+		expect(
+			parsePostUri(
+				"exec://bun/probe?cwd=sub/dir&waitfor=30&max_output_tokens=5000",
+			),
+		).toEqual({
+			scheme: "exec",
+			runtime: "bun",
+			claim: "probe",
+			cwd: "sub/dir",
+			waitfor: 30,
+			maxOutputTokens: 5000,
+		});
+	});
+
+	it("waitfor 超过 240 时 clamp 到 240", () => {
+		const parsed = parsePostUri("exec://sh/c?waitfor=999");
+		expect(parsed).toMatchObject({ waitfor: 240 });
+	});
+
+	it("waitfor 非法值（NaN / 非正数）被忽略", () => {
+		expect(parsePostUri("exec://sh/c?waitfor=abc")).not.toHaveProperty(
+			"waitfor",
+		);
+		expect(parsePostUri("exec://sh/c?waitfor=-5")).not.toHaveProperty(
+			"waitfor",
+		);
+		expect(parsePostUri("exec://sh/c?waitfor=0")).not.toHaveProperty("waitfor");
+	});
+
+	it("max_output_tokens 取整（floor）", () => {
+		const parsed = parsePostUri("exec://sh/c?max_output_tokens=5000.7");
+		expect(parsed).toMatchObject({ maxOutputTokens: 5000 });
+	});
+
+	it("URL 解码 runtime 与 claim 段", () => {
+		const parsed = parsePostUri("exec://bu%6E/read%20config");
+		expect(parsed).toMatchObject({ runtime: "bun", claim: "read config" });
+	});
+
+	it("URL 解码 cwd", () => {
+		const parsed = parsePostUri("exec://sh/c?cwd=my%20dir");
+		expect(parsed).toMatchObject({ cwd: "my dir" });
+	});
+
+	it("未知 query 键忽略", () => {
+		const parsed = parsePostUri("exec://sh/c?foo=bar");
+		expect(parsed).toEqual({
+			scheme: "exec",
+			runtime: "sh",
+			claim: "c",
+		});
+	});
+
+	it("claim 含 / 时取首个 / 之后全部", () => {
+		const parsed = parsePostUri("exec://sh/a/b/c");
+		expect(parsed).toMatchObject({ claim: "a/b/c" });
+	});
+});
+
+describe("parsePostUri — write scheme", () => {
+	it("解析 write://<path>", () => {
+		expect(parsePostUri("write://tmp/probe.txt")).toEqual({
+			scheme: "write",
+			path: "tmp/probe.txt",
+		});
+	});
+
+	it("URL 解码路径", () => {
+		expect(parsePostUri("write://my%20dir/file.txt")).toEqual({
+			scheme: "write",
+			path: "my dir/file.txt",
+		});
+	});
+});
+
+describe("parsePostUri — customer scheme", () => {
+	it("解析 customer://question", () => {
+		expect(parsePostUri("customer://question")).toEqual({
+			scheme: "customer",
+			kind: "question",
+		});
+	});
+
+	it("解析 customer://form", () => {
+		expect(parsePostUri("customer://form")).toEqual({
+			scheme: "customer",
+			kind: "form",
+		});
+	});
+
+	it("解析 customer://action_required", () => {
+		expect(parsePostUri("customer://action_required")).toEqual({
+			scheme: "customer",
+			kind: "action_required",
+		});
+	});
+});
+
+describe("parsePostUri — throw 路径", () => {
+	it("空 uri 抛错", () => {
+		expect(() => parsePostUri("")).toThrow();
+	});
+
+	it("无 scheme（缺少 ://）抛错", () => {
+		expect(() => parsePostUri("just-a-path")).toThrow();
+	});
+
+	it("exec 缺少 runtime（exec:///claim）抛错", () => {
+		expect(() => parsePostUri("exec:///claim")).toThrow();
+	});
+
+	it("exec 缺少 claim（exec://sh）抛错", () => {
+		expect(() => parsePostUri("exec://sh")).toThrow();
+	});
+
+	it("exec claim 为空（exec://sh/）抛错", () => {
+		expect(() => parsePostUri("exec://sh/")).toThrow();
+	});
+
+	it("customer 非法 kind 抛错", () => {
+		expect(() => parsePostUri("customer://unknown")).toThrow();
+	});
+
+	it("未知 scheme 抛错且消息列出支持的 scheme", () => {
+		expect(() => parsePostUri("http://example.com")).toThrow(
+			/exec:\/\/|write:\/\/|customer:\/\//,
+		);
+	});
+
+	it("空 write 路径（write://）抛错", () => {
+		expect(() => parsePostUri("write://")).toThrow();
+	});
+});

@@ -17,11 +17,12 @@ import {
 import { isAbsolute, join, resolve } from "node:path";
 import { headTailByTokens } from "@n0n/shared";
 import type {
-	ExecArgs,
 	ExecToolResult,
 	ExecutionArtifactRef,
+	PostArgs,
 	ToolStreamEvent,
 } from "@n0n/types";
+import { type ParsedUri, parsePostUri } from "../uri.ts";
 import {
 	buildSpawnCmd,
 	RUNTIME_EXT,
@@ -29,13 +30,12 @@ import {
 	runProcess,
 	type StreamCapture,
 } from "./process-runner.ts";
-import type { ExecRole } from "./role.ts";
 import { findBlockedCommand, handleBlockedCommand } from "./security.ts";
 
 export interface ExecCall {
 	id: string;
-	tool: ExecRole;
-	args: ExecArgs;
+	tool: "post";
+	args: PostArgs;
 }
 
 const DEFAULT_OUTPUT_TOKENS = 5_000;
@@ -242,24 +242,58 @@ export async function* execToolStream(
 	},
 ): AsyncGenerator<ToolStreamEvent> {
 	const defaultRuntime = toolsConfig.platform === "win32" ? "cmd" : "sh";
-	const runtime = call.args.runtime ?? defaultRuntime;
 	const workspace = toolsConfig.workspace;
-	const cwd = call.args.cwd
-		? isAbsolute(call.args.cwd)
-			? call.args.cwd
-			: resolve(workspace, call.args.cwd)
+
+	// uri 解析失败或非 exec scheme：本后端只处理 exec://，其余由 index.ts 分发。
+	let parsed: ParsedUri | null;
+	let uriError: unknown;
+	try {
+		parsed = parsePostUri(call.args.uri);
+	} catch (error) {
+		parsed = null;
+		uriError = error;
+	}
+	if (parsed?.scheme !== "exec") {
+		yield {
+			type: "tool_result",
+			tool: "post",
+			call,
+			status: "completed",
+			scheme: "exec",
+			claim: "",
+			runtime: defaultRuntime,
+			cwd: workspace,
+			exitCode: 1,
+			stdout: "",
+			stderr:
+				parsed !== null
+					? `exec backend received a ${parsed.scheme}:// uri; expected exec://.`
+					: uriError instanceof Error
+						? uriError.message
+						: String(uriError),
+			durationMs: 0,
+		} satisfies ExecToolResult;
+		return;
+	}
+	const { runtime, claim } = parsed;
+	const cwd = parsed.cwd
+		? isAbsolute(parsed.cwd)
+			? parsed.cwd
+			: resolve(workspace, parsed.cwd)
 		: workspace;
 	const waitforS = Math.min(
-		call.args.waitfor ?? toolsConfig.default_exec_waitfor,
+		parsed.waitfor ?? toolsConfig.default_exec_waitfor,
 		240,
 	);
-	const outputTokenBudget =
-		call.args.output_tokens ??
-		Math.min(DEFAULT_OUTPUT_TOKENS, toolsConfig.max_exec_output_tokens);
+	const outputTokenBudget = Math.min(
+		parsed.maxOutputTokens ?? DEFAULT_OUTPUT_TOKENS,
+		toolsConfig.max_exec_output_tokens,
+	);
+	const script = call.args.body;
 	const start = Date.now();
 
 	const blockedCmd = findBlockedCommand(
-		call.args.script,
+		script,
 		toolsConfig.blocked_commands,
 		toolsConfig.platform,
 	);
@@ -290,10 +324,7 @@ export async function* execToolStream(
 	let keepArtifact = false;
 
 	try {
-		await Bun.write(
-			tmpFile,
-			runtime === "cmd" ? `@${call.args.script}\n` : call.args.script,
-		);
+		await Bun.write(tmpFile, runtime === "cmd" ? `@${script}\n` : script);
 		const result = yield* runProcess({
 			spawnCmd: buildSpawnCmd(runtime, tmpFile),
 			cwd,
@@ -304,6 +335,17 @@ export async function* execToolStream(
 			stderrFile: artifact.ref.stderrFile,
 			maxCaptureTokens: toolsConfig.max_exec_output_tokens,
 		});
+
+		// 所有 exec 结果共享的判别与溯源字段。
+		const execBase = {
+			type: "tool_result",
+			tool: call.tool,
+			call,
+			scheme: "exec",
+			claim,
+			runtime,
+			cwd,
+		} as const;
 
 		switch (result.outcome) {
 			case "backgrounded": {
@@ -322,9 +364,7 @@ export async function* execToolStream(
 					result.stderr.estimatedTokens,
 				);
 				yield {
-					type: "tool_result",
-					tool: call.tool,
-					call,
+					...execBase,
 					status: "backgrounded",
 					pid: result.pid,
 					artifact: artifact.ref,
@@ -336,9 +376,7 @@ export async function* execToolStream(
 			}
 			case "error": {
 				yield {
-					type: "tool_result",
-					tool: call.tool,
-					call,
+					...execBase,
 					status: "completed",
 					exitCode: 1,
 					stdout: "",
@@ -357,9 +395,7 @@ export async function* execToolStream(
 					totalEstimatedTokens > outputTokenBudget;
 				if (!isTruncated) {
 					yield {
-						type: "tool_result",
-						tool: call.tool,
-						call,
+						...execBase,
 						status: "completed",
 						exitCode,
 						stdout:
@@ -387,9 +423,7 @@ export async function* execToolStream(
 					stderr.estimatedTokens,
 				);
 				yield {
-					type: "tool_result",
-					tool: call.tool,
-					call,
+					...execBase,
 					status: "truncated",
 					exitCode,
 					stdoutPreview: capturePreview(stdout, budgets.stdout),
@@ -413,6 +447,10 @@ export async function* execToolStream(
 			type: "tool_result",
 			tool: call.tool,
 			call,
+			scheme: "exec",
+			claim,
+			runtime,
+			cwd,
 			status: "completed",
 			exitCode: 1,
 			stdout: "",

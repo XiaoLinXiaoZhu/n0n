@@ -4,7 +4,7 @@
  * format-tool-arg-error 单元测试
  *
  * 验证 ToolError 判别联合 → 提示词的格式化：
- * - unknown_tool → 包含工具名和可用工具列表
+ * - unknown_tool → 包含工具名和 post 工具的 uri scheme 说明
  * - invalid_args → 包含校验问题描述
  * - truncated_recovery → 包含截断相关提示
  * - internal_error → 包含错误消息
@@ -35,7 +35,7 @@ function makeMsg(
 
 describe("formatToolArgError", () => {
 	describe("unknown_tool", () => {
-		it("应包含工具名和可用工具列表", () => {
+		it("应包含工具名和 post 工具的 uri scheme 说明", () => {
 			const result = formatToolArgError(
 				makeMsg({ kind: "unknown_tool" }, "read"),
 				tags,
@@ -43,8 +43,10 @@ describe("formatToolArgError", () => {
 			);
 
 			expect(result).toContain("read");
-			expect(result).toContain("observe");
-			expect(result).toContain("write");
+			expect(result).toContain("post");
+			expect(result).toContain("exec://");
+			expect(result).toContain("write://");
+			expect(result).toContain("customer://");
 		});
 
 		it("anti-few-shot：不同 index 产生不同表述", () => {

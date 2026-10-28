@@ -1,11 +1,17 @@
+/**
+ * runHeadless — 单 post 工具暴露面、自然结束与错误终止。
+ *
+ * 无客户后续参与：customer:// 不出现在工具描述中，即使模型发出也以
+ * arg-error 拒绝并继续循环；循环以自然结束（纯内容）或错误 report 终止。
+ */
+
 import { describe, expect, test } from "bun:test";
-import { mkdtempSync, readdirSync, readFileSync } from "node:fs";
+import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { resolveBasePaths } from "@n0n/shared";
 import type { LLMClient, StreamEvent, StreamRequest } from "@n0n/types";
 import { runHeadless } from "../headless.ts";
-import type { CodeShowResult } from "../schema.ts";
 
 const agentConfig = {
 	max_iterations: 5,
@@ -14,8 +20,11 @@ const agentConfig = {
 	max_exec_output_tokens: 32_000,
 };
 
+/** 一次 stream() 调用产出的完整事件序列 */
+type Turn = StreamEvent[];
+
 function makeClient(
-	results: CodeShowResult[],
+	turns: Turn[],
 	onRequest?: (request: StreamRequest) => void,
 ): LLMClient {
 	let index = 0;
@@ -23,24 +32,11 @@ function makeClient(
 		modelId: "mock-headless",
 		async *stream(request): AsyncGenerator<StreamEvent> {
 			onRequest?.(request);
-			const result = results[index++];
-			if (!result) {
-				throw new Error("Mock headless client ran out of show results");
+			const turn = turns[index++];
+			if (!turn) {
+				throw new Error("Mock headless client ran out of turns");
 			}
-			const callId = `show-${index}`;
-			yield {
-				type: "tool_call_delta",
-				index: 0,
-				id: callId,
-				name: "show",
-				arguments: "",
-			};
-			yield {
-				type: "tool_call_delta",
-				index: 0,
-				arguments: JSON.stringify(result),
-			};
-			yield { type: "done", finishReason: "tool_calls", usage: null };
+			yield* turn;
 		},
 		async complete() {
 			return { text: "" };
@@ -49,6 +45,35 @@ function makeClient(
 			return { ok: true };
 		},
 	};
+}
+
+/** 纯内容轮 → 自然结束 */
+function contentTurn(text: string): Turn {
+	return [
+		{ type: "content", text },
+		{ type: "done", finishReason: "stop", usage: null },
+	];
+}
+
+/** post 工具调用轮 */
+function postTurn(id: string, uri: string, body: string): Turn {
+	return [
+		{ type: "tool_call_delta", index: 0, id, name: "post", arguments: "" },
+		{
+			type: "tool_call_delta",
+			index: 0,
+			arguments: JSON.stringify({ uri, body }),
+		},
+		{ type: "done", finishReason: "tool_calls", usage: null },
+	];
+}
+
+/** LLM 流错误轮 → 错误 report 终止 */
+function errorTurn(message: string): Turn {
+	return [
+		{ type: "error", error: message },
+		{ type: "done", finishReason: "stop", usage: null },
+	];
 }
 
 function makeOptions(client: LLMClient) {
@@ -64,62 +89,60 @@ function makeOptions(client: LLMClient) {
 	};
 }
 
-describe("runHeadless show lifecycle", () => {
-	test("只暴露无需后续客户参与的类型，并持久化生产记录和终态", async () => {
-		let exposedTypes: string[] = [];
-		const client = makeClient(
-			[
-				{ type: "production record", content: "阶段证据" },
-				{ type: "production suspended", content: "等待外部条件" },
-			],
-			(request) => {
-				const show = request.tools?.find((tool) => tool.name === "show");
-				const typeProperty = show?.parameters.properties?.type as
-					| { enum?: string[] }
-					| undefined;
-				exposedTypes = typeProperty?.enum ?? [];
-			},
-		);
+describe("runHeadless 单 post 工具与终止方式", () => {
+	test("只提供单个 post 工具，描述中不含 customer://", async () => {
+		let tools: StreamRequest["tools"];
+		const client = makeClient([contentTurn("完成")], (request) => {
+			tools = request.tools;
+		});
 
 		const result = await runHeadless(makeOptions(client));
 
-		expect(exposedTypes).toEqual([
-			"production record",
-			"qualified delivery",
-			"production suspended",
-			"production failed",
-			"customer cancelled",
+		expect(result.success).toBe(true);
+		expect(tools).toHaveLength(1);
+		const post = tools?.[0];
+		expect(post?.name).toBe("post");
+		expect(post?.description).not.toContain("customer://");
+		expect(Object.keys(post?.parameters.properties ?? {}).sort()).toEqual([
+			"body",
+			"uri",
 		]);
-		expect(result.rounds).toBe(2);
-		expect(result.success).toBe(false);
-		expect(result.result?.type).toBe("production suspended");
-		expect(readdirSync(result.sessionDir)).toEqual(
-			expect.arrayContaining([
-				"0001-production-record.md",
-				"0002-production-suspended.md",
-				"current-show.md",
-			]),
-		);
-		expect(
-			readFileSync(join(result.sessionDir, "current-show.md"), "utf8"),
-		).toContain("等待外部条件");
 	});
 
-	test("只有合格交付映射为机械 success", async () => {
-		const qualified = await runHeadless(
-			makeOptions(
-				makeClient([{ type: "qualified delivery", content: "全部验收通过" }]),
-			),
+	test("自然结束返回最终文本，success 等价于无错误", async () => {
+		const result = await runHeadless(
+			makeOptions(makeClient([contentTurn("全部验收通过")])),
 		);
-		const failed = await runHeadless(
+
+		expect(result.success).toBe(true);
+		expect(result.error).toBeNull();
+		expect(result.report).toBeNull();
+		expect(result.result).toBe("全部验收通过");
+		expect(result.rounds).toBe(1);
+	});
+
+	test("模型发出的 customer:// 被拒绝，循环继续到自然结束", async () => {
+		const result = await runHeadless(
 			makeOptions(
-				makeClient([{ type: "production failed", content: "无有效路径" }]),
+				makeClient([
+					postTurn("call-customer", "customer://question", "选哪个？\n推荐 A"),
+					contentTurn("已按现有输入完成"),
+				]),
 			),
 		);
 
-		expect(qualified.success).toBe(true);
-		expect(qualified.error).toBeNull();
-		expect(failed.success).toBe(false);
-		expect(failed.error).toBe("Quality terminal state: production failed");
+		// customer:// 未终止循环：agentLoop 继续到第二轮自然结束
+		expect(result.success).toBe(true);
+		expect(result.result).toBe("已按现有输入完成");
+	});
+
+	test("LLM 流错误映射为失败 report", async () => {
+		const result = await runHeadless(
+			makeOptions(makeClient([errorTurn("network boom")])),
+		);
+
+		expect(result.success).toBe(false);
+		expect(result.result).toBeNull();
+		expect(result.error).toContain("network boom");
 	});
 });

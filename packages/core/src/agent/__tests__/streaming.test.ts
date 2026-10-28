@@ -1,5 +1,4 @@
 // biome-ignore-all lint/style/noNonNullAssertion: test assertions on known-shape results
-// biome-ignore-all lint/suspicious/noExplicitAny: test mocks use any for flexibility
 /**
  * parseStream 单元测试
  *
@@ -38,7 +37,9 @@ function ofType<T extends ParsedStreamEvent["type"]>(
 	events: ParsedStreamEvent[],
 	type: T,
 ): Extract<ParsedStreamEvent, { type: T }>[] {
-	return events.filter((e) => e.type === type) as any;
+	return events.filter(
+		(e): e is Extract<ParsedStreamEvent, { type: T }> => e.type === type,
+	);
 }
 
 // ── 测试 ──
@@ -102,8 +103,8 @@ describe("parseStream", () => {
 					type: "tool_call_delta",
 					index: 0,
 					id: "tc_1",
-					name: "observe",
-					arguments: '{"script":"ls"}',
+					name: "post",
+					arguments: '{"uri":"exec://sh/probe","body":"ls"}',
 				},
 				{ type: "done", finishReason: "tool_calls", usage: null },
 			]);
@@ -125,8 +126,8 @@ describe("parseStream", () => {
 					type: "tool_call_delta",
 					index: 0,
 					id: "tc_1",
-					name: "observe",
-					arguments: '{"script":"ls"}',
+					name: "post",
+					arguments: '{"uri":"exec://sh/probe","body":"ls"}',
 				},
 				{ type: "done", finishReason: "tool_calls", usage: null },
 			]);
@@ -149,20 +150,23 @@ describe("parseStream", () => {
 					type: "tool_call_delta",
 					index: 0,
 					id: "tc_1",
-					name: "observe",
-					arguments: '{"script":"ls"}',
+					name: "post",
+					arguments: '{"uri":"exec://sh/probe","body":"ls"}',
 				},
 				{ type: "done", finishReason: "tool_calls", usage: null },
 			]);
 
 			expect(ofType(events, "tool_arg_start")).toHaveLength(1);
-			expect(ofType(events, "tool_arg_start")[0]!.name).toBe("observe");
+			expect(ofType(events, "tool_arg_start")[0]!.name).toBe("post");
 			expect(ofType(events, "tool_arg_chunk")).toHaveLength(1);
 
 			const ready = ofType(events, "tool_ready");
 			expect(ready).toHaveLength(1);
-			expect(ready[0]!.tc.tool).toBe("observe");
-			expect(ready[0]!.tc.args).toEqual({ script: "ls" });
+			expect(ready[0]!.tc.tool).toBe("post");
+			expect(ready[0]!.tc.args).toEqual({
+				uri: "exec://sh/probe",
+				body: "ls",
+			});
 
 			const done = ofType(events, "done")[0]!;
 			expect(done.result.readyTools.size).toBe(1);
@@ -174,11 +178,11 @@ describe("parseStream", () => {
 					type: "tool_call_delta",
 					index: 0,
 					id: "tc_1",
-					name: "observe",
-					arguments: '{"scr',
+					name: "post",
+					arguments: '{"uri":"exec://sh/l',
 				},
-				{ type: "tool_call_delta", index: 0, arguments: 'ipt":' },
-				{ type: "tool_call_delta", index: 0, arguments: '"ls -la"}' },
+				{ type: "tool_call_delta", index: 0, arguments: 's -la",' },
+				{ type: "tool_call_delta", index: 0, arguments: '"body":"ls -la"}' },
 				{ type: "done", finishReason: "tool_calls", usage: null },
 			]);
 
@@ -189,7 +193,10 @@ describe("parseStream", () => {
 			// JSON 完整后触发 tool_ready
 			const ready = ofType(events, "tool_ready");
 			expect(ready).toHaveLength(1);
-			expect(ready[0]!.tc.args).toEqual({ script: "ls -la" });
+			expect(ready[0]!.tc.args).toEqual({
+				uri: "exec://sh/ls -la",
+				body: "ls -la",
+			});
 		});
 
 		it("多个工具调用并行", async () => {
@@ -198,15 +205,15 @@ describe("parseStream", () => {
 					type: "tool_call_delta",
 					index: 0,
 					id: "tc_1",
-					name: "write",
-					arguments: '{"path":"a.ts","content":"hello"}',
+					name: "post",
+					arguments: '{"uri":"write://a.ts","body":"hello"}',
 				},
 				{
 					type: "tool_call_delta",
 					index: 1,
 					id: "tc_2",
-					name: "write",
-					arguments: '{"path":"b.ts","content":"world"}',
+					name: "post",
+					arguments: '{"uri":"write://b.ts","body":"world"}',
 				},
 				{ type: "done", finishReason: "tool_calls", usage: null },
 			]);
@@ -224,8 +231,8 @@ describe("parseStream", () => {
 					type: "tool_call_delta",
 					index: 0,
 					id: "tc_1",
-					name: "write",
-					arguments: '{"path":"a.ts","cont',
+					name: "post",
+					arguments: '{"uri":"write://a.ts","bo',
 				},
 				{ type: "done", finishReason: "length", usage: null },
 			]);
@@ -250,9 +257,11 @@ describe("parseStream", () => {
 
 			const ready = ofType(events, "tool_ready");
 			expect(ready).toHaveLength(1);
-			// @ts-expect-error — 运行时工具名不受判别联合约束
-			expect(ready[0]!.tc.tool).toBe("read");
-			expect(ready[0]!.tc.args as any).toEqual({});
+			// 运行时未知工具名不受判别联合约束，放宽为 string 断言
+			const readyTool: string = ready[0]!.tc.tool;
+			expect(readyTool).toBe("read");
+			// @ts-expect-error — 运行时未知工具的 args 不受判别联合约束
+			expect(ready[0]!.tc.args).toEqual({});
 		});
 
 		it("未知工具 + tool_ready → readyTools 中包含该工具", async () => {
@@ -270,9 +279,11 @@ describe("parseStream", () => {
 			const done = ofType(events, "done")[0]!;
 			expect(done.result.readyTools.size).toBe(1);
 			const toolCall = done.result.readyTools.values().next().value!;
-			// @ts-expect-error — 运行时工具名不受判别联合约束
-			expect(toolCall.tool).toBe("unknownTool");
-			expect(toolCall.args as any).toEqual({});
+			// 运行时未知工具名不受判别联合约束，放宽为 string 断言
+			const unknownTool: string = toolCall.tool;
+			expect(unknownTool).toBe("unknownTool");
+			// @ts-expect-error — 运行时未知工具的 args 不受判别联合约束
+			expect(toolCall.args).toEqual({});
 		});
 	});
 

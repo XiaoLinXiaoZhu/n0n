@@ -12,13 +12,13 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { resolvePlatform } from "@n0n/shared";
 import type { ExecToolResult } from "@n0n/types";
-import { ExecArgsSchema, execToolStream } from "../exec";
+import { execToolStream } from "../exec";
 
 /** 内部调用类型 — 与 ExecCall 对齐 */
 interface TestCall {
 	id: string;
-	tool: "observe";
-	args: { script: string; runtime?: string; cwd?: string; waitfor?: number };
+	tool: "post";
+	args: { uri: string; body: string };
 }
 
 const SESSION_DIR = mkdtempSync(join(tmpdir(), "n0n-exec-waitfor-"));
@@ -33,8 +33,12 @@ async function collectWithHardTimeout(
 	| { status: "completed"; result: ExecToolResult }
 	| { status: "hung"; elapsedMs: number }
 > {
-	const args = ExecArgsSchema.parse({ script, runtime, waitfor: execWaitfor });
-	const call: TestCall = { id: "waitfor-test", tool: "observe", args };
+	const rt = runtime ?? (resolvePlatform() === "win32" ? "cmd" : "sh");
+	const call: TestCall = {
+		id: "waitfor-test",
+		tool: "post",
+		args: { uri: `exec://${rt}/probe?waitfor=${execWaitfor}`, body: script },
+	};
 	const start = Date.now();
 
 	const execPromise = (async () => {
@@ -46,7 +50,7 @@ async function collectWithHardTimeout(
 			max_exec_output_tokens: 32_000,
 			platform: resolvePlatform(),
 		})) {
-			if (event.type === "tool_result" && event.tool === "observe") {
+			if (event.type === "tool_result" && event.scheme === "exec") {
 				return { status: "completed" as const, result: event };
 			}
 		}

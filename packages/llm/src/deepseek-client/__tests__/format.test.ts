@@ -26,8 +26,8 @@ describe("toDeepSeekMessages", () => {
 					toolCalls: [
 						{
 							id: "call_1",
-							tool: "observe",
-							args: { script: "ls" },
+							tool: "post",
+							args: { uri: "write://.", body: "ls" },
 						},
 					],
 				},
@@ -42,8 +42,8 @@ describe("toDeepSeekMessages", () => {
 						id: "call_1",
 						type: "function",
 						function: {
-							name: "observe",
-							arguments: '{"script":"ls"}',
+							name: "post",
+							arguments: '{"uri":"write://.","body":"ls"}',
 						},
 					},
 				],
@@ -51,7 +51,7 @@ describe("toDeepSeekMessages", () => {
 		]);
 	});
 
-	test("reasoning 含 Let me 开头时应该替换为 We need to", () => {
+	test("reasoning 原样保留不改写", () => {
 		expect(
 			toDeepSeekMessages([
 				{
@@ -59,19 +59,6 @@ describe("toDeepSeekMessages", () => {
 					content: "Done.",
 					reasoning: "Let me inspect the file first.",
 				},
-			]),
-		).toEqual([
-			{
-				role: "assistant",
-				content: "Done.",
-				reasoning_content: "We need to inspect the file first.",
-			},
-		]);
-	});
-
-	test("reasoning 含中文 让我 时应该替换为 我们需要", () => {
-		expect(
-			toDeepSeekMessages([
 				{
 					role: "assistant",
 					content: "完成。",
@@ -81,8 +68,13 @@ describe("toDeepSeekMessages", () => {
 		).toEqual([
 			{
 				role: "assistant",
+				content: "Done.",
+				reasoning_content: "Let me inspect the file first.",
+			},
+			{
+				role: "assistant",
 				content: "完成。",
-				reasoning_content: "我们需要检查一下日志。",
+				reasoning_content: "让我检查一下日志。",
 			},
 		]);
 	});

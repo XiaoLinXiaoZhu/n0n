@@ -1,16 +1,11 @@
 import type { AssistantToolCallPart, ToolCallRecord } from "@n0n/types";
-import { ExecArgsSchema, ShowArgsSchema, WriteArgsSchema } from "@n0n/types";
+import { PostArgsSchema } from "@n0n/types";
 
 // ── 参数键序归一化 ──
 
 /** 工具名 → 规范参数键序 */
 const PARAM_ORDER_MAP: Record<string, string[]> = {
-	exec: Object.keys(ExecArgsSchema.shape),
-	observe: Object.keys(ExecArgsSchema.shape),
-	reason: Object.keys(ExecArgsSchema.shape),
-	act: Object.keys(ExecArgsSchema.shape),
-	write: Object.keys(WriteArgsSchema.shape),
-	show: Object.keys(ShowArgsSchema.shape),
+	post: Object.keys(PostArgsSchema.shape),
 };
 
 /** 将 args 的键序调整为规范顺序（不在规范中的键追加在末尾） */

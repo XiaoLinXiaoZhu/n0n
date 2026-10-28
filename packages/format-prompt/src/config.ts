@@ -21,7 +21,6 @@ export const AFFECTS_SUBSEQUENT: Record<MessageType, boolean> = {
 	assistant_text: true,
 	assistant_tool_call: true,
 	tool_result: true,
-	idle_nudge: true,
 	turn_feedback: true,
 	tool_arg_error: true,
 	cache_breakpoint: false,

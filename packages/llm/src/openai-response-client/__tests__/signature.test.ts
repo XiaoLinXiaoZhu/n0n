@@ -17,7 +17,7 @@ describe("OpenAI Responses reasoningSignature", () => {
 				type: "function_call",
 				id: "fc_1",
 				call_id: "call_1",
-				name: "observe",
+				name: "post",
 				arguments: '{"path":"README.md"}',
 			},
 		];

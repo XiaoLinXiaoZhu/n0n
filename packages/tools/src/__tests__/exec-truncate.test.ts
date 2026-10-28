@@ -19,19 +19,13 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { estimateTokens, resolvePlatform } from "@n0n/shared";
 import type { ExecToolResult } from "@n0n/types";
-import { ExecArgsSchema, execToolStream } from "../exec";
+import { execToolStream } from "../exec";
 
 /** 内部调用类型 — 与 ExecCall 对齐 */
 interface TestCall {
 	id: string;
-	tool: "observe";
-	args: {
-		script: string;
-		runtime?: string;
-		cwd?: string;
-		waitfor?: number;
-		output_tokens?: number;
-	};
+	tool: "post";
+	args: { uri: string; body: string };
 }
 
 const SESSION_DIR = mkdtempSync(join(tmpdir(), "n0n-exec-truncate-"));
@@ -42,12 +36,13 @@ async function collectResult(
 	runtime?: string,
 	outputTokens?: number,
 ) {
-	const args = ExecArgsSchema.parse({
-		script,
-		runtime,
-		output_tokens: outputTokens,
-	});
-	const call: TestCall = { id: "trunc-test", tool: "observe", args };
+	const rt = runtime ?? (resolvePlatform() === "win32" ? "cmd" : "sh");
+	const query = outputTokens ? `?max_output_tokens=${outputTokens}` : "";
+	const call: TestCall = {
+		id: "trunc-test",
+		tool: "post",
+		args: { uri: `exec://${rt}/probe${query}`, body: script },
+	};
 
 	for await (const event of execToolStream(call, undefined, {
 		workspace: process.cwd(),
@@ -57,7 +52,7 @@ async function collectResult(
 		max_exec_output_tokens: 32_000,
 		platform: resolvePlatform(),
 	})) {
-		if (event.type === "tool_result" && event.tool === "observe") {
+		if (event.type === "tool_result" && event.scheme === "exec") {
 			return event as ExecToolResult;
 		}
 	}

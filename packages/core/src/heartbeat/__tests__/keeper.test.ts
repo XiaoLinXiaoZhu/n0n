@@ -149,15 +149,15 @@ describe("HeartbeatKeeper", () => {
 		// 推进到第一个 interval
 		await ctx.clock.advance(4000);
 		expect(ctx.heartbeatCalls).toBe(1);
-		expect(ctx.ticks).toEqual([{ count: 1, maxCount: 10 }]);
+		expect(ctx.ticks).toEqual([{ count: 1, maxCount: 3 }]);
 		expect(ctx.keeper.state).toBe(HeartbeatState.TICKING);
 
 		// 推进到第二个 interval
 		await ctx.clock.advance(4000);
 		expect(ctx.heartbeatCalls).toBe(2);
 		expect(ctx.ticks).toEqual([
-			{ count: 1, maxCount: 10 },
-			{ count: 2, maxCount: 10 },
+			{ count: 1, maxCount: 3 },
+			{ count: 2, maxCount: 3 },
 		]);
 	});
 

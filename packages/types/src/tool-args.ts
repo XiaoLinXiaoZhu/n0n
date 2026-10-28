@@ -1,20 +1,18 @@
 /**
  * 工具参数定义 — 全局领域契约（Single Source of Truth）
  *
- * 每个工具的参数定义为 **参数列表**（const array）。
- * 列表即顺序——数组天然有序，顺序是结构的一部分。
+ * 唯一工具 `post` 的参数结构。uri 决定后端（exec:// / write:// / customer://），
+ * body 是载荷（exec 为代码、write 为完整文件内容、customer 为消息正文）。
  *
- * 列表中的项仅包含：name、schema、required。
- * description 是消费方配置数据，通过 withDescriptions() 按 name 附加。
- *
- * Zod schema、TypeScript 类型从列表派生。
+ * 参数顺序（uri, body）由 prompt cache 稳定性与 param-order-snapshot 测试固定，
+ * 不得调整。
  */
 
 import { z } from "zod";
 
 /**
  * 单个参数定义。不含 description——description 是工具级配置，
- * 由调用方提供（不同的 observe/reason/act 可有不同的默认值描述）。
+ * 由调用方提供。
  */
 export interface ParamDef<
 	Name extends string = string,
@@ -57,44 +55,13 @@ export function withDescriptions<T extends readonly ParamDef[]>(
 }
 
 // ═══════════════════════════════════════════════════════════════
-// exec (observe / reason / act 共用)
+// post — 唯一工具
 // ═══════════════════════════════════════════════════════════════
 
-export const ExecParamDefs = [
-	{ name: "runtime", schema: z.string().optional() },
-	{ name: "cwd", schema: z.string().optional() },
-	// prompt cache 的 TTL 为 5 分钟
-	{
-		name: "waitfor",
-		schema: z.number().max(240).optional(),
-	},
-	{ name: "output_tokens", schema: z.number().int().positive().optional() },
-	{ name: "script", schema: z.string() },
+export const PostParamDefs = [
+	{ name: "uri", schema: z.string() },
+	{ name: "body", schema: z.string() },
 ] as const satisfies readonly ParamDef[];
 
-export const ExecArgsSchema = buildSchema(ExecParamDefs);
-export type ExecArgs = z.infer<typeof ExecArgsSchema>;
-
-// ═══════════════════════════════════════════════════════════════
-// write
-// ═══════════════════════════════════════════════════════════════
-
-export const WriteParamDefs = [
-	{ name: "path", schema: z.string() },
-	{ name: "content", schema: z.string() },
-] as const satisfies readonly ParamDef[];
-
-export const WriteArgsSchema = buildSchema(WriteParamDefs);
-export type WriteArgs = z.infer<typeof WriteArgsSchema>;
-
-// ═══════════════════════════════════════════════════════════════
-// show
-// ═══════════════════════════════════════════════════════════════
-
-export const ShowParamDefs = [
-	{ name: "type", schema: z.string() },
-	{ name: "content", schema: z.string() },
-] as const satisfies readonly ParamDef[];
-
-export const ShowArgsSchema = buildSchema(ShowParamDefs);
-export type ShowArgs = z.infer<typeof ShowArgsSchema>;
+export const PostArgsSchema = buildSchema(PostParamDefs);
+export type PostArgs = z.infer<typeof PostArgsSchema>;

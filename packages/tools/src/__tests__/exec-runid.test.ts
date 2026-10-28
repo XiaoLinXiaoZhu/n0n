@@ -11,7 +11,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { resolvePlatform } from "@n0n/shared";
 import type { ExecToolResult } from "@n0n/types";
-import { ExecArgsSchema, execToolStream } from "../exec";
+import { execToolStream } from "../exec";
 
 const pidsToCleanup: number[] = [];
 const SESSION_DIR = mkdtempSync(join(tmpdir(), "n0n-exec-runid-"));
@@ -26,25 +26,23 @@ afterAll(() => {
 });
 
 async function collectBackgrounded(script: string): Promise<ExecToolResult> {
-	const args = ExecArgsSchema.parse({
-		script,
-		runtime: "bun",
-		waitfor: 1,
-		cwd: SESSION_DIR,
-	});
-	for await (const event of execToolStream(
-		{ id: "runid-test-call", tool: "observe", args },
-		undefined,
-		{
-			workspace: process.cwd(),
-			sessionDir: SESSION_DIR,
-			blocked_commands: [],
-			default_exec_waitfor: 1,
-			max_exec_output_tokens: 32_000,
-			platform: resolvePlatform(),
+	const call = {
+		id: "runid-test-call",
+		tool: "post" as const,
+		args: {
+			uri: `exec://bun/probe?waitfor=1&cwd=${encodeURIComponent(SESSION_DIR)}`,
+			body: script,
 		},
-	)) {
-		if (event.type === "tool_result" && event.tool === "observe") return event;
+	};
+	for await (const event of execToolStream(call, undefined, {
+		workspace: process.cwd(),
+		sessionDir: SESSION_DIR,
+		blocked_commands: [],
+		default_exec_waitfor: 1,
+		max_exec_output_tokens: 32_000,
+		platform: resolvePlatform(),
+	})) {
+		if (event.type === "tool_result" && event.scheme === "exec") return event;
 	}
 	throw new Error("No tool_result yielded");
 }

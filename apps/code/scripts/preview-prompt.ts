@@ -42,7 +42,6 @@ import type {
 import { buildCodeSystemPrompt } from "../src/model-guidance.ts";
 import { getPrompt } from "../src/prompts";
 import { buildEnvironmentContext } from "../src/context-env.ts";
-import { showConfig } from "../src/show-config.ts";
 import { CODE_TAIL_ANCHOR } from "../src/tail-anchor.ts";
 
 // ── CLI 参数 ──
@@ -66,7 +65,7 @@ const outPath = resolve(previewDir, "PREVIEW.md");
 const repositorySkillsDir = resolve(import.meta.dir, "../../../data/skills");
 
 // ── Mock LLMClient ──
-// 截获 agentLoop 发来的第一次 stream() 请求，导出后用合格交付结束循环。
+// 截获 agentLoop 发来的第一次 stream() 请求，导出后用 customer:// 提问结束循环。
 
 interface CapturedRequest {
 	messages: DomainMessage[];
@@ -89,15 +88,15 @@ const mockClient: LLMClient = {
 			tools: request.tools ?? [],
 		};
 
-		// 返回一个合格交付工具调用，让 agentLoop 正常结束
+		// 返回一个 customer:// 提问工具调用，让 agentLoop 正常结束
 		const callId = "preview_done";
 		const args = JSON.stringify({
-			type: "qualified delivery",
-			content: "Preview capture complete.",
+			uri: "customer://question",
+			body: "预览捕获完成。继续吗？\n推荐：继续",
 		});
 
 		// tool_call_delta: 先发 name，再发 arguments，最后 done
-		yield { type: "tool_call_delta", index: 0, id: callId, name: "show", arguments: "" };
+		yield { type: "tool_call_delta", index: 0, id: callId, name: "post", arguments: "" };
 		yield { type: "tool_call_delta", index: 0, arguments: args };
 		yield { type: "done", finishReason: "tool_calls", usage: null };
 	},
@@ -143,7 +142,7 @@ const toolsConfig = buildToolsConfig(
 	{ workspace, sessionDir },
 );
 
-const toolkit = makeToolkit(showConfig, toolsConfig, mockClient.modelId);
+const toolkit = makeToolkit(toolsConfig, mockClient.modelId);
 
 const envContext = await buildEnvironmentContext(workspace);
 

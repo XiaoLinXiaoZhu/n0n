@@ -2,34 +2,31 @@
  * 工具类型聚合模块
  */
 
-// Exec (shared by observe / reason / act)
+// post 参数（tool-args.ts，注册表引用的 args 类型）
+export type { PostArgs } from "../../tool-args.ts";
+// Customer (post 的 customer:// 后端)
+export type { CustomerCompleted, CustomerKind } from "./customer.ts";
+// Exec (post 的 exec:// 后端)
 export type {
 	ExecBackgrounded,
 	ExecCompleted,
-	ExecToolName,
 	ExecToolResult,
 	ExecTruncated,
 	ExecutionArtifactRef,
 } from "./exec.ts";
 // 注册表核心
 export type {
-	ActToolCall,
 	MakeCall,
 	MakeResult,
 	MakeResultBase,
-	ObserveToolCall,
 	PartialToolCallRecord,
-	ReasonToolCall,
-	ShowToolCall,
+	PostToolCall,
 	ToolCallRecord,
 	ToolCallRecordMap,
 	ToolMap,
 	ToolName,
-	WriteToolCall,
 } from "./registry.ts";
-// Show
-export type { ShowToolResult } from "./show.ts";
-// Write
+// Write (post 的 write:// 后端)
 export type {
 	WriteCompleted,
 	WriteFailed,
@@ -40,11 +37,15 @@ export type {
 
 // ── 聚合 ToolResult 联合 ──
 
+import type { CustomerCompleted } from "./customer.ts";
 import type { ExecToolResult } from "./exec.ts";
-import type { ShowToolResult } from "./show.ts";
 import type { WriteToolResult } from "./write.ts";
 
-export type ToolResult = ExecToolResult | WriteToolResult | ShowToolResult;
+/**
+ * 工具结果联合 — 全部携带 tool: "post"，
+ * 以 scheme 字面量（exec | file | customer）区分后端，再以 status 细分。
+ */
+export type ToolResult = ExecToolResult | WriteToolResult | CustomerCompleted;
 
 // ── 工具执行结局 ──
 

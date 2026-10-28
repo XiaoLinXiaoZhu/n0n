@@ -2,7 +2,7 @@
 /**
  * exec 工具测试
  *
- * 验证 script+runtime 模式下的脚本执行：
+ * 验证 post 工具 exec:// 分支的脚本执行：
  * - 默认 runtime（平台 shell）执行简单命令
  * - bun runtime 执行 TypeScript 代码
  * - 转义字符在文件执行模式下不再是问题
@@ -13,21 +13,25 @@ import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { resolvePlatform } from "@n0n/shared";
-import { ExecArgsSchema, execToolStream } from "../exec";
+import { execToolStream } from "../exec";
 
 /** 内部调用类型 — 与 ExecCall 对齐，用于测试 */
 interface TestCall {
 	id: string;
-	tool: "observe";
-	args: { script: string; runtime?: string; cwd?: string; waitfor?: number };
+	tool: "post";
+	args: { uri: string; body: string };
 }
 
 const SESSION_DIR = mkdtempSync(join(tmpdir(), "n0n-exec-escape-"));
 
 /** 收集 exec 流式输出的最终结果 */
 async function collectExecResult(script: string, runtime?: string) {
-	const args = ExecArgsSchema.parse({ script, runtime });
-	const call: TestCall = { id: "test-id", tool: "observe", args };
+	const rt = runtime ?? (resolvePlatform() === "win32" ? "cmd" : "sh");
+	const call: TestCall = {
+		id: "test-id",
+		tool: "post",
+		args: { uri: `exec://${rt}/test`, body: script },
+	};
 	let stdout = "";
 	let stderr = "";
 	let exitCode = -1;
@@ -42,7 +46,7 @@ async function collectExecResult(script: string, runtime?: string) {
 	})) {
 		if (
 			event.type === "tool_result" &&
-			event.tool === "observe" &&
+			event.scheme === "exec" &&
 			event.status === "completed"
 		) {
 			stdout = event.stdout;

@@ -1,5 +1,5 @@
 /**
- * observe/reason/act tool result 格式化 — 含 anti-few-shot 变体
+ * post 工具 exec:// 后端结果格式化 — 含 anti-few-shot 变体
  *
  * 多部分拼装（meta、stdout/stderr tag、hint 等）各自使用
  * msgIndex+N 偏移独立选择变体，组合爆炸产生远超单维度的多样性。
@@ -105,9 +105,10 @@ export function formatExecResult(
 	tags: TagAdapter,
 	msgIndex: number,
 ): FormattedToolResult {
-	const runtime = msg.call.args.runtime ?? "unknown";
-	const cwd = msg.call.args.cwd ?? ".";
-	const toolLabel = msg.tool;
+	const runtime = msg.runtime;
+	const cwd = msg.cwd;
+	// claim 是模型自述的步骤名，仅作展示 label；不可用作 tag name
+	const toolLabel = msg.claim;
 	// 每个 pick 点用不同偏移：meta=+0, stdoutTag=+1, stderrTag=+2, notice/hint=+3, diagnostic=+4
 	const stdoutTag = pick(stdoutTagNames, msgIndex + 1);
 	const stderrTag = pick(stderrTagNames, msgIndex + 2);
@@ -116,7 +117,7 @@ export function formatExecResult(
 		case "backgrounded": {
 			const metaFn = pick(backgroundedMetaTemplates, msgIndex);
 			const factParts = [
-				tags.wrapTag(`${toolLabel}_meta`, metaFn(runtime, cwd, msg.durationMs)),
+				tags.wrapTag("exec_meta", metaFn(runtime, cwd, msg.durationMs)),
 			];
 
 			// PID + artifact 路径：持久有效的客观信息，属于 fact
@@ -133,11 +134,6 @@ export function formatExecResult(
 			if (msg.stderrSoFar)
 				factParts.push(tags.wrapTag(stderrTag, msg.stderrSoFar));
 
-			// reason 的输出标注为内部思考
-			if (toolLabel === "reason") {
-				factParts.push(tags.wrapTag("reason_internal", "[reason — internal]"));
-			}
-
 			// 操作建议：隔轮后不需要
 			const hint = pick(backgroundedHintTemplates, msgIndex + 4);
 
@@ -147,7 +143,7 @@ export function formatExecResult(
 			const metaFn = pick(truncatedMetaTemplates, msgIndex);
 			const factParts = [
 				tags.wrapTag(
-					`${toolLabel}_meta`,
+					"exec_meta",
 					metaFn(
 						runtime,
 						cwd,
@@ -162,11 +158,6 @@ export function formatExecResult(
 				factParts.push(tags.wrapTag(stdoutTag, msg.stdoutPreview));
 			if (msg.stderrPreview)
 				factParts.push(tags.wrapTag(stderrTag, msg.stderrPreview));
-
-			// reason 的输出标注为内部思考
-			if (toolLabel === "reason") {
-				factParts.push(tags.wrapTag("reason_internal", "[reason — internal]"));
-			}
 
 			const streams = artifactStreams(msg.artifact);
 			const streamText = [
@@ -195,18 +186,13 @@ export function formatExecResult(
 			const metaFn = pick(metaTemplates, msgIndex);
 			const factParts = [
 				tags.wrapTag(
-					`${toolLabel}_meta`,
+					"exec_meta",
 					metaFn(runtime, cwd, msg.exitCode, msg.durationMs),
 				),
 			];
 
 			if (msg.stdout) factParts.push(tags.wrapTag(stdoutTag, msg.stdout));
 			if (msg.stderr) factParts.push(tags.wrapTag(stderrTag, msg.stderr));
-
-			// reason 的输出标注为内部思考
-			if (toolLabel === "reason") {
-				factParts.push(tags.wrapTag("reason_internal", "[reason — internal]"));
-			}
 
 			const combined = (msg.stdout || "") + (msg.stderr || "");
 			let hint: string | null = null;

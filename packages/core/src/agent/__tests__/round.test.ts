@@ -1,5 +1,4 @@
 // biome-ignore-all lint/style/noNonNullAssertion: test assertions on known-shape results
-// biome-ignore-all lint/suspicious/noExplicitAny: test mocks use any for flexibility
 /**
  * round 纯函数单元测试
  *
@@ -12,8 +11,8 @@
 
 import { describe, expect, it } from "bun:test";
 import { StreamAccumulator } from "@n0n/shared";
-import type { ToolRecover } from "@n0n/tools";
-import type { DomainMessage, ToolCallRecord } from "@n0n/types";
+import type { ToolRecover, UnrecoverableCall } from "@n0n/tools";
+import type { ToolArgErrorMessage, ToolCallRecord } from "@n0n/types";
 import {
 	buildToolCallMessage,
 	collectJobMessages,
@@ -47,20 +46,20 @@ function makeAccWithToolCalls(
 function makeUnrecoverable(
 	partial: Parameters<ToolRecover>[0],
 	kind: "unknown_tool" | "truncated_recovery",
-) {
+): UnrecoverableCall {
 	return {
-		status: "unrecoverable" as const,
+		status: "unrecoverable",
 		call: {
 			id: partial.toolCallId,
 			tool: partial.toolName,
 			args: {},
-		} as any,
+		},
 		result: {
-			type: "tool_arg_error" as const,
+			type: "tool_arg_error",
 			callId: partial.toolCallId,
 			tool: partial.toolName,
 			error: { kind },
-		} as any,
+		},
 	};
 }
 
@@ -69,14 +68,19 @@ function makeUnrecoverable(
 describe("recoverTruncatedCalls", () => {
 	it("无截断工具 → 空 pairs", async () => {
 		const acc = makeAccWithToolCalls([
-			{ index: 0, id: "tc_1", name: "observe", input: '{"script":"ls"}' },
+			{
+				index: 0,
+				id: "tc_1",
+				name: "post",
+				input: '{"uri":"exec://sh/probe","body":"ls"}',
+			},
 		]);
 		const readyTools = new Map<number, ToolCallRecord>();
 		readyTools.set(0, {
 			id: "tc_1",
-			tool: "observe",
-			args: { script: "ls" },
-		} as ToolCallRecord);
+			tool: "post",
+			args: { uri: "exec://sh/probe", body: "ls" },
+		});
 
 		const result = await recoverTruncatedCalls(
 			{
@@ -91,9 +95,9 @@ describe("recoverTruncatedCalls", () => {
 		expect(result).toHaveLength(0);
 	});
 
-	it("截断的非 write 工具（无 recover）→ 占位 call + tool_arg_error", async () => {
+	it("截断的非 write:// 调用（无 recover）→ 占位 call + tool_arg_error", async () => {
 		const acc = makeAccWithToolCalls([
-			{ index: 0, id: "tc_1", name: "observe", input: '{"scri' },
+			{ index: 0, id: "tc_1", name: "post", input: '{"uri":"exec://sh/l' },
 		]);
 
 		const result = await recoverTruncatedCalls(
@@ -108,34 +112,36 @@ describe("recoverTruncatedCalls", () => {
 
 		expect(result).toHaveLength(1);
 		expect(result[0]!.status).toBe("unrecoverable");
-		expect(result[0]!.call.tool).toBe("observe");
-		expect(result[0]!.call.args as any).toEqual({});
+		expect(result[0]!.call.tool).toBe("post");
+		expect(result[0]!.call.args).toEqual({});
 		expect(result[0]!.result.type).toBe("tool_arg_error");
 	});
 
-	it("截断的 write 工具（有 recover）→ 恢复+执行", async () => {
+	it("截断的 write:// 调用（有 recover）→ 恢复+执行", async () => {
 		const acc = makeAccWithToolCalls([
 			{
 				index: 0,
 				id: "tc_1",
-				name: "write",
-				input: '{"path":"test.ts","content":"partial con',
+				name: "post",
+				input: '{"uri":"write://test.ts","body":"partial con',
 			},
 		]);
 
 		// 模拟 recover：恢复参数 + 执行 → 返回 {call, result}
 		const recover: ToolRecover = async (partial) => {
-			const call = {
+			const call: ToolCallRecord = {
 				id: partial.toolCallId,
-				tool: partial.toolName,
-				args: { path: "test.ts", content: "partial con" },
-			} as ToolCallRecord;
-			const result: DomainMessage = {
-				type: "tool_result",
-				tool: "write",
-				call: call as any,
-				status: "recovered",
-			} as any;
+				tool: "post",
+				args: { uri: "write://test.ts", body: "partial con" },
+			};
+			const result = {
+				type: "tool_result" as const,
+				tool: "post" as const,
+				call,
+				status: "recovered" as const,
+				scheme: "write" as const,
+				path: "test.ts",
+			};
 			return { status: "recovered" as const, call, result };
 		};
 
@@ -150,8 +156,8 @@ describe("recoverTruncatedCalls", () => {
 
 		expect(result).toHaveLength(1);
 		expect(result[0]!.status).toBe("recovered");
-		expect(result[0]!.call.tool).toBe("write");
-		expect((result[0]!.call.args as any).path).toBe("test.ts");
+		expect(result[0]!.call.tool).toBe("post");
+		expect(result[0]!.call.args.uri).toBe("write://test.ts");
 		expect(result[0]!.result.type).toBe("tool_result");
 	});
 });
@@ -166,9 +172,9 @@ describe("buildToolCallMessage", () => {
 
 		const tc: ToolCallRecord = {
 			id: "tc_1",
-			tool: "observe",
-			args: { script: "ls" },
-		} as ToolCallRecord;
+			tool: "post",
+			args: { uri: "exec://sh/probe", body: "ls" },
+		};
 		const msg = buildToolCallMessage(acc, [tc]);
 
 		expect(msg.type).toBe("assistant_tool_call");
@@ -194,11 +200,11 @@ describe("collectJobMessages", () => {
 
 	it("收集参数错误", () => {
 		const tc = mockExecTC("tc_1");
-		const argError = {
+		const argError: ToolArgErrorMessage = {
 			type: "tool_arg_error",
 			callId: "tc_1",
-			tool: "observe",
-			error: "bad args",
+			tool: "post",
+			error: { kind: "internal_error", message: "bad args" },
 		};
 		const jobs = [mockFailedJob(tc, argError)];
 

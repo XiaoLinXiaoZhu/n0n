@@ -1,15 +1,13 @@
 /**
- * Exec 工具结果类型 — 由 observe / reason / act 三个工具共享
+ * exec 工具结果类型 — 由 `post` 的 exec:// 后端产出
  *
- * 三个工具共用完全相同的参数结构（ExecArgs）和执行后端（execToolStream），
- * 差异仅在工具名和 description。
- * result.tool 携带实际调用的工具名，用于 formatter 和 renderer 的围栏信号。
+ * 结果携带 scheme 判别字段（"exec"），在 ToolResult 联合中区分后端；
+ * claim 是 uri 中的 NAME 路径段（模型自述当前步骤），供 formatter 与
+ * renderer 替代旧的工具名标签。runtime / cwd 由 executor 解析后写入，
+ * 避免 formatter 重复解析 uri。
  */
 
 import type { MakeResult } from "./registry.ts";
-
-/** 共享此结果类型的工具名集合 */
-export type ExecToolName = "observe" | "reason" | "act";
 
 export interface ExecutionArtifactRef {
 	kind: "execution";
@@ -21,8 +19,20 @@ export interface ExecutionArtifactRef {
 	resultFile: string;
 }
 
+/** exec 后端结果的公共字段 */
+interface ExecResultBase extends MakeResult<"post", string> {
+	scheme: "exec";
+	/** uri 中的 NAME 路径段（URL 解码后） */
+	claim: string;
+	/** 实际使用的 runtime（默认值已解析） */
+	runtime: string;
+	/** 实际使用的绝对工作目录 */
+	cwd: string;
+}
+
 /** 正常完成，输出在阈值内 */
-export interface ExecCompleted extends MakeResult<ExecToolName, "completed"> {
+export interface ExecCompleted extends ExecResultBase {
+	status: "completed";
 	exitCode: number;
 	stdout: string;
 	stderr: string;
@@ -30,7 +40,8 @@ export interface ExecCompleted extends MakeResult<ExecToolName, "completed"> {
 }
 
 /** 正常完成，输出超长被截断并写入文件 */
-export interface ExecTruncated extends MakeResult<ExecToolName, "truncated"> {
+export interface ExecTruncated extends ExecResultBase {
+	status: "truncated";
 	exitCode: number;
 	/** stdout 在分配预算内的头尾预览 */
 	stdoutPreview: string;
@@ -53,8 +64,8 @@ export interface ExecTruncated extends MakeResult<ExecToolName, "truncated"> {
 }
 
 /** 等待超限，进程转入后台继续执行 */
-export interface ExecBackgrounded
-	extends MakeResult<ExecToolName, "backgrounded"> {
+export interface ExecBackgrounded extends ExecResultBase {
+	status: "backgrounded";
 	/** 后台进程 PID */
 	pid: number;
 	/** 持续更新的执行产物 */

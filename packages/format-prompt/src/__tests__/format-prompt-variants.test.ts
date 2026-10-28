@@ -194,25 +194,35 @@ describe("formatPrompt 变体端到端", () => {
 				toolCalls: [
 					{
 						id: callId,
-						tool: "observe",
-						args: { script: `echo round_${r}` },
+						tool: "post",
+						args: {
+							uri: `exec://sh/round-${r}`,
+							body: `echo round_${r}`,
+						},
 					},
 				],
 			});
 			msgs.push({
 				type: "tool_result",
-				tool: "observe",
+				tool: "post",
 				status: "completed",
 				call: {
 					id: callId,
-					tool: "observe",
-					args: { script: `echo round_${r}` },
+					tool: "post",
+					args: {
+						uri: `exec://sh/round-${r}`,
+						body: `echo round_${r}`,
+					},
 				},
+				scheme: "exec",
+				claim: `round-${r}`,
+				runtime: "sh",
+				cwd: "/workspace",
 				exitCode: 0,
 				stdout: `round_${r}`,
 				stderr: "",
 				durationMs: 10 + r,
-			} as DomainMessage);
+			});
 		}
 		return msgs;
 	}
@@ -261,23 +271,31 @@ describe("formatPrompt 变体端到端", () => {
 				reasoning: { ok: false },
 				reasoningSignature: undefined,
 				toolCalls: [
-					{ id: "tc_old", tool: "observe", args: { script: "npm run foo" } },
+					{
+						id: "tc_old",
+						tool: "post",
+						args: { uri: "exec://sh/npm-foo", body: "npm run foo" },
+					},
 				],
 			},
 			{
 				type: "tool_result",
-				tool: "observe",
+				tool: "post",
 				status: "completed",
 				call: {
 					id: "tc_old",
-					tool: "observe",
-					args: { script: "npm run foo" },
+					tool: "post",
+					args: { uri: "exec://sh/npm-foo", body: "npm run foo" },
 				},
+				scheme: "exec",
+				claim: "npm-foo",
+				runtime: "sh",
+				cwd: "/workspace",
 				exitCode: 1,
 				stdout: "",
 				stderr: "Cannot find module 'foo'",
 				durationMs: 50,
-			} as DomainMessage,
+			},
 			// 新一轮
 			{
 				type: "assistant_tool_call",
@@ -285,19 +303,31 @@ describe("formatPrompt 变体端到端", () => {
 				reasoning: { ok: false },
 				reasoningSignature: undefined,
 				toolCalls: [
-					{ id: "tc_new", tool: "observe", args: { script: "echo hi" } },
+					{
+						id: "tc_new",
+						tool: "post",
+						args: { uri: "exec://sh/echo-hi", body: "echo hi" },
+					},
 				],
 			},
 			{
 				type: "tool_result",
-				tool: "observe",
+				tool: "post",
 				status: "completed",
-				call: { id: "tc_new", tool: "observe", args: { script: "echo hi" } },
+				call: {
+					id: "tc_new",
+					tool: "post",
+					args: { uri: "exec://sh/echo-hi", body: "echo hi" },
+				},
+				scheme: "exec",
+				claim: "echo-hi",
+				runtime: "sh",
+				cwd: "/workspace",
 				exitCode: 0,
 				stdout: "hi",
 				stderr: "",
 				durationMs: 10,
-			} as DomainMessage,
+			},
 		];
 
 		const result = formatPrompt(msgs, tags);
@@ -321,19 +351,31 @@ describe("formatPrompt 变体端到端", () => {
 				reasoning: { ok: false },
 				reasoningSignature: undefined,
 				toolCalls: [
-					{ id: "tc_1", tool: "observe", args: { script: "npm run foo" } },
+					{
+						id: "tc_1",
+						tool: "post",
+						args: { uri: "exec://sh/npm-foo", body: "npm run foo" },
+					},
 				],
 			},
 			{
 				type: "tool_result",
-				tool: "observe",
+				tool: "post",
 				status: "completed",
-				call: { id: "tc_1", tool: "observe", args: { script: "npm run foo" } },
+				call: {
+					id: "tc_1",
+					tool: "post",
+					args: { uri: "exec://sh/npm-foo", body: "npm run foo" },
+				},
+				scheme: "exec",
+				claim: "npm-foo",
+				runtime: "sh",
+				cwd: "/workspace",
 				exitCode: 1,
 				stdout: "",
 				stderr: "Cannot find module 'foo'",
 				durationMs: 50,
-			} as DomainMessage,
+			},
 		];
 
 		const result = formatPrompt(msgs, tags);
@@ -353,18 +395,26 @@ describe("formatPrompt 变体端到端", () => {
 				reasoning: { ok: false },
 				reasoningSignature: undefined,
 				toolCalls: [
-					{ id: "tc_large", tool: "observe", args: { script: "large" } },
+					{
+						id: "tc_large",
+						tool: "post",
+						args: { uri: "exec://sh/large", body: "large" },
+					},
 				],
 			},
 			{
 				type: "tool_result",
-				tool: "observe",
+				tool: "post",
 				status: "truncated",
 				call: {
 					id: "tc_large",
-					tool: "observe",
-					args: { script: "large" },
+					tool: "post",
+					args: { uri: "exec://sh/large", body: "large" },
 				},
+				scheme: "exec",
+				claim: "large",
+				runtime: "sh",
+				cwd: "/workspace",
 				exitCode: 0,
 				stdoutPreview: "head\n... (output omitted) ...\ntail",
 				stderrPreview: "",

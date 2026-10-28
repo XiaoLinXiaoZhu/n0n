@@ -1,10 +1,10 @@
 /**
- * show tool result 格式化 — 含 anti-few-shot 变体
+ * customer:// 结果格式化 — 含 anti-few-shot 变体
  *
- * 返回 FormattedToolResult。show 结果无 hint（纯 fact）。
+ * 返回 FormattedToolResult。customer 结果无 hint（纯 fact）。
  */
 
-import type { ShowToolResult } from "@n0n/types";
+import type { CustomerCompleted } from "@n0n/types";
 import type { FormattedToolResult, TagAdapter } from "./utils.ts";
 import { pick } from "./utils.ts";
 
@@ -14,8 +14,8 @@ const successTemplates = [
 	"Result submitted.",
 ];
 
-export function formatShowResult(
-	_msg: ShowToolResult,
+export function formatCustomerResult(
+	_msg: CustomerCompleted,
 	tags: TagAdapter,
 	msgIndex: number,
 ): FormattedToolResult {

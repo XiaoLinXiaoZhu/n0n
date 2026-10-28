@@ -23,20 +23,14 @@ export type * from "./renderer.ts";
 export { findLastUsage } from "./renderer.ts";
 export type { Skill } from "./skill.ts";
 export type {
-	ExecArgs,
 	InferShape,
 	ParamDef,
 	ParamDescriptions,
-	ShowArgs,
-	WriteArgs,
+	PostArgs,
 } from "./tool-args.ts";
 export {
 	buildSchema,
-	ExecArgsSchema,
-	ExecParamDefs,
-	ShowArgsSchema,
-	ShowParamDefs,
-	WriteArgsSchema,
-	WriteParamDefs,
+	PostArgsSchema,
+	PostParamDefs,
 	withDescriptions,
 } from "./tool-args.ts";

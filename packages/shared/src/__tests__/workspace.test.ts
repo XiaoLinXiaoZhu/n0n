@@ -2,7 +2,7 @@ import { afterEach, describe, expect, test } from "bun:test";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { resolve } from "node:path";
-import { createSessionDir, resolveBasePaths } from "../workspace.ts";
+import { resolveBasePaths } from "../workspace.ts";
 
 const tempDirs: string[] = [];
 

@@ -11,7 +11,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { resolvePlatform } from "@n0n/shared";
 import type { ExecToolResult, ExecutionArtifactRef } from "@n0n/types";
-import { ExecArgsSchema, execToolStream } from "../exec";
+import { execToolStream } from "../exec";
 
 const pidsToCleanup: number[] = [];
 const dirsToCleanup: string[] = [];
@@ -33,21 +33,22 @@ async function collectResult(
 	waitfor: number,
 	runtime?: string,
 ): Promise<ExecToolResult> {
-	const args = ExecArgsSchema.parse({ script, runtime, waitfor });
-	for await (const event of execToolStream(
-		{ id: "bg-sync-test", tool: "observe", args },
-		undefined,
-		{
-			workspace: process.cwd(),
-			sessionDir: SESSION_DIR,
-			blocked_commands: [],
-			default_exec_waitfor: waitfor,
-			max_exec_output_tokens: 32_000,
-			bgSyncIntervalMs: 100,
-			platform: resolvePlatform(),
-		},
-	)) {
-		if (event.type === "tool_result" && event.tool === "observe") return event;
+	const rt = runtime ?? (resolvePlatform() === "win32" ? "cmd" : "sh");
+	const call = {
+		id: "bg-sync-test",
+		tool: "post" as const,
+		args: { uri: `exec://${rt}/probe?waitfor=${waitfor}`, body: script },
+	};
+	for await (const event of execToolStream(call, undefined, {
+		workspace: process.cwd(),
+		sessionDir: SESSION_DIR,
+		blocked_commands: [],
+		default_exec_waitfor: waitfor,
+		max_exec_output_tokens: 32_000,
+		bgSyncIntervalMs: 100,
+		platform: resolvePlatform(),
+	})) {
+		if (event.type === "tool_result" && event.scheme === "exec") return event;
 	}
 	throw new Error("No tool_result yielded");
 }
@@ -63,7 +64,7 @@ function executionArtifact(result: ExecToolResult): ExecutionArtifactRef {
 
 describe("exec background artifact", () => {
 	test("初始产物包含分离输出文件和 backgrounded 状态", async () => {
-		const result = await collectResult("await Bun.sleep(2000);", 2, "bun");
+		const result = await collectResult("await Bun.sleep(2000);", 1, "bun");
 		const artifact = executionArtifact(result);
 
 		expect(existsSync(artifact.stdoutFile)).toBe(true);
@@ -75,7 +76,7 @@ describe("exec background artifact", () => {
 		);
 		expect(metadata.startedAt).toBeString();
 		expect(metadata.updatedAt).toBeString();
-	});
+	}, 15000);
 
 	test("heartbeat 只更新小型 result.json", async () => {
 		const result = await collectResult("await Bun.sleep(5000);", 2, "bun");
@@ -90,7 +91,7 @@ describe("exec background artifact", () => {
 			new Date(first.updatedAt).getTime(),
 		);
 		expect(statSync(artifact.stdoutFile).mtimeMs).toBe(stdoutMtime);
-	});
+	}, 15000);
 
 	test("新输出直接 append，结束后 result.json 进入 exited", async () => {
 		const script = [
@@ -102,6 +103,8 @@ describe("exec background artifact", () => {
 		const result = await collectResult(script, 1, "bun");
 		const artifact = executionArtifact(result);
 
+		// 集成测试：真实等待后台 bun 进程跑完脚本（4×500ms 输出），
+		// fake timer 无法驱动已 spawn 的子进程，故用真实延时。
 		await new Promise((resolve) => setTimeout(resolve, 2500));
 
 		const stdout = readFileSync(artifact.stdoutFile, "utf8");
@@ -111,5 +114,5 @@ describe("exec background artifact", () => {
 		expect(metadata.exitCode).toBe(0);
 		expect(metadata.stdoutBytes).toBeGreaterThan(0);
 		expect(metadata.endedAt).toBeString();
-	});
+	}, 15000);
 });

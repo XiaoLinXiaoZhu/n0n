@@ -1,5 +1,5 @@
 /**
- * write tool result 格式化 — 含 anti-few-shot 变体
+ * write scheme（post 工具）结果格式化 — 含 anti-few-shot 变体
  *
  * 返回 FormattedToolResult：fact（客观数据）与 hint（系统操作建议）分离。
  */
@@ -29,16 +29,16 @@ const recoveredFactTemplates = [
 
 const recoveredHintTemplates = [
 	(_path: string) =>
-		`To complete it, choose one strategy:\n1. Write the remaining content to a temp file, then use exec to append it: exec({ script: "${IS_WINDOWS ? "type tmp_rest.txt >> target_file" : "cat tmp_rest.txt >> target_file"}" })\n2. Break the file into smaller, well-structured modules and write each separately.\nDo NOT attempt to write the entire content again — break it into smaller modules instead.`,
+		`To complete it, choose one strategy:\n1. Write the remaining content to a temp file, then append it via post: post({ uri: "exec://sh/append", body: "${IS_WINDOWS ? "type tmp_rest.txt >> target_file" : "cat tmp_rest.txt >> target_file"}" })\n2. Break the file into smaller, well-structured modules and write each separately.\nDo NOT attempt to write the entire content again — break it into smaller modules instead.`,
 	(path: string) =>
-		`Recovery options:\n1. Write the rest to a temp file and append: exec({ script: "${IS_WINDOWS ? `type remaining.txt >> ${path}` : `cat remaining.txt >> ${path}`}" })\n2. Split into smaller modules and write each one separately.\nBreak large files into smaller, well-structured modules.`,
+		`Recovery options:\n1. Write the rest to a temp file and append via post: post({ uri: "exec://sh/append", body: "${IS_WINDOWS ? `type remaining.txt >> ${path}` : `cat remaining.txt >> ${path}`}" })\n2. Split into smaller modules and write each one separately.\nBreak large files into smaller, well-structured modules.`,
 	(_path: string) =>
-		`To finish writing:\n1. Put the remaining content in a temp file and concatenate via exec.\n2. Or restructure into smaller files.\nBreak large files into well-structured modules.`,
+		`To finish writing:\n1. Put the remaining content in a temp file and append it via post (exec:// scheme).\n2. Or restructure into smaller files.\nBreak large files into well-structured modules.`,
 ];
 
 // ── 格式化函数 ──
 
-export function formatWriteResult(
+export function formatFileResult(
 	msg: WriteToolResult,
 	tags: TagAdapter,
 	msgIndex: number,
@@ -47,7 +47,7 @@ export function formatWriteResult(
 		case "completed": {
 			const tpl = pick(completedTemplates, msgIndex);
 			return {
-				fact: tags.wrapTag("write_result", tpl(msg.call.args.path)),
+				fact: tags.wrapTag("file_result", tpl(msg.path)),
 				hint: null,
 			};
 		}
@@ -60,8 +60,8 @@ export function formatWriteResult(
 			const factTpl = pick(recoveredFactTemplates, msgIndex);
 			const hintTpl = pick(recoveredHintTemplates, msgIndex);
 			return {
-				fact: tags.wrapTag("write_result", factTpl(msg.call.args.path)),
-				hint: hintTpl(msg.call.args.path),
+				fact: tags.wrapTag("file_result", factTpl(msg.path)),
+				hint: hintTpl(msg.path),
 			};
 		}
 		case "recover_failed":
@@ -75,10 +75,7 @@ export function formatWriteResult(
 		default: {
 			const _exhaustive: never = msg;
 			return {
-				fact: tags.wrapTag(
-					"error",
-					`Unknown write status: ${(msg as { status: string }).status}`,
-				),
+				fact: tags.wrapTag("error", "Unknown file result status"),
 				hint: null,
 			};
 		}

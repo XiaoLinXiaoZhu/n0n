@@ -33,7 +33,11 @@ export function toDeepSeekMessages(
 
 			case "assistant": {
 				const reasoningContent = msg.reasoning
-					? { reasoning_content: ENABLE_REASONING_REWRITE ? rewriteParagraphs(msg.reasoning) : msg.reasoning }
+					? {
+							reasoning_content: ENABLE_REASONING_REWRITE
+								? rewriteParagraphs(msg.reasoning)
+								: msg.reasoning,
+						}
 					: {};
 				if (msg.toolCalls?.length) {
 					const toolCalls: DeepSeekToolCall[] = msg.toolCalls.map((tc) => ({

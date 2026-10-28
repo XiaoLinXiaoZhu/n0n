@@ -339,16 +339,10 @@ export class RichRenderer implements Renderer {
 		);
 	}
 
-	showAccepted(): void {
+	customerAccepted(): void {
 		writeln();
 		writeln(
-			`${style.bgGreen(style.bold(" ✔ DONE "))} ${style.green("show accepted")}`,
-		);
-	}
-
-	showRejected(attempt: number, maxAttempts: number, error: string): void {
-		writeln(
-			`${style.red("✗")} show rejected (${attempt}/${maxAttempts}): ${style.gray(error)}`,
+			`${style.bgGreen(style.bold(" ✔ DONE "))} ${style.green("customer request accepted")}`,
 		);
 	}
 
@@ -461,22 +455,20 @@ export class RichRenderer implements Renderer {
 	// ── 工具结果格式化（紧凑摘要行） ──
 
 	private formatToolResult(result: ToolResult): string {
-		switch (result.tool) {
-			case "observe":
-			case "reason":
-			case "act": {
+		switch (result.scheme) {
+			case "exec": {
 				const duration = style.gray(
 					`${(result.durationMs / 1000).toFixed(1)}s`,
 				);
 				switch (result.status) {
 					case "backgrounded":
-						return `${style.dim("◂")} ${style.cyan(result.tool)} ${duration} ${style.yellow(`waitfor exceeded → bg PID=${result.pid}`)}`;
+						return `${style.dim("◂")} ${style.cyan(result.claim)} ${duration} ${style.yellow(`waitfor exceeded → bg PID=${result.pid}`)}`;
 					case "truncated": {
 						const exit =
 							result.exitCode === 0
 								? style.green(`exit=${result.exitCode}`)
 								: style.red(`exit=${result.exitCode}`);
-						return `${style.dim("◂")} ${style.cyan(result.tool)} ${duration} ${exit} ${style.yellow(`truncated → ${result.artifact.runDir}`)}`;
+						return `${style.dim("◂")} ${style.cyan(result.claim)} ${duration} ${exit} ${style.yellow(`truncated → ${result.artifact.runDir}`)}`;
 					}
 					case "completed": {
 						const exit =
@@ -485,20 +477,20 @@ export class RichRenderer implements Renderer {
 								: style.red(`exit=${result.exitCode}`);
 						const outLen = result.stdout.length + result.stderr.length;
 						const estTk = estimateTokens(result.stdout + result.stderr);
-						return `${style.dim("◂")} ${style.cyan(result.tool)} ${duration} ${exit} ${style.gray(`${outLen} chars`)} ${style.dim(`~${estTk} tok`)}`;
+						return `${style.dim("◂")} ${style.cyan(result.claim)} ${duration} ${exit} ${style.gray(`${outLen} chars`)} ${style.dim(`~${estTk} tok`)}`;
 					}
 					default:
-						return `${style.dim("◂")} ${style.yellow("unknown tool:")}`;
+						return `${style.dim("◂")} ${style.yellow("unknown exec status:")}`;
 				}
 			}
 			case "write": {
 				if (result.status === "failed" || result.status === "recover_failed") {
-					return `${style.dim("◂")} ${style.cyan("write")} ${result.call.args.path}: ${style.red(result.error ?? "failed")}`;
+					return `${style.dim("◂")} ${style.cyan("write")} ${result.path}: ${style.red(result.error ?? "failed")}`;
 				}
-				return `${style.dim("◂")} ${style.cyan("write")} ${result.call.args.path}`;
+				return `${style.dim("◂")} ${style.cyan("write")} ${result.path}`;
 			}
-			case "show": {
-				return `${style.dim("◂")} ${style.cyan("show")} ${style.gray(`[${result.call.args.type}]`)}`;
+			case "customer": {
+				return `${style.dim("◂")} ${style.cyan("customer")} ${style.gray(result.kind)}`;
 			}
 			default: {
 				console.warn("[RichRenderer] unknown tool result:", result);

@@ -44,18 +44,19 @@ export class PlainRenderer implements Renderer {
 	}
 
 	toolExecStart(_tcId: string, tc: ToolCallRecord): void {
+		const args = tc.args as { uri?: string; body?: string };
+		const bodyPreview =
+			typeof args.body === "string" ? ` ${args.body.slice(0, 80)}` : "";
 		const suffix =
-			"script" in tc.args
-				? ` → ${(tc.args as { script: string }).script.slice(0, 80)}`
-				: "";
+			typeof args.uri === "string" ? ` → ${args.uri}${bodyPreview}` : "";
 		console.error(`  [agent] tool: ${tc.tool}${suffix}`);
 	}
 
 	toolExecChunk(_tcId: string, _tool: string, _chunk: string): void {}
 	toolExecEnd(_tcId: string, _outcome: ToolExecOutcome): void {}
 
-	showAccepted(): void {
-		console.error("  [agent] show accepted ✓");
+	customerAccepted(): void {
+		console.error("  [agent] customer request accepted ✓");
 	}
 
 	agentTerminated(reason: string): void {

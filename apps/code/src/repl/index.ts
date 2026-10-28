@@ -10,6 +10,7 @@
 import { style, writeln } from "@n0n/cli-ui";
 import {
 	type AgentConfig,
+	type AgentResult,
 	agentLoop,
 	HeartbeatState,
 	PlainRenderer,
@@ -22,19 +23,18 @@ import {
 import { loadInitSkills, toSkill } from "@n0n/skill";
 import type { ToolsConfig } from "@n0n/tools";
 import { makeToolkit } from "@n0n/tools";
-import type { DomainMessage, LLMClient, Skill } from "@n0n/types";
+import type {
+	CustomerCompleted,
+	DomainMessage,
+	LLMClient,
+	Skill,
+} from "@n0n/types";
 import { CodeRenderer } from "../code-renderer.ts";
 import { buildEnvironmentContext } from "../context-env.ts";
 import { buildCodeSystemPrompt } from "../model-guidance.ts";
 import type { UserInputConfig } from "../multiline-input/config.ts";
 import type { NotifyConfig } from "../notify-sound.ts";
 import { getPrompt } from "../prompts/index.ts";
-import type { CodeShowResult } from "../schema.ts";
-import {
-	noCustomerParticipationShowConfig,
-	showConfig,
-} from "../show-config.ts";
-import { ShowWriter } from "../show-writer.ts";
 import { parseAndInjectSkills } from "../skill-inject.ts";
 import { createStdinController } from "../stdin-controller.ts";
 import {
@@ -42,7 +42,7 @@ import {
 	NO_CUSTOMER_PARTICIPATION_HINT,
 } from "../tail-anchor.ts";
 import { UserPrompter } from "../user-prompter.ts";
-import { handleShowResults } from "./handle-result.ts";
+import { handleCustomerResults } from "./handle-customer.ts";
 import { createHeartbeatKeeper } from "./heartbeat.ts";
 
 export interface CodeReplOptions {
@@ -108,8 +108,7 @@ export async function startCodeRepl(
 	};
 	const notifyConfig = options.notifyConfig ?? { enabled: false };
 	const toolkit = makeToolkit(
-		exitAfterInitialInput ? noCustomerParticipationShowConfig : showConfig,
-		toolsConfig,
+		{ ...toolsConfig, allowCustomer: !exitAfterInitialInput },
 		client.modelId,
 	);
 
@@ -123,7 +122,6 @@ export async function startCodeRepl(
 
 	const stdin = canInteract ? createStdinController() : null;
 	const prompter = new UserPrompter(stdin, userInputConfig);
-	const showWriter = new ShowWriter(options.sessionDir);
 
 	// ── 心跳保活 ──
 
@@ -177,8 +175,6 @@ export async function startCodeRepl(
 			userInput = initialInput ?? (await prompter.prompt());
 		}
 
-		let autoResume = false;
-
 		// ── 主循环 ──
 
 		while (true) {
@@ -223,46 +219,40 @@ export async function startCodeRepl(
 
 			// ── 推入用户输入 ──
 
-			if (autoResume) {
-				autoResume = false;
-				keeper?.stop();
-			} else {
-				keeper?.stop();
-				const skillResult = await parseAndInjectSkills(userInput);
-				if (skillResult.notFound.length > 0) {
-					writeln(
-						style.yellow("?") +
-							` skill 未找到: ${skillResult.notFound.join(", ")}`,
-					);
-				}
-				const finalText = skillResult.cleanedText || userInput;
-				const context = isFirstInput
-					? await buildEnvironmentContext(paths.workspace)
-					: null;
-				isFirstInput = false;
-				history.push(
-					makeUserInput(
-						finalText,
-						skillResult.mentionedSkills ?? [],
-						exitAfterInitialInput
-							? NO_CUSTOMER_PARTICIPATION_HINT
-							: CODE_TAIL_ANCHOR,
-						context,
-					),
+			keeper?.stop();
+			const skillResult = await parseAndInjectSkills(userInput);
+			if (skillResult.notFound.length > 0) {
+				writeln(
+					style.yellow("?") +
+						` skill 未找到: ${skillResult.notFound.join(", ")}`,
 				);
 			}
+			const finalText = skillResult.cleanedText || userInput;
+			const context = isFirstInput
+				? await buildEnvironmentContext(paths.workspace)
+				: null;
+			isFirstInput = false;
+			history.push(
+				makeUserInput(
+					finalText,
+					skillResult.mentionedSkills ?? [],
+					exitAfterInitialInput
+						? NO_CUSTOMER_PARTICIPATION_HINT
+						: CODE_TAIL_ANCHOR,
+					context,
+				),
+			);
 
 			// ── Agent 运行 ──
 
 			const agentSignal = stdin?.beginAgent();
 
-			let agentResult: Awaited<ReturnType<typeof agentLoop<CodeShowResult>>>;
+			let agentResult: AgentResult<CustomerCompleted>;
 			try {
-				agentResult = await agentLoop<CodeShowResult>(history, {
+				agentResult = await agentLoop<CustomerCompleted>(history, {
 					client,
 					toolkit,
 					max_iterations: agentConfig.max_iterations,
-					max_idle_rounds: agentConfig.max_idle_rounds,
 					renderer,
 					confirmFn: (question) => prompter.confirm(question),
 					signal: agentSignal,
@@ -309,27 +299,18 @@ export async function startCodeRepl(
 			const results = agentResult.results;
 			writeln();
 
-			if (results.length === 0) {
+			if (results.length > 0) {
+				// customer:// 请求：渲染并等待客户参与
+				handleCustomerResults(results, notifyConfig);
+			} else if (agentResult.report) {
+				// 异常终止
 				writeln(`${style.red("✗")} Agent 异常终止`);
-				if (agentResult.report) writeln(style.gray(`  ${agentResult.report}`));
+				writeln(style.gray(`  ${agentResult.report}`));
 				writeln();
-				userInput = await promptNext();
-				continue;
 			}
+			// 自然结束（纯内容、无工具调用）：最终内容已由 renderer 流式输出。
 
-			const outcome = handleShowResults(results, showWriter, notifyConfig);
-			switch (outcome.action) {
-				case "wait_for_customer":
-					userInput = await promptNext();
-					break;
-				case "auto_resume":
-					history.push(outcome.historyEntry);
-					autoResume = true;
-					continue;
-				case "terminal":
-					userInput = await promptNext();
-					break;
-			}
+			userInput = await promptNext();
 		}
 	} finally {
 		keeper?.stop();

@@ -1,27 +1,30 @@
 import { describe, expect, it } from "bun:test";
-import { mkdtempSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { resolvePlatform } from "@n0n/shared";
 import type { ToolArgErrorMessage, ToolCallRecord } from "@n0n/types";
 import { makeToolkit, type ToolJob } from "../index.ts";
 
 const SESSION_DIR = mkdtempSync(join(tmpdir(), "n0n-toolkit-"));
+const WORKSPACE = mkdtempSync(join(tmpdir(), "n0n-toolkit-ws-"));
 
-const config = {
-	security: { blocked_commands: [] },
-	agent: { default_exec_waitfor: 10, max_exec_output_tokens: 32_000 },
-	platform: "darwin" as const,
-	workspace: process.cwd(),
-	sessionDir: SESSION_DIR,
-};
+function makeConfig(overrides?: { allowCustomer?: boolean }) {
+	return {
+		security: { blocked_commands: [] },
+		agent: { default_exec_waitfor: 10, max_exec_output_tokens: 32_000 },
+		platform: resolvePlatform(),
+		workspace: WORKSPACE,
+		sessionDir: SESSION_DIR,
+		...overrides,
+	};
+}
 
-const showConfig = [
-	{
-		value: "production record",
-		typeDesc: "continue",
-		contentDesc: "record",
-	},
-];
+const DEFAULT_RUNTIME = resolvePlatform() === "win32" ? "cmd" : "sh";
+
+function postCall(id: string, uri: string, body: string): ToolCallRecord {
+	return { id, tool: "post", args: { uri, body } };
+}
 
 function collect(job: ToolJob) {
 	return (async () => {
@@ -31,28 +34,112 @@ function collect(job: ToolJob) {
 	})();
 }
 
-describe("Toolkit session", () => {
-	it("未知工具 job 产生 unknown_tool", async () => {
-		const session = makeToolkit(showConfig, config).bind();
-		const job = session.createJob({
-			id: "call_unknown",
-			tool: "read",
-			args: {},
-		} as unknown as ToolCallRecord);
+describe("post 单工具注册表", () => {
+	it("只暴露一个 post 工具，参数为 uri + body", () => {
+		const toolkit = makeToolkit(makeConfig());
+		expect(toolkit.tools).toHaveLength(1);
+		expect(toolkit.tools[0]?.name).toBe("post");
+	});
+});
+
+describe("post — exec scheme", () => {
+	it("exec:// 运行脚本并返回 scheme: exec 结果", async () => {
+		const session = makeToolkit(makeConfig()).bind();
+		const job = session.createJob(
+			postCall("c-exec", `exec://${DEFAULT_RUNTIME}/probe`, "echo hello"),
+		);
+
+		const events = await collect(job);
+		const result = events.find((e) => e.type === "tool_result");
+		expect(result).toBeDefined();
+		if (result?.type !== "tool_result") throw new Error("no result");
+		expect(result.tool).toBe("post");
+		expect("scheme" in result ? result.scheme : undefined).toBe("exec");
+		if ("scheme" in result && result.scheme === "exec") {
+			expect(result.claim).toBe("probe");
+			expect(result.status).toBe("completed");
+			if (result.status === "completed") {
+				expect(result.exitCode).toBe(0);
+				expect(result.stdout.trim()).toBe("hello");
+			}
+		}
+	});
+});
+
+describe("post — write scheme", () => {
+	it("write:// 写入完整文件内容", async () => {
+		const session = makeToolkit(makeConfig()).bind();
+		const job = session.createJob(
+			postCall("c-file", "write://probe.txt", "written"),
+		);
+
+		const events = await collect(job);
+		const result = events.find((e) => e.type === "tool_result");
+		if (result?.type !== "tool_result") throw new Error("no result");
+		expect(result.tool).toBe("post");
+		if ("scheme" in result && result.scheme === "write") {
+			expect(result.status).toBe("completed");
+			expect(result.path).toBe(join(WORKSPACE, "probe.txt"));
+		}
+		expect(existsSync(join(WORKSPACE, "probe.txt"))).toBe(true);
+		expect(readFileSync(join(WORKSPACE, "probe.txt"), "utf8")).toBe("written");
+	});
+});
+
+describe("post — customer scheme", () => {
+	it("customer://question 返回 CustomerCompleted", async () => {
+		const session = makeToolkit(makeConfig()).bind();
+		const job = session.createJob(
+			postCall("c-cust-q", "customer://question", "A or B?\n推荐 A"),
+		);
+
+		const events = await collect(job);
+		expect(events).toHaveLength(1);
+		const result = events[0];
+		if (result?.type !== "tool_result") throw new Error("no result");
+		expect(result.tool).toBe("post");
+		if ("scheme" in result && result.scheme === "customer") {
+			expect(result.status).toBe("completed");
+			expect(result.kind).toBe("question");
+		}
+	});
+
+	it("customer://form 与 customer://action_required", async () => {
+		const session = makeToolkit(makeConfig()).bind();
+		for (const kind of ["form", "action_required"] as const) {
+			const job = session.createJob(
+				postCall(`c-cust-${kind}`, `customer://${kind}`, "msg"),
+			);
+			const events = await collect(job);
+			const result = events[0];
+			if (result?.type !== "tool_result") throw new Error("no result");
+			if ("scheme" in result && result.scheme === "customer") {
+				expect(result.kind).toBe(kind);
+			}
+		}
+	});
+
+	it("allowCustomer: false 时 customer:// 以 arg-error 拒绝", async () => {
+		const session = makeToolkit(makeConfig({ allowCustomer: false })).bind();
+		const job = session.createJob(
+			postCall("c-cust-off", "customer://question", "msg"),
+		);
 
 		const events = await collect(job);
 		const error = events[0] as ToolArgErrorMessage;
-		expect(error.callId).toBe("call_unknown");
-		expect(error.tool).toBe("read");
-		expect(error.error.kind).toBe("unknown_tool");
-		expect(error.error).not.toHaveProperty("message");
+		expect(error.type).toBe("tool_arg_error");
+		if (error.type === "tool_arg_error") {
+			expect(error.error.kind).toBe("invalid_args");
+		}
 	});
+});
 
-	it("无效参数由 session 转换为 invalid_args", async () => {
-		const session = makeToolkit(showConfig, config).bind();
+describe("post — 参数与 uri 错误", () => {
+	it("缺少 uri/body 由 session 转换为 invalid_args", async () => {
+		const session = makeToolkit(makeConfig()).bind();
 		const job = session.createJob({
-			id: "call_invalid",
-			tool: "observe",
+			id: "c-invalid",
+			tool: "post",
 			args: {},
 		} as unknown as ToolCallRecord);
 
@@ -61,57 +148,69 @@ describe("Toolkit session", () => {
 		expect(error.error.kind).toBe("invalid_args");
 	});
 
-	it("output_tokens 超过配置上限时返回 invalid_args", async () => {
-		const session = makeToolkit(showConfig, config).bind();
-		const job = session.createJob({
-			id: "call_output_budget",
-			tool: "observe",
-			args: { script: "echo hello", output_tokens: 32_001 },
-		} as ToolCallRecord);
+	it("畸形 uri 转为 invalid_args，path 指向 uri", async () => {
+		const session = makeToolkit(makeConfig()).bind();
+		const job = session.createJob(
+			postCall("c-bad-uri", "http://example.com", "body"),
+		);
 
 		const events = await collect(job);
 		const error = events[0] as ToolArgErrorMessage;
 		expect(error.error.kind).toBe("invalid_args");
 		if (error.error.kind === "invalid_args") {
-			expect(error.error.issues[0]?.path).toBe("output_tokens");
+			expect(error.error.issues[0]?.path).toBe("uri");
 		}
 	});
+});
 
-	it("非流式 show 以单个结果事件执行", async () => {
-		const session = makeToolkit(showConfig, config).bind();
-		const job = session.createJob({
-			id: "call_show",
-			tool: "show",
-			args: { type: "production record", content: "done" },
-		} as ToolCallRecord);
+describe("post — canStart 并行准入（按 scheme/path）", () => {
+	const session = makeToolkit(makeConfig()).bind();
+	const execSelf = postCall("self-exec", "exec://sh/a", "echo 1");
+	const fileSelf = postCall("self-file", "write://a.txt", "x");
+	const customerSelf = postCall("self-cust", "customer://question", "q");
 
-		const events = await collect(job);
-		expect(events).toHaveLength(1);
-		expect(events[0]?.type).toBe("tool_result");
+	it("空 active set 允许并行", () => {
+		expect(session.createJob(execSelf).canStart([])).toBe(true);
 	});
 
-	it("show 拒绝配置之外的 type", async () => {
-		const session = makeToolkit(showConfig, config).bind();
-		const job = session.createJob({
-			id: "show-invalid-type",
-			tool: "show",
-			args: { type: "working log", content: "done" },
-		});
-		const events = [];
-		for await (const event of job.run()) events.push(event);
-
-		expect(events).toHaveLength(1);
-		expect(events[0]?.type).toBe("tool_arg_error");
-		if (events[0]?.type === "tool_arg_error") {
-			expect(events[0].error.kind).toBe("invalid_args");
-		}
+	it("exec 可与 exec 并行", () => {
+		const active = [postCall("a1", "exec://sh/b", "echo 2")];
+		expect(session.createJob(execSelf).canStart(active)).toBe(true);
 	});
 
+	it("exec 可与 file 并行", () => {
+		const active = [postCall("a2", "write://b.txt", "y")];
+		expect(session.createJob(execSelf).canStart(active)).toBe(true);
+	});
+
+	it("file 可与 exec 并行", () => {
+		const active = [postCall("a3", "exec://sh/c", "echo 3")];
+		expect(session.createJob(fileSelf).canStart(active)).toBe(true);
+	});
+
+	it("同 path 的 file 串行", () => {
+		const active = [postCall("a4", "write://a.txt", "z")];
+		expect(session.createJob(fileSelf).canStart(active)).toBe(false);
+	});
+
+	it("不同 path 的 file 可并行", () => {
+		const active = [postCall("a5", "write://other.txt", "z")];
+		expect(session.createJob(fileSelf).canStart(active)).toBe(true);
+	});
+
+	it("customer 总是独占 — 作为 self 或 active 均阻塞", () => {
+		const active = [postCall("a6", "exec://sh/d", "echo 4")];
+		expect(session.createJob(customerSelf).canStart(active)).toBe(false);
+		expect(session.createJob(execSelf).canStart([customerSelf])).toBe(false);
+	});
+});
+
+describe("post — recover 截断恢复", () => {
 	it("未知工具恢复为 unknown_tool", async () => {
-		const session = makeToolkit(showConfig, config).bind();
+		const session = makeToolkit(makeConfig()).bind();
 		const result = await session.recover({
 			index: 0,
-			toolCallId: "call_unknown",
+			toolCallId: "c-unknown",
 			toolName: "read",
 			partialInput: "{}",
 		});
@@ -122,13 +221,25 @@ describe("Toolkit session", () => {
 		);
 	});
 
-	it("已知但无恢复器的工具恢复为 truncated_recovery", async () => {
-		const session = makeToolkit(showConfig, config).bind();
+	it("write:// 部分参数可恢复", async () => {
+		const session = makeToolkit(makeConfig()).bind();
 		const result = await session.recover({
 			index: 0,
-			toolCallId: "call_observe",
-			toolName: "observe",
-			partialInput: '{"script":"ec',
+			toolCallId: "c-recover-file",
+			toolName: "post",
+			partialInput: '{"uri":"write://recovered.txt","body":"partial content',
+		});
+
+		expect(result.status).toBe("recovered");
+	});
+
+	it("exec:// 部分参数不可恢复，返回 truncated_recovery", async () => {
+		const session = makeToolkit(makeConfig()).bind();
+		const result = await session.recover({
+			index: 0,
+			toolCallId: "c-recover-exec",
+			toolName: "post",
+			partialInput: '{"uri":"exec://sh/x","body":"echo ',
 		});
 
 		expect(result.status).toBe("unrecoverable");

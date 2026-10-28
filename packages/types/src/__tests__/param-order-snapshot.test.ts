@@ -10,28 +10,10 @@
  */
 
 import { describe, expect, it } from "bun:test";
-import {
-	ExecArgsSchema,
-	ShowArgsSchema,
-	WriteArgsSchema,
-} from "../tool-args.ts";
+import { PostArgsSchema } from "../tool-args.ts";
 
 describe("schema shape 参数顺序", () => {
-	it("ExecArgsSchema 顺序: runtime, cwd, waitfor, output_tokens, script", () => {
-		expect(Object.keys(ExecArgsSchema.shape)).toEqual([
-			"runtime",
-			"cwd",
-			"waitfor",
-			"output_tokens",
-			"script",
-		]);
-	});
-
-	it("WriteArgsSchema 顺序: path, content", () => {
-		expect(Object.keys(WriteArgsSchema.shape)).toEqual(["path", "content"]);
-	});
-
-	it("ShowArgsSchema 顺序: type, content", () => {
-		expect(Object.keys(ShowArgsSchema.shape)).toEqual(["type", "content"]);
+	it("PostArgsSchema 顺序: uri, body", () => {
+		expect(Object.keys(PostArgsSchema.shape)).toEqual(["uri", "body"]);
 	});
 });
