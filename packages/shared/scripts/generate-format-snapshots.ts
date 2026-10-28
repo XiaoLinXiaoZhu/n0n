@@ -3,6 +3,7 @@
  *
  * 为每种 DomainMessage 类型生成独立的 snapshot 文件，
  * 展示 formatPrompt 的格式化结果，供人工检查提示词结构。
+ * 工具侧场景统一使用唯一工具 `post`（exec:// write:// customer:// todo://）。
  *
  * 运行: bun run packages/shared/scripts/generate-format-snapshots.ts
  * 输出: packages/shared/scripts/preview-output/<type>.snapshot.md
@@ -18,6 +19,9 @@ const MODEL = "claude-sonnet-4-20250514";
 const SNAPSHOT_DIR = join(import.meta.dir, "preview-output");
 
 mkdirSync(SNAPSHOT_DIR, { recursive: true });
+
+/** 示例工作区（exec 结果的 cwd / write 结果的 path 展示用） */
+const WORKSPACE = "/Users/preview/projects/demo";
 
 /** 单个 snapshot 场景 */
 interface Scenario {
@@ -94,7 +98,7 @@ const scenarios: Scenario[] = [
 	},
 	{
 		file: "assistant-tool-call",
-		title: "assistant_tool_call 消息",
+		title: "assistant_tool_call 消息（post 工具）",
 		messages: [
 			{
 				type: "assistant_tool_call",
@@ -102,11 +106,42 @@ const scenarios: Scenario[] = [
 				reasoning: { ok: false },
 				reasoningSignature: undefined,
 				toolCalls: [
-					{ id: "tc_1", tool: "observe", args: { script: "cat src/auth.ts" } },
+					{
+						id: "tc_1",
+						tool: "post",
+						args: { uri: "exec://sh/read-auth", body: "cat src/auth.ts" },
+					},
 					{
 						id: "tc_2",
-						tool: "write",
-						args: { path: "test.txt", content: "hi" },
+						tool: "post",
+						args: { uri: "write://test.txt", body: "hi" },
+					},
+				],
+			},
+		],
+	},
+	{
+		file: "write-window-call",
+		title: "assistant_tool_call — write://?prefix_lines 窗口写入（FIM）",
+		messages: [
+			{
+				type: "assistant_tool_call",
+				content: "只改窗口中间的行，锚行原样保留。",
+				reasoning: { ok: false },
+				toolCalls: [
+					{
+						id: "tc_w",
+						tool: "post",
+						args: {
+							uri: "write://src/config.ts?prefix_lines=2&suffix_lines=2",
+							body: [
+								'import { z } from "zod";',
+								'import type { Config } from "./types";',
+								"export const config = z.object({ x: z.string() });",
+								"export type Config = z.infer<typeof config>;",
+								"export default config;",
+							].join("\n"),
+						},
 					},
 				],
 			},
@@ -117,15 +152,19 @@ const scenarios: Scenario[] = [
 	{
 		file: "exec-completed",
 		title: "exec tool_result — status: completed（正常完成）",
-			messages: [
-				{
-					type: "tool_result",
-					tool: "observe",
-					status: "completed",
+		messages: [
+			{
+				type: "tool_result",
+				tool: "post",
+				scheme: "exec",
+				claim: "read-auth",
+				runtime: "sh",
+				cwd: `${WORKSPACE}/src`,
+				status: "completed",
 				call: {
 					id: "tc_1",
-					tool: "observe",
-					args: { script: "echo hello && ls", runtime: "sh", cwd: "src" },
+					tool: "post",
+					args: { uri: "exec://sh/read-auth", body: "echo hello && ls" },
 				},
 				exitCode: 0,
 				stdout: "hello\nindex.ts\nutils.ts",
@@ -138,11 +177,19 @@ const scenarios: Scenario[] = [
 		file: "exec-completed-error",
 		title: "exec tool_result — status: completed（命令失败）",
 		messages: [
-				{
-					type: "tool_result",
-					tool: "observe",
-					status: "completed",
-				call: { id: "tc_2", tool: "observe", args: { script: "cat missing.txt" } },
+			{
+				type: "tool_result",
+				tool: "post",
+				scheme: "exec",
+				claim: "cat-missing",
+				runtime: "sh",
+				cwd: WORKSPACE,
+				status: "completed",
+				call: {
+					id: "tc_2",
+					tool: "post",
+					args: { uri: "exec://sh/cat-missing", body: "cat missing.txt" },
+				},
 				exitCode: 1,
 				stdout: "",
 				stderr: "cat: missing.txt: No such file or directory",
@@ -156,12 +203,16 @@ const scenarios: Scenario[] = [
 		messages: [
 			{
 				type: "tool_result",
-				tool: "observe",
+				tool: "post",
+				scheme: "exec",
+				claim: "find-ts",
+				runtime: "sh",
+				cwd: WORKSPACE,
 				status: "truncated",
 				call: {
 					id: "tc_3",
-					tool: "observe",
-					args: { script: "find . -name '*.ts'", runtime: "sh" },
+					tool: "post",
+					args: { uri: "exec://sh/find-ts", body: "find . -name '*.ts'" },
 				},
 				exitCode: 0,
 				stdoutPreview:
@@ -189,17 +240,21 @@ const scenarios: Scenario[] = [
 		],
 	},
 	{
-		file: "exec-timed-out",
+		file: "exec-backgrounded",
 		title: "exec tool_result — status: backgrounded（等待超限转后台）",
 		messages: [
 			{
 				type: "tool_result",
-				tool: "observe",
+				tool: "post",
+				scheme: "exec",
+				claim: "npm-install",
+				runtime: "sh",
+				cwd: WORKSPACE,
 				status: "backgrounded",
 				call: {
 					id: "tc_4",
-					tool: "observe",
-					args: { script: "npm install", waitfor: 30 },
+					tool: "post",
+					args: { uri: "exec://sh/npm-install", body: "npm install" },
 				},
 				pid: 65432,
 				artifact: {
@@ -214,7 +269,7 @@ const scenarios: Scenario[] = [
 				stdoutSoFar:
 					"npm warn deprecated inflight@1.0.6\nadded 142 packages in 28s",
 				stderrSoFar: "",
-				durationMs: 30003,
+				durationMs: 30_003,
 			},
 		],
 	},
@@ -222,37 +277,68 @@ const scenarios: Scenario[] = [
 	// ── other tool_results ──
 	{
 		file: "write-result",
-		title: "write tool_result",
-		messages: [
-				{
-					type: "tool_result",
-					tool: "write",
-				call: {
-					id: "tc_5",
-					tool: "write",
-					args: { path: "src/config.ts", content: "export const x = 1;" },
-				},
-					status: "completed",
-				},
-		],
-	},
-	// ── special messages ──
-	{
-		file: "show-result",
-		title: "show tool_result",
+		title: "write tool_result（completed）",
 		messages: [
 			{
 				type: "tool_result",
-				tool: "show",
+				tool: "post",
+				scheme: "write",
+				path: `${WORKSPACE}/src/config.ts`,
+				status: "completed",
 				call: {
-					id: "tc_7",
-					tool: "show",
-					args: { type: "qualified delivery", content: "Task done" },
+					id: "tc_5",
+					tool: "post",
+					args: {
+						uri: "write://src/config.ts?prefix_lines=2&suffix_lines=2",
+						body: "import { z } from \"zod\";\nexport const config = z.object({ x: z.string() });",
+					},
 				},
-				cleanedResult: { type: "qualified delivery", content: "Task done" },
 			},
 		],
 	},
+	{
+		file: "customer-result",
+		title: "customer:// tool_result",
+		messages: [
+			{
+				type: "tool_result",
+				tool: "post",
+				scheme: "customer",
+				kind: "question",
+				slug: "choose-approach",
+				status: "completed",
+				call: {
+					id: "tc_7",
+					tool: "post",
+					args: {
+						uri: "customer://question/choose-approach",
+						body: "Task done — continue?",
+					},
+				},
+			},
+		],
+	},
+	{
+		file: "todo-result",
+		title: "todo:// tool_result",
+		messages: [
+			{
+				type: "tool_result",
+				tool: "post",
+				scheme: "todo",
+				goal: "fix-auth-bug",
+				path: `${WORKSPACE}/.n0n/previews/preview-session/todo/fix-auth-bug.md`,
+				status: "completed",
+				call: {
+					id: "tc_8",
+					tool: "post",
+					args: { uri: "todo://fix-auth-bug", body: "- [ ] 排查 token 过期" },
+				},
+			},
+		],
+	},
+
+	// ── special messages ──
 	{
 		file: "tool-arg-error",
 		title: "tool_arg_error 消息（含 schema）",
@@ -260,14 +346,14 @@ const scenarios: Scenario[] = [
 			{
 				type: "tool_arg_error",
 				callId: "tc_err",
-				tool: "observe",
+				tool: "post",
 				error: {
 					kind: "invalid_args",
-					issues: [{ path: "script", message: "Required" }],
+					issues: [{ path: "uri", message: "Required" }],
 					schema: {
 						type: "object",
-						properties: { script: { type: "string" } },
-						required: ["script"],
+						properties: { uri: { type: "string" }, body: { type: "string" } },
+						required: ["uri", "body"],
 					},
 				},
 			},

@@ -4,12 +4,12 @@
 ```
 role: tool
 toolCallId: tc_3
-toolName: observe
+toolName: post
 
 --- content ---
-<observe_meta>
-(sh) . | exit 0 | 320ms | truncated to .temp/session-0001/exec/runs/tc_3
-</observe_meta>
+<exec_meta>
+(sh) /Users/preview/projects/demo | exit 0 | 320ms | truncated to .temp/session-0001/exec/runs/tc_3
+</exec_meta>
 <output>
 ./src/exec/executor.ts
 ./src/exec/security.ts

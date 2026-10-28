@@ -57,8 +57,10 @@
 	"files": ["text-imports.d.ts", "file-imports.d.ts"],
 	"include": [
 		"packages/*/src/**/*.ts",
+		"packages/*/scripts/**/*.ts",
 		"apps/*/src/**/*.ts",
 		"apps/*/src/**/*.d.ts",
+		"apps/*/scripts/**/*.ts",
 		"scripts/**/*.ts"
 	],
 	"exclude": [

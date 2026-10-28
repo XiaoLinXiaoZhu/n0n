@@ -4,12 +4,12 @@
 ```
 role: tool
 toolCallId: tc_1
-toolName: observe
+toolName: post
 
 --- content ---
-<observe_meta>
-(sh) src | exit 0 | 12ms
-</observe_meta>
+<exec_meta>
+(sh) /Users/preview/projects/demo/src | exit 0 | 12ms
+</exec_meta>
 <output>
 hello
 index.ts

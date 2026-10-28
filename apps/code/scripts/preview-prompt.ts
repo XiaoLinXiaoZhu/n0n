@@ -72,18 +72,16 @@ interface CapturedRequest {
 	tools: ToolDefinition[];
 }
 
-let captured: CapturedRequest | null = null;
+const captured: { request: CapturedRequest | null } = { request: null };
 
 const tags: TagAdapter = createTagAdapter("default");
 
 const mockClient: LLMClient = {
 	modelId: "mock-preview",
-	tagStyle: "default",
-	tags,
 
 	async *stream(request: StreamRequest): AsyncGenerator<StreamEvent> {
 		// structuredClone 避免 agentLoop 后续 push 污染截获的快照
-		captured = {
+		captured.request = {
 			messages: structuredClone(request.messages),
 			tools: request.tools ?? [],
 		};
@@ -163,12 +161,12 @@ const history: DomainMessage[] = [
 await agentLoop(history, {
 	client: mockClient,
 	toolkit,
-	maxIterations: 1,
+	max_iterations: 1,
 	renderer: new PlainRenderer(),
 	confirmFn: async () => "y",
 });
 
-if (!captured) {
+if (!captured.request) {
 	console.error("ERROR: mock client was never called — no request captured.");
 	process.exit(1);
 }
@@ -176,8 +174,8 @@ if (!captured) {
 // ── 渲染 preview markdown ──
 
 // DomainMessage → PromptMessage（与真实 client 内部转换一致）
-const promptMessages = formatPrompt(captured.messages, tags);
-const toolDefs = captured.tools;
+const promptMessages = formatPrompt(captured.request.messages, tags);
+const toolDefs = captured.request.tools;
 
 function toolCallSummary(msg: PromptMessage & { role: "assistant" }): string {
 	if (!msg.toolCalls?.length) return "";

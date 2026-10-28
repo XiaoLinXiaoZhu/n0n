@@ -1,10 +1,10 @@
-# show tool_result
-<!-- model: claude-sonnet-4-20250514 -->
+# customer:// tool_result
+<!-- model: deepseek, tag-style: deepseek -->
 
 ```
 role: tool
 toolCallId: tc_7
-toolName: show
+toolName: post
 
 --- content ---
 <result>

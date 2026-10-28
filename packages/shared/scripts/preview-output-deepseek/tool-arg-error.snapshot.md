@@ -4,22 +4,26 @@
 ```
 role: tool
 toolCallId: tc_err
-toolName: observe
+toolName: post
 
 --- content ---
 <error>
-Bad tool args — script: Required
+Bad tool args — uri: Required
 
 Expected schema:
 {
   "type": "object",
   "properties": {
-    "script": {
+    "uri": {
+      "type": "string"
+    },
+    "body": {
       "type": "string"
     }
   },
   "required": [
-    "script"
+    "uri",
+    "body"
   ]
 }
 </error>

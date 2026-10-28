@@ -4,12 +4,12 @@
 ```
 role: tool
 toolCallId: tc_2
-toolName: observe
+toolName: post
 
 --- content ---
-<observe_meta>
-(unknown) . | exit 1 | 5ms
-</observe_meta>
+<exec_meta>
+(sh) /Users/preview/projects/demo | exit 1 | 5ms
+</exec_meta>
 <stderr>
 cat: missing.txt: No such file or directory
 </stderr>

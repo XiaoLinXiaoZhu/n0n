@@ -4,12 +4,12 @@
 ```
 role: tool
 toolCallId: tc_4
-toolName: observe
+toolName: post
 
 --- content ---
-<observe_meta>
-(unknown) . | backgrounded | 30003ms
-</observe_meta>
+<exec_meta>
+(sh) /Users/preview/projects/demo | backgrounded | 30003ms
+</exec_meta>
 <waitfor_notice>
 Process exceeded waitfor limit, moved to background.
 PID: 65432

@@ -1,4 +1,4 @@
-# assistant_tool_call 消息
+# assistant_tool_call 消息（post 工具）
 <!-- model: deepseek, tag-style: deepseek -->
 
 ```
@@ -6,17 +6,18 @@ role: assistant
 toolCalls: [
   {
     "id": "tc_1",
-    "tool": "observe",
+    "tool": "post",
     "args": {
-      "script": "cat src/auth.ts"
+      "uri": "exec://sh/read-auth",
+      "body": "cat src/auth.ts"
     }
   },
   {
     "id": "tc_2",
-    "tool": "write",
+    "tool": "post",
     "args": {
-      "path": "test.txt",
-      "content": "hi"
+      "uri": "write://test.txt",
+      "body": "hi"
     }
   }
 ]

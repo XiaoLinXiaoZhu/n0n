@@ -1,13 +1,13 @@
-# write tool_result
+# write tool_result（completed）
 <!-- model: claude-sonnet-4-20250514 -->
 
 ```
 role: tool
 toolCallId: tc_5
-toolName: write
+toolName: post
 
 --- content ---
-<write_result>
-`src/config.ts` created successfully
-</write_result>
+<file_result>
+`/Users/preview/projects/demo/src/config.ts` created successfully
+</file_result>
 ```
