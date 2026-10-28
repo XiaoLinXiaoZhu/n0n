@@ -2,7 +2,7 @@
  * Tail Anchor — 注入到每条真实用户消息末尾的运行时协议
  *
  * 这些内容解释由 format-prompt 生成的标签，不属于 agent 的长期行为标准。
- * 它随当前请求发送，历史轮次通过 strip_hint 机制自动移除。
+ * 它随当前请求发送，历史轮次原样保留（hint 剥离已移除——会改写历史消息，破坏 prompt cache）。
  */
 export const CODE_RUNTIME_PROTOCOL = [
 	"Runtime protocol:",

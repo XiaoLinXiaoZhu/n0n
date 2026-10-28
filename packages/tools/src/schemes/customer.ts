@@ -2,11 +2,11 @@
  * customer scheme — 向客户提问/请求填写/请求操作
  *
  * body 是发给客户的消息正文。产出 CustomerCompleted 结果并中断 agent 循环，
- * 由消费层（repl/headless）渲染后等待客户响应。
+ * 由消费层（repl）渲染后等待客户响应。
  *
  * 调度事实：独占（打断循环，不得与任何调用并行）。
  * 恢复能力：无（消息被截断则不可恢复）。
- * 可见性：describe 在 allowCustomer=false 时返回空数组（headless 模式隐藏），
+ * 可见性：describe 在 allowCustomer=false 时返回空数组（oneshot 模式隐藏），
  * execute 同时以 arg-error 拒绝——描述层与执行层双重把关。
  */
 

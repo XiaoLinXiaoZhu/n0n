@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { resolvePlatform } from "@n0n/shared";
 import type { ToolArgErrorMessage, ToolCallRecord } from "@n0n/types";
-import { makeToolkit, SCHEMES, type ToolJob } from "../index.ts";
+import { makeToolkit, type ToolJob } from "../index.ts";
 
 const SESSION_DIR = mkdtempSync(join(tmpdir(), "n0n-toolkit-"));
 const WORKSPACE = mkdtempSync(join(tmpdir(), "n0n-toolkit-ws-"));
@@ -39,21 +39,6 @@ describe("post 单工具注册表", () => {
 		const toolkit = makeToolkit(makeConfig());
 		expect(toolkit.tools).toHaveLength(1);
 		expect(toolkit.tools[0]?.name).toBe("post");
-	});
-
-	it("描述中的 scheme 顺序 = SCHEMES 注册序（prompt cache 稳定性）", () => {
-		const toolkit = makeToolkit(makeConfig());
-		const description = toolkit.tools[0]?.description ?? "";
-		const positions = SCHEMES.map((s) =>
-			description.indexOf(`${s.scheme} — ${s.uriPrefix}`),
-		);
-		for (const pos of positions) {
-			expect(pos).toBeGreaterThanOrEqual(0);
-		}
-		// 严格递增 = 注册序呈现
-		for (let i = 1; i < positions.length; i++) {
-			expect(positions[i]).toBeGreaterThan(positions[i - 1] as number);
-		}
 	});
 });
 

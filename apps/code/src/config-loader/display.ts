@@ -10,10 +10,7 @@ import type { LoadedConfig } from "./loader.ts";
 import type { CodeSettings } from "./schema.ts";
 
 type ConfigTrace = LoadedConfig["trace"];
-type DisplayedSettingKey = Extract<
-	keyof CodeSettings,
-	"strip_hint" | "memory_tag" | "notify_sound"
->;
+type DisplayedSettingKey = Extract<keyof CodeSettings, "notify_sound">;
 
 const LLM_TRACE_PREFIX = "settings.llm";
 
@@ -86,12 +83,6 @@ export function displayCodeConfig(config: LoadedConfig): void {
 
 	writeln();
 	writeln(`  ${style.dim("──")} ${style.cyan("设置")}`);
-	writeln(
-		`    ${style.white("strip_hint")} = ${settings.strip_hint} ${sourceTag(settingSource(trace, "strip_hint"))}`,
-	);
-	writeln(
-		`    ${style.white("memory_tag")} = ${settings.memory_tag} ${sourceTag(settingSource(trace, "memory_tag"))}`,
-	);
 	writeln(
 		`    ${style.white("notify_sound")} = ${settings.notify_sound} ${sourceTag(settingSource(trace, "notify_sound"))}`,
 	);

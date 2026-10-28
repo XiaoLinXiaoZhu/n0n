@@ -1,8 +1,6 @@
 /** Code App 配置默认值的单一事实来源。 */
 
 interface CodeSettingsDefaults {
-	strip_hint: boolean;
-	memory_tag: boolean;
 	notify_sound: boolean;
 	notify_sound_path: string;
 	agent: {
@@ -25,8 +23,6 @@ interface CodeSettingsDefaults {
 }
 
 export const DEFAULT_CODE_SETTINGS: CodeSettingsDefaults = {
-	strip_hint: true,
-	memory_tag: false,
 	notify_sound: false,
 	notify_sound_path: "",
 	agent: {
@@ -52,8 +48,6 @@ export const DEFAULT_OPEN_COMMAND = DEFAULT_CODE_SETTINGS.cli.open_command;
 
 export const DEFAULT_TOML = `
 [settings]
-strip_hint = ${DEFAULT_CODE_SETTINGS.strip_hint}
-memory_tag = ${DEFAULT_CODE_SETTINGS.memory_tag}
 notify_sound = ${DEFAULT_CODE_SETTINGS.notify_sound}
 notify_sound_path = ${JSON.stringify(DEFAULT_CODE_SETTINGS.notify_sound_path)}
 

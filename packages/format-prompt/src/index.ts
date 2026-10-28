@@ -8,11 +8,10 @@
  * TagAdapter 注入：各 LLM Client 构造自己的 TagAdapter 实例传入，
  * 控制 XML tag 的风格。各 provider 可对特定 tag name 做特殊处理。
  *
- * system-hint 剥离策略：
- * 工具返回中包含 fact（客观数据）和 hint（系统操作建议）两部分。
- * 启用剥离时，仅最新一轮（最后一个 assistant_tool_call 之后）的 tool_result
- * 包含 <system-hint>；历史轮次只保留 fact，减少过时指令污染和 token 开销。
- * 通过 N0N_STRIP_HINT=1 环境变量启用（默认启用，设为 0 可关闭用于对比测试）。
+ * system-hint 保留策略：工具返回的 <system-hint> 与用户消息的 hint
+ * 在所有轮次原样保留，不做历史剥离。历史验证：剥离机制需要改写历史
+ * 消息（最新轮→历史轮时删除 hint），修改点之后的 token 全部重算，
+ * prompt cache 命中率显著下降——收益不抵缓存代价，已移除。
  *
  * Anti-few-shot 设计动机（参考 Manus "Don't Get Few-Shotted"）：
  * LLM 是出色的模仿者，会复现上下文中的行为模式。当上下文充满结构
@@ -78,7 +77,6 @@ function toolResultToStructured(
 function buildUserInputContent(
 	msg: Extract<DomainMessage, { type: "user_input" }>,
 	tags: TagAdapter,
-	includeHint: boolean,
 ): string {
 	const parts: string[] = [];
 	if (msg.context) {
@@ -89,7 +87,7 @@ function buildUserInputContent(
 	}
 	// 用户实际输入用 <user-request> 包裹，紧邻尾部锚定块
 	parts.push(tags.wrapTag("user-request", msg.content));
-	if (includeHint && msg.hint) {
+	if (msg.hint) {
 		parts.push(tags.wrapTag("system-hint", msg.hint));
 	}
 	return parts.join("\n\n");
@@ -113,23 +111,6 @@ function mergeConsecutiveSystem(messages: PromptMessage[]): PromptMessage[] {
 	return merged;
 }
 
-// ── 找最后一个 assistant_tool_call 的原始 index ──
-
-function findLastAssistantToolCallIndex(messages: DomainMessage[]): number {
-	for (let j = messages.length - 1; j >= 0; j--) {
-		if (messages[j]?.type === "assistant_tool_call") return j;
-	}
-	return -1;
-}
-
-// ── 格式化选项 ──
-
-/** 格式化选项 — 由 LLMClient 构造时注入 */
-export interface FormatOptions {
-	/** 是否剥离历史轮次的 system-hint（默认 true） */
-	strip_hint?: boolean;
-}
-
 // ── 主函数 ──
 
 /**
@@ -141,16 +122,10 @@ export interface FormatOptions {
 export function formatPrompt(
 	messages: DomainMessage[],
 	tags: TagAdapter,
-	options?: FormatOptions,
 ): PromptMessage[] {
-	const stripHintEnabled = options?.strip_hint ?? true;
 	const result: PromptMessage[] = [];
 
-	// 预扫描：找到最后一个 assistant_tool_call 的原始 index，用于判断"最新轮"
-	const lastAtcIndex = findLastAssistantToolCallIndex(messages);
-
 	let i = 0;
-	let originalIndex = 0;
 	for (const msg of messages) {
 		if (!msg) continue;
 
@@ -212,18 +187,10 @@ export function formatPrompt(
 
 			case "tool_result": {
 				const formatted = toolResultToStructured(msg, tags, i);
-				const isLatestRound = originalIndex > lastAtcIndex;
-				let content: string;
-
-				if (!stripHintEnabled || isLatestRound) {
-					// 剥离未启用 或 最新轮：包含 hint
-					content = formatted.hint
-						? `${formatted.fact}\n${tags.wrapTag("system-hint", formatted.hint)}`
-						: formatted.fact;
-				} else {
-					// 历史轮：只保留 fact
-					content = formatted.fact;
-				}
+				// fact + hint 全轮保留：hint 剥离会改写历史消息，破坏 prompt cache
+				const content = formatted.hint
+					? `${formatted.fact}\n${tags.wrapTag("system-hint", formatted.hint)}`
+					: formatted.fact;
 
 				result.push({
 					role: "tool",
@@ -235,24 +202,20 @@ export function formatPrompt(
 			}
 
 			case "user_input": {
-				const isLatestRound = originalIndex > lastAtcIndex;
 				result.push({
 					role: "user",
-					content: buildUserInputContent(
-						msg,
-						tags,
-						!stripHintEnabled || isLatestRound,
-					),
+					content: buildUserInputContent(msg, tags),
 				});
 				break;
 			}
 
-			case "turn_feedback":
+			case "turn_feedback": {
 				result.push({
 					role: "user",
 					content: formatTurnFeedback(msg, tags, i),
 				});
 				break;
+			}
 
 			case "tool_arg_error":
 				result.push({
@@ -310,18 +273,6 @@ export function formatPrompt(
 		// 变更index可能会导致其他消息格式化的时候格式化后的内容发生变化，从而影响提示词缓存。
 		if (affectsSubsequent(msg.type)) {
 			i++;
-		}
-		originalIndex++;
-	}
-
-	// ── 自动 cache breakpoint：标记最后一个含 toolCalls 的 assistant 消息 ──
-	if (stripHintEnabled) {
-		for (let j = result.length - 1; j >= 0; j--) {
-			const m = result[j];
-			if (m && m.role === "assistant" && m.toolCalls?.length) {
-				result[j] = { ...m, cacheBreakpoint: true };
-				break;
-			}
 		}
 	}
 

@@ -3,11 +3,10 @@
  *
  * 唯一的 Client 创建入口。负责：
  * 1. 构造 TagAdapter（tag_style 由 schema 默认值保证，无需 fallback）
- * 2. 绑定 formatPrompt + FormatOptions 为 FormatFn 闭包
+ * 2. 绑定 formatPrompt 为 FormatFn 闭包
  * 3. 将闭包注入 Client — Client 不感知 formatPrompt 的存在
  */
 
-import type { FormatOptions } from "@n0n/format-prompt";
 import { formatPrompt } from "@n0n/format-prompt";
 import { createTagAdapter } from "@n0n/shared";
 import type { DomainMessage, LLMClient, PromptMessage } from "@n0n/types";
@@ -26,17 +25,13 @@ export type FormatFn = (messages: DomainMessage[]) => PromptMessage[];
  * 创建 LLMClient 实例
  *
  * @param config LLM 配置（含 provider 类型、凭据、行为开关）
- * @param formatOptions 格式化选项（控制 hint 剥离等行为）
  * @returns LLMClient 实例，闭包所有配置
  */
-export function createLLMClient(
-	config: LLMConfig,
-	formatOptions?: FormatOptions,
-): LLMClient {
+export function createLLMClient(config: LLMConfig): LLMClient {
 	const pc = config.providerConfig;
 	const tagStyle = pc.tag_style;
 	const tags = createTagAdapter(tagStyle);
-	const format: FormatFn = (msgs) => formatPrompt(msgs, tags, formatOptions);
+	const format: FormatFn = (msgs) => formatPrompt(msgs, tags);
 
 	switch (pc.provider) {
 		case "openai":

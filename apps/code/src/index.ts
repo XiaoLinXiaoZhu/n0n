@@ -7,7 +7,6 @@
 import { existsSync, writeFileSync } from "node:fs";
 import { style, writeln } from "@n0n/cli-ui";
 import { buildToolsConfig } from "@n0n/core";
-import type { FormatOptions } from "@n0n/format-prompt";
 import { createLLMClient } from "@n0n/llm";
 import { createSessionDir, ensureDirs, resolveBasePaths } from "@n0n/shared";
 import {
@@ -17,7 +16,6 @@ import {
 	loadCodeConfig,
 	resolveConfigPaths,
 } from "./config-loader/index.ts";
-import { withMemoryTags } from "./memory-tag.ts";
 import type { NotifyConfig } from "./notify-sound.ts";
 
 interface CodeRunBaseOptions {
@@ -74,13 +72,7 @@ async function startConfiguredCode(
 	ensureDirs(paths);
 	const sessionDir = createSessionDir(paths.sessions);
 
-	const formatOptions: FormatOptions = {
-		strip_hint: settings.strip_hint,
-	};
-	const client = withMemoryTags(
-		createLLMClient({ providerConfig: llm }, formatOptions),
-		settings.memory_tag && llm.provider === "deepseek",
-	);
+	const client = createLLMClient({ providerConfig: llm });
 	const toolsConfig = buildToolsConfig(settings.agent, settings.security, {
 		workspace: paths.workspace,
 		sessionDir,
