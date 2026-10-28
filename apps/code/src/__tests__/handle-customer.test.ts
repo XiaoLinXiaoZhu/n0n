@@ -19,6 +19,7 @@ function makeCustomer(
 		status: "completed",
 		scheme: "customer",
 		kind,
+		slug: null,
 		call: {
 			id: `call-${kind}-${Math.random().toString(36).slice(2)}`,
 			tool: "post",

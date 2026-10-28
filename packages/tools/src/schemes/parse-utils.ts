@@ -14,6 +14,19 @@ export function decodeSegment(raw: string): string {
 /** waitfor 硬上限（秒），与工具描述保持一致 */
 export const WAITFOR_MAX = 240;
 
+/**
+ * 用作文件名的单段是否不安全（路径穿越/分隔符/控制字符/Windows 危险字符）。
+ * 消费方在边界（parse）调用——文件名段不允许不确定性流入存储层。
+ */
+// biome-ignore lint/suspicious/noControlCharactersInRegex: 安全边界——显式拒绝控制字符正是意图
+const UNSAFE_FILENAME_SEGMENT = /[\\/\0-\x1f\x7f<>:"|?*]/;
+
+export function isUnsafeFilenameSegment(segment: string): boolean {
+	return (
+		UNSAFE_FILENAME_SEGMENT.test(segment) || segment === "." || segment === ".."
+	);
+}
+
 /** exec:// 的 query 解析：cwd / waitfor（clamp ≤240）/ max_output_tokens（floor） */
 export function parseExecQuery(query: string): {
 	cwd?: string;

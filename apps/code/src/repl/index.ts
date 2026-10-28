@@ -34,6 +34,7 @@ import { buildEnvironmentContext } from "../context-env.ts";
 import { buildCodeSystemPrompt } from "../model-guidance.ts";
 import type { UserInputConfig } from "../multiline-input/config.ts";
 import type { NotifyConfig } from "../notify-sound.ts";
+import { lastAssistantText, OutputWriter } from "../output-writer.ts";
 import { getPrompt } from "../prompts/index.ts";
 import { parseAndInjectSkills } from "../skill-inject.ts";
 import { createStdinController } from "../stdin-controller.ts";
@@ -107,6 +108,7 @@ export async function startCodeRepl(
 		skills: systemSkills,
 	};
 	const notifyConfig = options.notifyConfig ?? { enabled: false };
+	const outputWriter = new OutputWriter(options.sessionDir);
 	const toolkit = makeToolkit(
 		{ ...toolsConfig, allowCustomer: !exitAfterInitialInput },
 		client.modelId,
@@ -300,15 +302,22 @@ export async function startCodeRepl(
 			writeln();
 
 			if (results.length > 0) {
-				// customer:// 请求：渲染并等待客户参与
+				// customer:// 请求：记录暂停时模型输出，渲染并等待客户参与
+				const modelText = lastAssistantText(history);
+				for (const result of results) {
+					outputWriter.writeCustomer(result, modelText);
+				}
 				handleCustomerResults(results, notifyConfig);
 			} else if (agentResult.report) {
 				// 异常终止
 				writeln(`${style.red("✗")} Agent 异常终止`);
 				writeln(style.gray(`  ${agentResult.report}`));
 				writeln();
+			} else {
+				// 自然停止（纯内容、无工具调用）：记录最终模型输出；
+				// 最终内容已由 renderer 流式输出。
+				outputWriter.writeFinished(lastAssistantText(history));
 			}
-			// 自然结束（纯内容、无工具调用）：最终内容已由 renderer 流式输出。
 
 			userInput = await promptNext();
 		}

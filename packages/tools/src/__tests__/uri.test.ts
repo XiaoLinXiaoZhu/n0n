@@ -91,6 +91,7 @@ describe("parsePostUri — customer scheme", () => {
 		expect(parsePostUri("customer://question")).toEqual({
 			scheme: "customer",
 			kind: "question",
+			slug: null,
 		});
 	});
 
@@ -98,6 +99,7 @@ describe("parsePostUri — customer scheme", () => {
 		expect(parsePostUri("customer://form")).toEqual({
 			scheme: "customer",
 			kind: "form",
+			slug: null,
 		});
 	});
 
@@ -105,7 +107,38 @@ describe("parsePostUri — customer scheme", () => {
 		expect(parsePostUri("customer://action_required")).toEqual({
 			scheme: "customer",
 			kind: "action_required",
+			slug: null,
 		});
+	});
+	it("解析 customer://question/<slug>", () => {
+		expect(parsePostUri("customer://question/choose-approach")).toEqual({
+			scheme: "customer",
+			kind: "question",
+			slug: "choose-approach",
+		});
+	});
+
+	it("URL 解码 slug 段", () => {
+		expect(parsePostUri("customer://form/my%20plan")).toMatchObject({
+			slug: "my plan",
+		});
+	});
+
+	it("尾部斜杠视为无 slug", () => {
+		expect(parsePostUri("customer://question/")).toEqual({
+			scheme: "customer",
+			kind: "question",
+			slug: null,
+		});
+	});
+
+	it("slug 多段抛错", () => {
+		expect(() => parsePostUri("customer://question/a/b")).toThrow();
+	});
+
+	it("slug 含路径穿越抛错", () => {
+		expect(() => parsePostUri("customer://question/..%2Fevil")).toThrow();
+		expect(() => parsePostUri("customer://question/..")).toThrow();
 	});
 });
 

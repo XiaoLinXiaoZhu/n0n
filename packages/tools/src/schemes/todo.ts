@@ -13,7 +13,7 @@
 import { existsSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
 import type { PostToolCall, TodoCompleted, TodoRecovered } from "@n0n/types";
-import { decodeSegment } from "./parse-utils.ts";
+import { decodeSegment, isUnsafeFilenameSegment } from "./parse-utils.ts";
 import type { SchemeHandler } from "./types.ts";
 
 /** todo:// 的解析产物 */
@@ -22,13 +22,11 @@ export interface ParsedTodo {
 	/** uri 中的 goal 段（URL 解码后），同时是持久化文件名 */
 	goal: string;
 }
-
 /**
- * goal 直接来自模型输入并用作文件名——在边界拒绝路径穿越与
- * 文件系统危险字符，不允许不确定性流入存储层。
+ * goal 直接来自模型输入并用作文件名——在边界（parse）用
+ * isUnsafeFilenameSegment 拒绝路径穿越与文件系统危险字符，
+ * 不允许不确定性流入存储层。
  */
-// biome-ignore lint/suspicious/noControlCharactersInRegex: 安全边界——显式拒绝控制字符正是意图
-const UNSAFE_GOAL = /[\\/\0-\x1f\x7f<>:"|?*]/;
 
 /** 持久化路径：<sessionDir>/todo/<goal>.md */
 function todoPath(sessionDir: string, goal: string): string {
@@ -75,7 +73,7 @@ export const todoScheme: SchemeHandler<ParsedTodo> = {
 		if (!goal) {
 			throw new Error(`Malformed todo uri "${fullUri}". Missing goal.`);
 		}
-		if (UNSAFE_GOAL.test(goal) || goal === "." || goal === "..") {
+		if (isUnsafeFilenameSegment(goal)) {
 			throw new Error(
 				`Malformed todo uri "${fullUri}". Goal must be a plain name (no path separators or control characters).`,
 			);

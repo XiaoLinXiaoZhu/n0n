@@ -119,6 +119,18 @@ describe("post — customer scheme", () => {
 		}
 	});
 
+	it("customer://<kind>/<slug> 产出 slug 字段", async () => {
+		const session = makeToolkit(makeConfig()).bind();
+		const job = session.createJob(
+			postCall("c-cust-slug", "customer://question/choose-approach", "msg"),
+		);
+		const events = await collect(job);
+		const result = events[0];
+		if (result?.type !== "tool_result") throw new Error("no result");
+		if (result.scheme !== "customer") throw new Error("not customer");
+		expect(result.slug).toBe("choose-approach");
+	});
+
 	it("allowCustomer: false 时 customer:// 以 arg-error 拒绝", async () => {
 		const session = makeToolkit(makeConfig({ allowCustomer: false })).bind();
 		const job = session.createJob(
