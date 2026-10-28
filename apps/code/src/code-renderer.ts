@@ -3,8 +3,9 @@
  *
  * 继承 RichRenderer 的全部终端渲染能力，额外增加：
  * - post 工具 write:// 流式预览：在参数流式传输过程中，增量解析 partial JSON，
- *   仅当 uri 解析为 write:// scheme 时，将已有的 body 实时写入目标文件，
- *   让编辑器自动检测变化实现实时预览。exec:// 与 customer:// 不产生预览。
+ *   仅当 uri 的字符串值已闭合、且解析为 write:// 全量写时，将已有的 body
+ *   实时写入目标文件，让编辑器自动检测变化实现实时预览。
+ *   exec:// 与 customer:// 不产生预览。
  *
  * 设计原则：
  * - 利用指令式事件模型，不新增 Renderer 接口
@@ -25,7 +26,7 @@ interface PostPreview {
 	args: string;
 	/** 解析出的目标文件路径（仅 write:// uri）；uri 锁定后不再变化 */
 	targetPath: string | null;
-	/** body 字段已出现 → uri 锁定，不再更新 targetPath（防截断值产生垃圾文件） */
+	/** uri 字符串值已闭合 → 锁定 targetPath，不再随流入更新（防截断值） */
 	uriLocked: boolean;
 	/** 上一次写入的 body 长度（用于去重，避免内容未变时重复写入） */
 	lastContentLength: number;
@@ -44,6 +45,71 @@ export interface CodeRendererOptions extends RichRendererOptions {
 /** partial-json 解析出的 post 工具参数（字段可能不完整） */
 function isPostPreviewArgs(v: unknown): v is Record<string, unknown> {
 	return v !== null && typeof v === "object" && !Array.isArray(v);
+}
+
+/**
+ * partial JSON 中某个顶层 key 的字符串值是否已闭合。
+ *
+ * partial-json 会把被 chunk 截断的字符串值原样返回（`{"uri":"write://f`
+ * 解析出 `write://f`），所以「能解析出 uri」不等于「uri 已完整」。窗口写的
+ * `?prefix_lines=...` 往往落在下一个 chunk：若把裸路径当完整 uri，窗口写会被
+ * 误判成全量写，body（初始为空串）随即覆盖目标文件 —— 确定性数据丢失。
+ *
+ * 这里扫描原始 args，确认该 key 对应的字符串存在闭合引号；字符串内部的
+ * `"uri"` 只是普通字符，不会被误认为 key。
+ */
+function isTopLevelStringComplete(raw: string, key: string): boolean {
+	const isSpace = (c: string | undefined) =>
+		c === " " || c === "\n" || c === "\t" || c === "\r";
+
+	let depth = 0;
+	let i = 0;
+	while (i < raw.length) {
+		const ch = raw[i];
+
+		if (ch !== '"') {
+			if (ch === "{" || ch === "[") depth++;
+			else if (ch === "}" || ch === "]") depth--;
+			i++;
+			continue;
+		}
+
+		// 读一个完整的 JSON 字符串 token
+		const start = i + 1;
+		i++;
+		while (i < raw.length) {
+			if (raw[i] === "\\") {
+				i += 2;
+			} else if (raw[i] === '"') {
+				break;
+			} else {
+				i++;
+			}
+		}
+		if (i >= raw.length) return false; // 字符串尚未闭合
+		const token = raw.slice(start, i);
+		i++; // 跳过闭合引号
+
+		if (depth !== 1) continue;
+		let j = i;
+		while (isSpace(raw[j])) j++;
+		if (raw[j] !== ":" || token !== key) continue; // 是值，或别的 key
+		j++;
+		while (isSpace(raw[j])) j++;
+		if (raw[j] !== '"') return false;
+		j++;
+		while (j < raw.length) {
+			if (raw[j] === "\\") {
+				j += 2;
+			} else if (raw[j] === '"') {
+				return true;
+			} else {
+				j++;
+			}
+		}
+		return false;
+	}
+	return false;
 }
 
 export class CodeRenderer extends RichRenderer {
@@ -122,8 +188,8 @@ export class CodeRenderer extends RichRenderer {
 
 	/**
 	 * 从累积的 partial JSON 中提取 uri/body，写入目标文件。
-	 * 仅当 uri 可解析为 write:// scheme 时预览；target path 取解析后的 path，
-	 * body 出现后 uri 锁定，避免截断的 uri 值产生垃圾文件。
+	 * 仅当 uri 的字符串值已闭合、且解析为 write:// 全量写时预览；
+	 * 闭合后锁定 targetPath，避免截断的 uri 值产生垃圾文件。
 	 * @param force 是否强制写入（跳过节流，用于 streamEnd）
 	 */
 	private flushPreview(
@@ -151,25 +217,25 @@ export class CodeRenderer extends RichRenderer {
 				: undefined;
 		const bodyStr = typeof parsed.body === "string" ? parsed.body : undefined;
 
-		// uri 未锁定时，随流入持续解析；只有 write:// 才参与预览。
-		// body 出现时 uri 已完整（uri key 先于 body 到达），此刻锁定。
-		if (!preview.uriLocked && uriStr !== undefined) {
-			try {
-				const parsedUri = parsePostUri(uriStr);
-				// 窗口写不预览：流式 body 只是窗口片段，落盘即损坏整个文件
-				if (
-					parsedUri.scheme === "write" &&
-					parsedUri.prefixLines === 0 &&
-					parsedUri.suffixLines === 0
-				) {
-					preview.targetPath = this.resolvePath(parsedUri.path);
-				}
-			} catch {
-				// uri 尚未完整或不支持的 scheme — 保持现状，等待更多数据
-			}
-		}
-		if (!preview.uriLocked && bodyStr !== undefined) {
+		// 只有 uri 的字符串值已闭合才做预览决定：被 chunk 截断的裸路径同样
+		// 能被 partial-json 解析成合法 uri，此刻锁定会把窗口写误判成全量写。
+		if (!preview.uriLocked && isTopLevelStringComplete(preview.args, "uri")) {
 			preview.uriLocked = true;
+			if (uriStr !== undefined) {
+				try {
+					const parsedUri = parsePostUri(uriStr);
+					// 窗口写不预览：流式 body 只是窗口片段，落盘即损坏整个文件
+					if (
+						parsedUri.scheme === "write" &&
+						parsedUri.prefixLines === 0 &&
+						parsedUri.suffixLines === 0
+					) {
+						preview.targetPath = this.resolvePath(parsedUri.path);
+					}
+				} catch {
+					// uri 完整但畸形/不支持的 scheme：不预览，错误交由执行侧报出
+				}
+			}
 		}
 
 		// 写入：仅 write://（targetPath 存在）且 body 已到达
