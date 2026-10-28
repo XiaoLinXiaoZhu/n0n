@@ -84,11 +84,17 @@ export class CodeRenderer extends RichRenderer {
 		super.toolCallArgEnd(index, tc);
 
 		if (tc.tool === "post") {
-			// 最终写入仅对 write:// uri；exec/customer 无文件落盘
+			// 最终写入仅对 write:// uri 的全写模式；exec/customer 无文件落盘，
+			// 窗口写（prefix_lines/suffix_lines）不预览——body 只是窗口片段，
+			// 直接落盘会把整个文件替换成窗口片段（确定性损坏）。
 			// （uri 畸形时静默跳过 — 该错误由工具执行侧转成 tool_arg_error）
 			try {
 				const parsed = parsePostUri(tc.args.uri);
-				if (parsed.scheme === "write") {
+				if (
+					parsed.scheme === "write" &&
+					parsed.prefixLines === 0 &&
+					parsed.suffixLines === 0
+				) {
 					this.writeFile(this.resolvePath(parsed.path), tc.args.body);
 				}
 			} catch {
@@ -150,7 +156,12 @@ export class CodeRenderer extends RichRenderer {
 		if (!preview.uriLocked && uriStr !== undefined) {
 			try {
 				const parsedUri = parsePostUri(uriStr);
-				if (parsedUri.scheme === "write") {
+				// 窗口写不预览：流式 body 只是窗口片段，落盘即损坏整个文件
+				if (
+					parsedUri.scheme === "write" &&
+					parsedUri.prefixLines === 0 &&
+					parsedUri.suffixLines === 0
+				) {
 					preview.targetPath = this.resolvePath(parsedUri.path);
 				}
 			} catch {

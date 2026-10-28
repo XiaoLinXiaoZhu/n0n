@@ -71,10 +71,12 @@ describe("parsePostUri — exec scheme", () => {
 });
 
 describe("parsePostUri — write scheme", () => {
-	it("解析 write://<path>", () => {
+	it("解析 write://<path>（无 query → 全写）", () => {
 		expect(parsePostUri("write://tmp/probe.txt")).toEqual({
 			scheme: "write",
 			path: "tmp/probe.txt",
+			prefixLines: 0,
+			suffixLines: 0,
 		});
 	});
 
@@ -82,7 +84,50 @@ describe("parsePostUri — write scheme", () => {
 		expect(parsePostUri("write://my%20dir/file.txt")).toEqual({
 			scheme: "write",
 			path: "my dir/file.txt",
+			prefixLines: 0,
+			suffixLines: 0,
 		});
+	});
+
+	it("解析 prefix_lines/suffix_lines query", () => {
+		expect(parsePostUri("write://a.txt?prefix_lines=3&suffix_lines=2")).toEqual(
+			{
+				scheme: "write",
+				path: "a.txt",
+				prefixLines: 3,
+				suffixLines: 2,
+			},
+		);
+	});
+
+	it("显式 0 等价于省略", () => {
+		expect(parsePostUri("write://a.txt?prefix_lines=0&suffix_lines=0")).toEqual(
+			{
+				scheme: "write",
+				path: "a.txt",
+				prefixLines: 0,
+				suffixLines: 0,
+			},
+		);
+	});
+
+	it("路径中的 ? 字面量写 %3F（首个裸 ? 切 query）", () => {
+		expect(parsePostUri("write://weird%3Fname.txt?prefix_lines=1")).toEqual({
+			scheme: "write",
+			path: "weird?name.txt",
+			prefixLines: 1,
+			suffixLines: 0,
+		});
+	});
+
+	it("prefix_lines/suffix_lines 非法值抛错（而非静默降级全写）", () => {
+		expect(() => parsePostUri("write://a.txt?prefix_lines=abc")).toThrow();
+		expect(() => parsePostUri("write://a.txt?suffix_lines=-1")).toThrow();
+		expect(() => parsePostUri("write://a.txt?prefix_lines=1.5")).toThrow();
+	});
+
+	it("未知 query 键抛错（防窗口写静默降级全量覆盖）", () => {
+		expect(() => parsePostUri("write://a.txt?prefix_line=1")).toThrow();
 	});
 });
 
