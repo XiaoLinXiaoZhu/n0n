@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { resolvePlatform } from "@n0n/shared";
 import type { ToolArgErrorMessage, ToolCallRecord } from "@n0n/types";
-import { makeToolkit, type ToolJob } from "../index.ts";
+import { makeToolkit, SCHEMES, type ToolJob } from "../index.ts";
 
 const SESSION_DIR = mkdtempSync(join(tmpdir(), "n0n-toolkit-"));
 const WORKSPACE = mkdtempSync(join(tmpdir(), "n0n-toolkit-ws-"));
@@ -39,6 +39,21 @@ describe("post 单工具注册表", () => {
 		const toolkit = makeToolkit(makeConfig());
 		expect(toolkit.tools).toHaveLength(1);
 		expect(toolkit.tools[0]?.name).toBe("post");
+	});
+
+	it("描述中的 scheme 顺序 = SCHEMES 注册序（prompt cache 稳定性）", () => {
+		const toolkit = makeToolkit(makeConfig());
+		const description = toolkit.tools[0]?.description ?? "";
+		const positions = SCHEMES.map((s) =>
+			description.indexOf(`${s.scheme} — ${s.uriPrefix}`),
+		);
+		for (const pos of positions) {
+			expect(pos).toBeGreaterThanOrEqual(0);
+		}
+		// 严格递增 = 注册序呈现
+		for (let i = 1; i < positions.length; i++) {
+			expect(positions[i]).toBeGreaterThan(positions[i - 1] as number);
+		}
 	});
 });
 
@@ -134,6 +149,75 @@ describe("post — customer scheme", () => {
 	});
 });
 
+describe("post — todo scheme", () => {
+	it("todo:// 写入 session todo store 并返回 goal/path", async () => {
+		const session = makeToolkit(makeConfig()).bind();
+		const job = session.createJob(
+			postCall(
+				"c-todo",
+				"todo://refactor-auth",
+				"- [ ] step one\n  - [ ] nested",
+			),
+		);
+
+		const events = await collect(job);
+		const result = events.find((e) => e.type === "tool_result");
+		if (result?.type !== "tool_result") throw new Error("no result");
+		expect(result.tool).toBe("post");
+		if ("scheme" in result && result.scheme === "todo") {
+			expect(result.status).toBe("completed");
+			expect(result.goal).toBe("refactor-auth");
+			expect(result.path).toBe(join(SESSION_DIR, "todo", "refactor-auth.md"));
+		}
+		expect(
+			readFileSync(join(SESSION_DIR, "todo", "refactor-auth.md"), "utf8"),
+		).toBe("- [ ] step one\n  - [ ] nested");
+	});
+
+	it("同 goal 覆盖写入（整体替换）", async () => {
+		const session = makeToolkit(makeConfig()).bind();
+		await collect(
+			session.createJob(postCall("c-todo-1", "todo://plan", "- [ ] v1")),
+		);
+		await collect(
+			session.createJob(postCall("c-todo-2", "todo://plan", "- [x] v2")),
+		);
+		expect(readFileSync(join(SESSION_DIR, "todo", "plan.md"), "utf8")).toBe(
+			"- [x] v2",
+		);
+	});
+
+	it("goal 含路径分隔符时以 invalid_args 拒绝（防路径穿越）", async () => {
+		const session = makeToolkit(makeConfig()).bind();
+		for (const goal of ["../evil", "a/b", "a\\b", ""]) {
+			const job = session.createJob(
+				postCall(`c-todo-bad-${goal || "empty"}`, `todo://${goal}`, "body"),
+			);
+			const events = await collect(job);
+			const error = events[0] as ToolArgErrorMessage;
+			expect(error.type).toBe("tool_arg_error");
+			if (error.type === "tool_arg_error") {
+				expect(error.error.kind).toBe("invalid_args");
+			}
+		}
+	});
+
+	it("todo:// 部分参数可恢复（截断 body 仍落盘，标记 recovered）", async () => {
+		const session = makeToolkit(makeConfig()).bind();
+		const result = await session.recover({
+			index: 0,
+			toolCallId: "c-todo-recover",
+			toolName: "post",
+			partialInput: '{"uri":"todo://recovered-plan","body":"- [ ] partial',
+		});
+
+		expect(result.status).toBe("recovered");
+		expect(
+			readFileSync(join(SESSION_DIR, "todo", "recovered-plan.md"), "utf8"),
+		).toBe("- [ ] partial");
+	});
+});
+
 describe("post — 参数与 uri 错误", () => {
 	it("缺少 uri/body 由 session 转换为 invalid_args", async () => {
 		const session = makeToolkit(makeConfig()).bind();
@@ -202,6 +286,43 @@ describe("post — canStart 并行准入（按 scheme/path）", () => {
 		const active = [postCall("a6", "exec://sh/d", "echo 4")];
 		expect(session.createJob(customerSelf).canStart(active)).toBe(false);
 		expect(session.createJob(execSelf).canStart([customerSelf])).toBe(false);
+	});
+
+	it("同 goal 的 todo 串行，不同 goal 可并行", () => {
+		const todoSelf = postCall("self-todo", "todo://plan", "- [ ] x");
+		expect(
+			session
+				.createJob(todoSelf)
+				.canStart([postCall("a7", "todo://plan", "y")]),
+		).toBe(false);
+		expect(
+			session
+				.createJob(todoSelf)
+				.canStart([postCall("a8", "todo://other", "y")]),
+		).toBe(true);
+	});
+
+	it("todo 可与 exec/write 并行（无共享资源）", () => {
+		const todoSelf = postCall("self-todo2", "todo://plan", "- [ ] x");
+		expect(
+			session
+				.createJob(todoSelf)
+				.canStart([postCall("a9", "exec://sh/e", "echo 5")]),
+		).toBe(true);
+		expect(
+			session
+				.createJob(todoSelf)
+				.canStart([postCall("a10", "write://b.txt", "y")]),
+		).toBe(true);
+	});
+
+	it("write 与 todo 同名不互斥（resourceKey 按 scheme 命名空间）", () => {
+		const fileSelf = postCall("self-file2", "write://plan", "x");
+		expect(
+			session
+				.createJob(fileSelf)
+				.canStart([postCall("a11", "todo://plan", "y")]),
+		).toBe(true);
 	});
 });
 

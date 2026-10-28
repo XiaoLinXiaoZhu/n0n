@@ -277,6 +277,52 @@ describe("RichRenderer 虚拟终端保真测试", () => {
 		expect(hasResult).toBe(true);
 	});
 
+	test("todo 结果渲染 — 结果行含 goal", async () => {
+		const vt = setupVT(80);
+		const { RichRenderer } = await import("../rich-renderer.ts");
+		const renderer = new RichRenderer();
+
+		renderer.roundStart(1, 10, 3);
+
+		const json = '{"uri":"todo://refactor-auth","body":"- [ ] first"}';
+		renderer.toolCallArgStart(0, "post");
+		for (const chunk of randomChunks(json, 99)) {
+			renderer.toolCallArgChunk(0, chunk);
+		}
+		renderer.streamEnd();
+
+		renderer.toolExecStart("call_1", {
+			id: "call_1",
+			tool: "post",
+			args: JSON.parse(json),
+		});
+		renderer.toolExecEnd("call_1", {
+			status: "completed",
+			result: {
+				type: "tool_result" as const,
+				tool: "post",
+				scheme: "todo" as const,
+				goal: "refactor-auth",
+				path: "C:\\session\\todo\\refactor-auth.md",
+				status: "completed" as const,
+				call: { id: "call_1", tool: "post", args: JSON.parse(json) },
+			},
+		});
+
+		const cleanLines = vt.getVisibleLines().map((l) => stripAnsi(l));
+
+		// 不应有 streaming 残留
+		for (const line of cleanLines) {
+			expect(line).not.toContain("(streaming");
+		}
+
+		// 应有结果行，含 todo 标签和 goal
+		const hasResult = cleanLines.some(
+			(l) => l.includes("todo") && l.includes("refactor-auth"),
+		);
+		expect(hasResult).toBe(true);
+	});
+
 	test("超长单行 exec 输出在折叠模式中使用有界预览", async () => {
 		const { boundExecPreviewLine } = await import("../rich-renderer.ts");
 		const preview = boundExecPreviewLine("x".repeat(100_000));

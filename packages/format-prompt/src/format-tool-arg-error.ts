@@ -12,11 +12,11 @@ import { pick } from "./utils.ts";
 
 const unknownToolVariants = [
 	(tool: string) =>
-		`Unknown tool: '${tool}'. The only tool is \`post\`; address a target via its uri (exec://, write://, customer://).`,
+		`Unknown tool: '${tool}'. The only tool is \`post\`; address a target via its uri (exec://, write://, customer://, todo://).`,
 	(tool: string) =>
-		`Tool '${tool}' does not exist. The only tool is \`post\` — pick a target with its uri scheme: exec:// (run code), write:// (write a file), customer:// (ask the customer).`,
+		`Tool '${tool}' does not exist. The only tool is \`post\` — pick a target with its uri scheme: exec:// (run code), write:// (write a file), customer:// (ask the customer), todo:// (update a todo list).`,
 	(tool: string) =>
-		`'${tool}' is not a recognized tool. Use \`post\` with a uri such as exec://<runtime>/<name>, write://<path>, or customer://question.`,
+		`'${tool}' is not a recognized tool. Use \`post\` with a uri such as exec://<runtime>/<name>, write://<path>, customer://question, or todo://<goal>.`,
 ];
 
 const invalidArgsVariants = [

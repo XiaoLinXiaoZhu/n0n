@@ -20,6 +20,7 @@ import { join } from "node:path";
 import { estimateTokens, resolvePlatform } from "@n0n/shared";
 import type { ExecToolResult } from "@n0n/types";
 import { execToolStream } from "../exec";
+import { parseExecUri } from "./exec-test-helpers.ts";
 
 /** 内部调用类型 — 与 ExecCall 对齐 */
 interface TestCall {
@@ -44,14 +45,19 @@ async function collectResult(
 		args: { uri: `exec://${rt}/probe${query}`, body: script },
 	};
 
-	for await (const event of execToolStream(call, undefined, {
-		workspace: process.cwd(),
-		sessionDir: SESSION_DIR,
-		blocked_commands: [],
-		default_exec_waitfor: 120,
-		max_exec_output_tokens: 32_000,
-		platform: resolvePlatform(),
-	})) {
+	for await (const event of execToolStream(
+		call,
+		parseExecUri(call.args.uri),
+		undefined,
+		{
+			workspace: process.cwd(),
+			sessionDir: SESSION_DIR,
+			blocked_commands: [],
+			default_exec_waitfor: 120,
+			max_exec_output_tokens: 32_000,
+			platform: resolvePlatform(),
+		},
+	)) {
 		if (event.type === "tool_result" && event.scheme === "exec") {
 			return event as ExecToolResult;
 		}

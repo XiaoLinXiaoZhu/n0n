@@ -47,6 +47,7 @@ describe("formatToolArgError", () => {
 			expect(result).toContain("exec://");
 			expect(result).toContain("write://");
 			expect(result).toContain("customer://");
+			expect(result).toContain("todo://");
 		});
 
 		it("anti-few-shot：不同 index 产生不同表述", () => {

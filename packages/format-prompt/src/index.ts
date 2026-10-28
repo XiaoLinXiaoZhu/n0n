@@ -36,6 +36,7 @@ import { formatCustomerResult } from "./format-customer.ts";
 import { formatExecResult } from "./format-exec.ts";
 import { formatFileResult } from "./format-file.ts";
 import { formatSkills } from "./format-skill.ts";
+import { formatTodoResult } from "./format-todo.ts";
 import { formatToolArgError } from "./format-tool-arg-error.ts";
 import { formatTurnFeedback } from "./format-turn-feedback.ts";
 import type { FormattedToolResult } from "./utils.ts";
@@ -54,6 +55,8 @@ function toolResultToStructured(
 			return formatFileResult(msg, tags, msgIndex);
 		case "customer":
 			return formatCustomerResult(msg, tags, msgIndex);
+		case "todo":
+			return formatTodoResult(msg, tags, msgIndex);
 		default: {
 			const _exhaustive: never = msg;
 			throw new Error(`Unknown tool scheme`);

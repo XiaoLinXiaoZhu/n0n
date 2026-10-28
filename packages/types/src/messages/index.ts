@@ -35,7 +35,7 @@ export type {
 } from "./errors.ts";
 // ── 调度 ──
 export type { CanStartFn } from "./scheduling.ts";
-// ── Tool 侧 ──
+// Tool 侧
 export type {
 	// Customer
 	CustomerCompleted,
@@ -50,6 +50,10 @@ export type {
 	// 注册表
 	PostArgs,
 	PostToolCall,
+	// Todo
+	TodoCompleted,
+	TodoRecovered,
+	TodoToolResult,
 	ToolCallRecord,
 	ToolCallRecordMap,
 	ToolExecOutcome,

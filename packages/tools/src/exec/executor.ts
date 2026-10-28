@@ -22,7 +22,7 @@ import type {
 	PostArgs,
 	ToolStreamEvent,
 } from "@n0n/types";
-import { type ParsedUri, parsePostUri } from "../uri.ts";
+import type { ParsedExec } from "../schemes/exec.ts";
 import {
 	buildSpawnCmd,
 	RUNTIME_EXT,
@@ -230,6 +230,8 @@ function startBackgroundTracking(
 
 export async function* execToolStream(
 	call: ExecCall,
+	/** 边界已解析的 exec uri — 本函数不再解析 call.args.uri */
+	parsed: ParsedExec,
 	confirmFn: ((question: string) => Promise<string>) | undefined,
 	toolsConfig: {
 		workspace: string;
@@ -241,40 +243,8 @@ export async function* execToolStream(
 		bgSyncIntervalMs?: number;
 	},
 ): AsyncGenerator<ToolStreamEvent> {
-	const defaultRuntime = toolsConfig.platform === "win32" ? "cmd" : "sh";
 	const workspace = toolsConfig.workspace;
 
-	// uri 解析失败或非 exec scheme：本后端只处理 exec://，其余由 index.ts 分发。
-	let parsed: ParsedUri | null;
-	let uriError: unknown;
-	try {
-		parsed = parsePostUri(call.args.uri);
-	} catch (error) {
-		parsed = null;
-		uriError = error;
-	}
-	if (parsed?.scheme !== "exec") {
-		yield {
-			type: "tool_result",
-			tool: "post",
-			call,
-			status: "completed",
-			scheme: "exec",
-			claim: "",
-			runtime: defaultRuntime,
-			cwd: workspace,
-			exitCode: 1,
-			stdout: "",
-			stderr:
-				parsed !== null
-					? `exec backend received a ${parsed.scheme}:// uri; expected exec://.`
-					: uriError instanceof Error
-						? uriError.message
-						: String(uriError),
-			durationMs: 0,
-		} satisfies ExecToolResult;
-		return;
-	}
 	const { runtime, claim } = parsed;
 	const cwd = parsed.cwd
 		? isAbsolute(parsed.cwd)
@@ -300,9 +270,10 @@ export async function* execToolStream(
 	if (blockedCmd !== null) {
 		const blocked = await handleBlockedCommand(
 			call,
+			runtime,
+			claim,
 			cwd,
 			blockedCmd,
-			toolsConfig.platform,
 			confirmFn,
 		);
 		if (blocked) {

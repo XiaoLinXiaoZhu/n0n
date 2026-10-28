@@ -12,6 +12,7 @@ import { join } from "node:path";
 import { resolvePlatform } from "@n0n/shared";
 import type { ExecToolResult } from "@n0n/types";
 import { execToolStream } from "../exec";
+import { parseExecUri } from "./exec-test-helpers.ts";
 
 const pidsToCleanup: number[] = [];
 const SESSION_DIR = mkdtempSync(join(tmpdir(), "n0n-exec-runid-"));
@@ -34,14 +35,19 @@ async function collectBackgrounded(script: string): Promise<ExecToolResult> {
 			body: script,
 		},
 	};
-	for await (const event of execToolStream(call, undefined, {
-		workspace: process.cwd(),
-		sessionDir: SESSION_DIR,
-		blocked_commands: [],
-		default_exec_waitfor: 1,
-		max_exec_output_tokens: 32_000,
-		platform: resolvePlatform(),
-	})) {
+	for await (const event of execToolStream(
+		call,
+		parseExecUri(call.args.uri),
+		undefined,
+		{
+			workspace: process.cwd(),
+			sessionDir: SESSION_DIR,
+			blocked_commands: [],
+			default_exec_waitfor: 1,
+			max_exec_output_tokens: 32_000,
+			platform: resolvePlatform(),
+		},
+	)) {
 		if (event.type === "tool_result" && event.scheme === "exec") return event;
 	}
 	throw new Error("No tool_result yielded");

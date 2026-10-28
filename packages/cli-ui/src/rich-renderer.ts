@@ -492,6 +492,9 @@ export class RichRenderer implements Renderer {
 			case "customer": {
 				return `${style.dim("◂")} ${style.cyan("customer")} ${style.gray(result.kind)}`;
 			}
+			case "todo": {
+				return `${style.dim("◂")} ${style.cyan("todo")} ${style.gray(result.goal)}`;
+			}
 			default: {
 				console.warn("[RichRenderer] unknown tool result:", result);
 				return `${style.dim("◂")} ${style.yellow("unknown")}`;

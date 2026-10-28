@@ -26,6 +26,8 @@ export type {
 	ToolMap,
 	ToolName,
 } from "./registry.ts";
+// Todo (post 的 todo:// 后端)
+export type { TodoCompleted, TodoRecovered, TodoToolResult } from "./todo.ts";
 // Write (post 的 write:// 后端)
 export type {
 	WriteCompleted,
@@ -39,13 +41,18 @@ export type {
 
 import type { CustomerCompleted } from "./customer.ts";
 import type { ExecToolResult } from "./exec.ts";
+import type { TodoToolResult } from "./todo.ts";
 import type { WriteToolResult } from "./write.ts";
 
 /**
  * 工具结果联合 — 全部携带 tool: "post"，
- * 以 scheme 字面量（exec | file | customer）区分后端，再以 status 细分。
+ * 以 scheme 字面量（exec | write | customer | todo）区分后端，再以 status 细分。
  */
-export type ToolResult = ExecToolResult | WriteToolResult | CustomerCompleted;
+export type ToolResult =
+	| ExecToolResult
+	| WriteToolResult
+	| CustomerCompleted
+	| TodoToolResult;
 
 // ── 工具执行结局 ──
 

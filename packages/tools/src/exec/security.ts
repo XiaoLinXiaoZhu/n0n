@@ -6,7 +6,6 @@
  */
 
 import type { ExecToolResult } from "@n0n/types";
-import { parsePostUri } from "../uri.ts";
 import type { ExecCall } from "./executor.ts";
 
 /** 从脚本内容中提取命令名列表 */
@@ -43,23 +42,15 @@ export function findBlockedCommand(
 	return null;
 }
 
-/** 处理被封禁的命令：请求用户确认或直接拒绝 */
+/** 处理被封禁的命令：请求用户确认或直接拒绝（runtime/claim 由调用方从边界解析结果传入） */
 export async function handleBlockedCommand(
 	call: ExecCall,
+	runtime: string,
+	claim: string,
 	cwd: string,
 	blockedCmd: string,
-	platform: "win32" | "darwin" | "linux",
 	confirmFn?: (question: string) => Promise<string>,
 ): Promise<ExecToolResult | null> {
-	// uri 由 executor 解析通过后才会走到这里，重新解析仅为取 runtime/claim。
-	const parsed = parsePostUri(call.args.uri);
-	const runtime =
-		parsed.scheme === "exec"
-			? parsed.runtime
-			: platform === "win32"
-				? "cmd"
-				: "sh";
-	const claim = parsed.scheme === "exec" ? parsed.claim : "";
 	if (confirmFn) {
 		const safeScript = [...call.args.body]
 			.map((ch) => {

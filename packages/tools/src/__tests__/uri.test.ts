@@ -109,6 +109,37 @@ describe("parsePostUri — customer scheme", () => {
 	});
 });
 
+describe("parsePostUri — todo scheme", () => {
+	it("解析 todo://<goal>", () => {
+		expect(parsePostUri("todo://refactor-auth")).toEqual({
+			scheme: "todo",
+			goal: "refactor-auth",
+		});
+	});
+
+	it("URL 解码 goal", () => {
+		expect(parsePostUri("todo://my%20plan")).toEqual({
+			scheme: "todo",
+			goal: "my plan",
+		});
+	});
+
+	it("空 goal（todo://）抛错", () => {
+		expect(() => parsePostUri("todo://")).toThrow();
+	});
+
+	it("goal 含路径分隔符抛错（防路径穿越）", () => {
+		expect(() => parsePostUri("todo://../evil")).toThrow();
+		expect(() => parsePostUri("todo://a/b")).toThrow();
+		expect(() => parsePostUri("todo://a\\b")).toThrow();
+	});
+
+	it("goal 为 . 或 .. 抛错", () => {
+		expect(() => parsePostUri("todo://.")).toThrow();
+		expect(() => parsePostUri("todo://..")).toThrow();
+	});
+});
+
 describe("parsePostUri — throw 路径", () => {
 	it("空 uri 抛错", () => {
 		expect(() => parsePostUri("")).toThrow();
@@ -136,7 +167,7 @@ describe("parsePostUri — throw 路径", () => {
 
 	it("未知 scheme 抛错且消息列出支持的 scheme", () => {
 		expect(() => parsePostUri("http://example.com")).toThrow(
-			/exec:\/\/|write:\/\/|customer:\/\//,
+			/exec:\/\/|write:\/\/|customer:\/\/|todo:\/\//,
 		);
 	});
 

@@ -1,36 +1,34 @@
 /**
- * @n0n/tools — 统一工具注册表
+ * @n0n/tools — post 工具传输层
  *
- * 唯一工具 `post`，参数为 uri + body。uri 的 scheme 决定后端：
- * - exec://<runtime>/<claim>：执行代码（读、推理、变更环境统一走此路）
- * - write://<path>：以完整内容覆盖写文件
- * - customer://<kind>：向用户提问/请求填写/请求操作，打断循环等待用户
- *
- * 工具使用 ToolDefinition 格式定义 + 自定义执行器绑定。
- * 参数通过 Zod schema 做运行时校验；uri 在 execute 分发前经 parsePostUri
- * 解析，畸形 uri 转为 tool_arg_error。
+ * 唯一工具 `post`，参数为 uri + body。本文件是传输层：
+ * 边界解析（parse-don't-validate）、tool_arg_error 契约、
+ * 描述组装、调度策略解释器。不含任何 scheme 实现知识——
+ * 各后端自治于 `schemes/` 注册表（见 schemes/index.ts）。
  */
 
 import type {
 	CanStartFn,
-	CustomerCompleted,
 	PostToolCall,
+	ToolCallRecord,
 	ToolDefinition,
 } from "@n0n/types";
 import { PostArgsSchema } from "@n0n/types";
 import type { ToolsConfig } from "./config.ts";
-import { execToolStream, makePostToolDefinition } from "./exec";
+import { makePostToolDefinition } from "./exec/definition.ts";
+import { extractUriBody, type PartialToolCall } from "./recovery.ts";
+import { type ParsedUri, schemeFor } from "./schemes/index.ts";
+import type { SchemeContext } from "./schemes/types.ts";
 import {
 	createToolkitSession,
 	type ToolEntry,
 	type ToolkitSession,
 } from "./session.ts";
-import { type ParsedUri, parsePostUri } from "./uri.ts";
-import { makeFileRecover, writeTool } from "./write.ts";
+import { parsePostUri } from "./uri.ts";
 
 // ── 单 entry 注册表 ──
 
-/** uri 解析失败返回 null——调用方决定是放行（让 execute 报错）还是阻塞 */
+/** uri 解析失败返回 null（canStart 用；execute 走 tool_arg_error 出口） */
 function safeParseUri(uri: string): ParsedUri | null {
 	try {
 		return parsePostUri(uri);
@@ -39,28 +37,54 @@ function safeParseUri(uri: string): ParsedUri | null {
 	}
 }
 
+/** 解析产物的调度事实（缓存，避免 canStart 每次检查重复解析） */
+interface ScheduleFacts {
+	exclusive: boolean;
+	resourceKey: string | null;
+}
+
+const factsCache = new WeakMap<ToolCallRecord, ScheduleFacts | null>();
+
+function scheduleFactsOf(call: ToolCallRecord): ScheduleFacts | null {
+	if (factsCache.has(call)) return factsCache.get(call) ?? null;
+	const parsed = safeParseUri(call.args.uri);
+	if (!parsed) {
+		factsCache.set(call, null);
+		return null;
+	}
+	const handler = schemeFor(parsed.scheme);
+	const facts: ScheduleFacts = {
+		exclusive: handler?.exclusive === true,
+		resourceKey: handler?.resourceKey
+			? // resourceKey 以 scheme 为命名空间：不同 scheme 的 key 不互斥
+				`${parsed.scheme}:${handler.resourceKey(parsed)}`
+			: null,
+	};
+	factsCache.set(call, facts);
+	return facts;
+}
+
 /**
- * post 的并行准入规则（推广自旧 pathExclusiveCanStart）：
+ * post 的并行准入——调度策略解释器（读 scheme 声明的事实，不写 scheme 规则）：
  * - 空 active set：允许并行
- * - customer 总是独占（打断循环，不得与任何调用并行）
- * - file 与同 path 的 file 串行；不同 path 的 file 可并行
- * - exec 与 exec/file 均可并行（提交顺序由调度器保证）
- * - uri 畸形：不在此拦截，放行后由 execute 转 tool_arg_error
+ * - 任一侧声明 exclusive（customer）：阻塞
+ * - 双方 resourceKey 相同（write 同路径 / todo 同 goal）：串行
+ * - 其余组合并行（exec 无共享资源；提交顺序由调度器保证）
+ * - uri 畸形：self 侧阻塞（不放行到 execute），active 侧跳过（不误伤）
  */
 const postCanStart: CanStartFn = (self, active) => {
 	if (active.length === 0) return true;
 
-	const selfUri = safeParseUri(self.args.uri);
-	if (!selfUri || selfUri.scheme === "customer") return false;
+	const selfFacts = scheduleFactsOf(self);
+	if (!selfFacts || selfFacts.exclusive) return false;
 
 	for (const a of active) {
-		const activeUri = safeParseUri(a.args.uri);
-		if (!activeUri) continue;
-		if (activeUri.scheme === "customer") return false;
+		const activeFacts = scheduleFactsOf(a);
+		if (!activeFacts) continue;
+		if (activeFacts.exclusive) return false;
 		if (
-			selfUri.scheme === "write" &&
-			activeUri.scheme === "write" &&
-			activeUri.path === selfUri.path
+			selfFacts.resourceKey !== null &&
+			selfFacts.resourceKey === activeFacts.resourceKey
 		) {
 			return false;
 		}
@@ -68,28 +92,29 @@ const postCanStart: CanStartFn = (self, active) => {
 	return true;
 };
 
-/**
- * 构建 `post` 单 entry：exec/file/customer 三个后端共用一个工具名，
- * execute 内按解析出的 scheme 调度。
- */
-function buildPostEntry(toolsConfig: ToolsConfig): ToolEntry {
-	const execConfig = {
+/** 从 ToolsConfig 构建 scheme 模块的统一上下文 */
+function makeSchemeContext(toolsConfig: ToolsConfig): SchemeContext {
+	return {
+		platform: toolsConfig.platform,
 		workspace: toolsConfig.workspace,
 		sessionDir: toolsConfig.sessionDir,
 		blocked_commands: toolsConfig.security.blocked_commands,
 		default_exec_waitfor: toolsConfig.agent.default_exec_waitfor,
 		max_exec_output_tokens: toolsConfig.agent.max_exec_output_tokens,
-		platform: toolsConfig.platform,
 		bgSyncIntervalMs: toolsConfig.bgSyncIntervalMs,
+		allowCustomer: toolsConfig.allowCustomer ?? true,
 	};
+}
+
+/**
+ * 构建 `post` 单 entry：传输层只做边界解析与分发，
+ * scheme 语义全部委托注册表。
+ */
+function buildPostEntry(toolsConfig: ToolsConfig): ToolEntry {
+	const ctx = makeSchemeContext(toolsConfig);
 
 	return {
-		definition: makePostToolDefinition(
-			toolsConfig.platform,
-			toolsConfig.agent.max_exec_output_tokens,
-			toolsConfig.agent.default_exec_waitfor,
-			toolsConfig.allowCustomer,
-		),
+		definition: makePostToolDefinition(ctx),
 		canStart: postCanStart,
 		execute: async function* (tc, confirmFn) {
 			const args = PostArgsSchema.parse(tc.args);
@@ -116,47 +141,43 @@ function buildPostEntry(toolsConfig: ToolsConfig): ToolEntry {
 				return;
 			}
 
+			// 边界已解析；handler 收到 Parsed*，不再触碰 raw uri
 			const call: PostToolCall = { id: tc.id, tool: "post", args };
-
-			switch (parsed.scheme) {
-				case "exec":
-					yield* execToolStream(call, confirmFn, execConfig);
-					return;
-				case "write":
-					yield await writeTool(call, toolsConfig.workspace);
-					return;
-				case "customer": {
-					if (toolsConfig.allowCustomer === false) {
-						yield {
-							type: "tool_arg_error",
-							callId: tc.id,
-							tool: "post",
-							error: {
-								kind: "invalid_args",
-								issues: [
-									{
-										path: "uri",
-										message: "customer:// is not available in this mode.",
-									},
-								],
+			const handler = schemeFor(parsed.scheme);
+			// parsePostUri 成功即 handler 存在；防御分支防御注册表自身不一致
+			if (!handler) {
+				yield {
+					type: "tool_arg_error",
+					callId: tc.id,
+					tool: "post",
+					error: {
+						kind: "invalid_args",
+						issues: [
+							{
+								path: "uri",
+								message: `No handler for scheme "${parsed.scheme}".`,
 							},
-						};
-						return;
-					}
-					const result: CustomerCompleted = {
-						type: "tool_result",
-						tool: "post",
-						call,
-						status: "completed",
-						scheme: "customer",
-						kind: parsed.kind,
-					};
-					yield result;
-					return;
-				}
+						],
+					},
+				};
+				return;
 			}
+			yield* handler.execute(parsed, call, ctx, confirmFn);
 		},
-		recover: makeFileRecover(toolsConfig.workspace),
+		recover: async (partial: PartialToolCall) => {
+			const extracted = extractUriBody(partial.partialInput);
+			if (!extracted) return null;
+			// 恢复是第二个边界：提取的 raw uri 同样先解析再委托
+			let parsed: ParsedUri;
+			try {
+				parsed = parsePostUri(extracted.uri);
+			} catch {
+				return null;
+			}
+			const handler = schemeFor(parsed.scheme);
+			if (!handler?.recover) return null;
+			return handler.recover(extracted, partial.toolCallId, ctx);
+		},
 	};
 }
 
@@ -206,11 +227,14 @@ export type { CanStartFn } from "@n0n/types";
 export type { ToolsConfig } from "./config.ts";
 
 export type {
+	ExtractedPartial,
 	PartialToolCall,
 	RecoveredPair,
 	ToolRecover,
 	UnrecoverableCall,
 } from "./recovery.ts";
+export { SCHEMES } from "./schemes/index.ts";
+export type { SchemeContext, SchemeHandler } from "./schemes/types.ts";
 export type { ToolJob, ToolkitSession } from "./session.ts";
 export type { ParsedUri } from "./uri.ts";
 export { parsePostUri } from "./uri.ts";
