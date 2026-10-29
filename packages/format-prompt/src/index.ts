@@ -24,12 +24,13 @@
  */
 
 import type {
-	DomainMessage,
-	PromptMessage,
-	TagAdapter,
-	ToolCallPart,
-	ToolResult,
+  DomainMessage,
+  PromptMessage,
+  TagAdapter,
+  ToolCallPart,
+  ToolResult,
 } from "@n0n/types";
+
 import { affectsSubsequent } from "./config.ts";
 import { formatCustomerResult } from "./format-customer.ts";
 import { formatExecResult } from "./format-exec.ts";
@@ -43,24 +44,24 @@ import type { FormattedToolResult } from "./utils.ts";
 // ── tool result 分发 ──
 
 function toolResultToStructured(
-	msg: ToolResult,
-	tags: TagAdapter,
-	msgIndex: number,
+  msg: ToolResult,
+  tags: TagAdapter,
+  msgIndex: number,
 ): FormattedToolResult {
-	switch (msg.scheme) {
-		case "exec":
-			return formatExecResult(msg, tags, msgIndex);
-		case "write":
-			return formatFileResult(msg, tags, msgIndex);
-		case "customer":
-			return formatCustomerResult(msg, tags, msgIndex);
-		case "todo":
-			return formatTodoResult(msg, tags, msgIndex);
-		default: {
-			const _exhaustive: never = msg;
-			throw new Error(`Unknown tool scheme`);
-		}
-	}
+  switch (msg.scheme) {
+    case "exec":
+      return formatExecResult(msg, tags, msgIndex);
+    case "write":
+      return formatFileResult(msg, tags, msgIndex);
+    case "customer":
+      return formatCustomerResult(msg, tags, msgIndex);
+    case "todo":
+      return formatTodoResult(msg, tags, msgIndex);
+    default: {
+      const _exhaustive: never = msg;
+      throw new Error(`Unknown tool scheme`);
+    }
+  }
 }
 
 // ── user_input 构建 ──
@@ -75,40 +76,40 @@ function toolResultToStructured(
  * 4. system-hint — 系统行为引导（尾部锚定，占据本地注意力窗口）
  */
 function buildUserInputContent(
-	msg: Extract<DomainMessage, { type: "user_input" }>,
-	tags: TagAdapter,
+  msg: Extract<DomainMessage, { type: "user_input" }>,
+  tags: TagAdapter,
 ): string {
-	const parts: string[] = [];
-	if (msg.context) {
-		parts.push(tags.wrapTag("context", msg.context));
-	}
-	if (msg.mentionedSkills.length > 0) {
-		parts.push(formatSkills(msg.mentionedSkills, tags));
-	}
-	// 用户实际输入用 <user-request> 包裹，紧邻尾部锚定块
-	parts.push(tags.wrapTag("user-request", msg.content));
-	if (msg.hint) {
-		parts.push(tags.wrapTag("system-hint", msg.hint));
-	}
-	return parts.join("\n\n");
+  const parts: string[] = [];
+  if (msg.context) {
+    parts.push(tags.wrapTag("context", msg.context));
+  }
+  if (msg.mentionedSkills.length > 0) {
+    parts.push(formatSkills(msg.mentionedSkills, tags));
+  }
+  // 用户实际输入用 <user-request> 包裹，紧邻尾部锚定块
+  parts.push(tags.wrapTag("user-request", msg.content));
+  if (msg.hint) {
+    parts.push(tags.wrapTag("system-hint", msg.hint));
+  }
+  return parts.join("\n\n");
 }
 
 // ── 连续 system 消息合并 ──
 
 function mergeConsecutiveSystem(messages: PromptMessage[]): PromptMessage[] {
-	const merged: PromptMessage[] = [];
-	for (const msg of messages) {
-		const prev = merged[merged.length - 1];
-		if (msg.role === "system" && prev?.role === "system") {
-			merged[merged.length - 1] = {
-				role: "system",
-				content: `${prev.content}\n\n${msg.content}`,
-			};
-		} else {
-			merged.push(msg);
-		}
-	}
-	return merged;
+  const merged: PromptMessage[] = [];
+  for (const msg of messages) {
+    const prev = merged[merged.length - 1];
+    if (msg.role === "system" && prev?.role === "system") {
+      merged[merged.length - 1] = {
+        role: "system",
+        content: `${prev.content}\n\n${msg.content}`,
+      };
+    } else {
+      merged.push(msg);
+    }
+  }
+  return merged;
 }
 
 // ── 主函数 ──
@@ -120,163 +121,163 @@ function mergeConsecutiveSystem(messages: PromptMessage[]): PromptMessage[] {
  * @param tags TagAdapter 实例，由 LLM Client 构造注入
  */
 export function formatPrompt(
-	messages: DomainMessage[],
-	tags: TagAdapter,
+  messages: DomainMessage[],
+  tags: TagAdapter,
 ): PromptMessage[] {
-	const result: PromptMessage[] = [];
+  const result: PromptMessage[] = [];
 
-	let i = 0;
-	for (const msg of messages) {
-		if (!msg) continue;
+  let i = 0;
+  for (const msg of messages) {
+    if (!msg) continue;
 
-		switch (msg.type) {
-			case "system":
-				result.push({
-					role: "system",
-					content: tags.adaptTags(msg.content),
-				});
-				break;
+    switch (msg.type) {
+      case "system":
+        result.push({
+          role: "system",
+          content: tags.adaptTags(msg.content),
+        });
+        break;
 
-			case "system_with_skill": {
-				const skillsText = formatSkills(msg.skills, tags);
-				result.push({
-					role: "system",
-					content: tags.adaptTags(msg.content),
-				});
-				if (skillsText) {
-					result.push({ role: "user", content: skillsText });
-				}
-				break;
-			}
+      case "system_with_skill": {
+        const skillsText = formatSkills(msg.skills, tags);
+        result.push({
+          role: "system",
+          content: tags.adaptTags(msg.content),
+        });
+        if (skillsText) {
+          result.push({ role: "user", content: skillsText });
+        }
+        break;
+      }
 
-			case "generic_user_text":
-				result.push({ role: "user", content: msg.content });
-				break;
+      case "generic_user_text":
+        result.push({ role: "user", content: msg.content });
+        break;
 
-			case "user_image":
-				result.push({
-					role: "user",
-					content: `[Image: ${msg.imagePath}] ${msg.text}`,
-				});
-				break;
+      case "user_image":
+        result.push({
+          role: "user",
+          content: `[Image: ${msg.imagePath}] ${msg.text}`,
+        });
+        break;
 
-			case "assistant_text":
-				result.push({
-					role: "assistant",
-					content: msg.content,
-					reasoning: msg.reasoning.ok ? msg.reasoning.value : undefined,
-					reasoningSignature: msg.reasoningSignature,
-				});
-				break;
+      case "assistant_text":
+        result.push({
+          role: "assistant",
+          content: msg.content,
+          reasoning: msg.reasoning.ok ? msg.reasoning.value : undefined,
+          reasoningSignature: msg.reasoningSignature,
+        });
+        break;
 
-			case "assistant_tool_call": {
-				const toolCalls: ToolCallPart[] = msg.toolCalls.map((tc) => ({
-					id: tc.id,
-					tool: tc.tool,
-					args: tc.args,
-				}));
-				result.push({
-					role: "assistant",
-					content: msg.content ?? "",
-					reasoning: msg.reasoning.ok ? msg.reasoning.value : undefined,
-					reasoningSignature: msg.reasoningSignature,
-					toolCalls,
-				});
-				break;
-			}
+      case "assistant_tool_call": {
+        const toolCalls: ToolCallPart[] = msg.toolCalls.map((tc) => ({
+          id: tc.id,
+          tool: tc.tool,
+          args: tc.args,
+        }));
+        result.push({
+          role: "assistant",
+          content: msg.content ?? "",
+          reasoning: msg.reasoning.ok ? msg.reasoning.value : undefined,
+          reasoningSignature: msg.reasoningSignature,
+          toolCalls,
+        });
+        break;
+      }
 
-			case "tool_result": {
-				const formatted = toolResultToStructured(msg, tags, i);
-				// fact + hint 全轮保留：hint 剥离会改写历史消息，破坏 prompt cache
-				const content = formatted.hint
-					? `${formatted.fact}\n${tags.wrapTag("system-hint", formatted.hint)}`
-					: formatted.fact;
+      case "tool_result": {
+        const formatted = toolResultToStructured(msg, tags, i);
+        // fact + hint 全轮保留：hint 剥离会改写历史消息，破坏 prompt cache
+        const content = formatted.hint
+          ? `${formatted.fact}\n${tags.wrapTag("system-hint", formatted.hint)}`
+          : formatted.fact;
 
-				result.push({
-					role: "tool",
-					toolCallId: msg.call.id,
-					toolName: msg.call.tool,
-					content,
-				});
-				break;
-			}
+        result.push({
+          role: "tool",
+          toolCallId: msg.call.id,
+          toolName: msg.call.tool,
+          content,
+        });
+        break;
+      }
 
-			case "user_input": {
-				result.push({
-					role: "user",
-					content: buildUserInputContent(msg, tags),
-				});
-				break;
-			}
+      case "user_input": {
+        result.push({
+          role: "user",
+          content: buildUserInputContent(msg, tags),
+        });
+        break;
+      }
 
-			case "turn_feedback": {
-				result.push({
-					role: "user",
-					content: formatTurnFeedback(msg, tags, i),
-				});
-				break;
-			}
+      case "turn_feedback": {
+        result.push({
+          role: "user",
+          content: formatTurnFeedback(msg, tags, i),
+        });
+        break;
+      }
 
-			case "tool_arg_error":
-				result.push({
-					role: "tool",
-					toolCallId: msg.callId,
-					toolName: msg.tool,
-					content: formatToolArgError(msg, tags, i),
-				});
-				break;
+      case "tool_arg_error":
+        result.push({
+          role: "tool",
+          toolCallId: msg.callId,
+          toolName: msg.tool,
+          content: formatToolArgError(msg, tags, i),
+        });
+        break;
 
-			case "generic_tool_call": {
-				const toolCalls: ToolCallPart[] = msg.toolCalls.map((tc) => ({
-					id: tc.id,
-					tool: tc.tool,
-					args: tc.args,
-				}));
-				result.push({
-					role: "assistant",
-					content: msg.content ?? "",
-					toolCalls,
-				});
-				break;
-			}
+      case "generic_tool_call": {
+        const toolCalls: ToolCallPart[] = msg.toolCalls.map((tc) => ({
+          id: tc.id,
+          tool: tc.tool,
+          args: tc.args,
+        }));
+        result.push({
+          role: "assistant",
+          content: msg.content ?? "",
+          toolCalls,
+        });
+        break;
+      }
 
-			case "generic_tool_result":
-				result.push({
-					role: "tool",
-					toolCallId: msg.callId,
-					toolName: msg.toolName,
-					content: msg.content,
-				});
-				break;
+      case "generic_tool_result":
+        result.push({
+          role: "tool",
+          toolCallId: msg.callId,
+          toolName: msg.toolName,
+          content: msg.content,
+        });
+        break;
 
-			case "cache_breakpoint": {
-				const prev = result[result.length - 1];
-				if (prev) {
-					prev.cacheBreakpoint = true;
-				}
-				break;
-			}
+      case "cache_breakpoint": {
+        const prev = result[result.length - 1];
+        if (prev) {
+          prev.cacheBreakpoint = true;
+        }
+        break;
+      }
 
-			case "token_usage":
-				// token 用量是 LLM 调用元数据，不产生提示词输出
-				break;
+      case "token_usage":
+        // token 用量是 LLM 调用元数据，不产生提示词输出
+        break;
 
-			default: {
-				const _exhaustive: never = msg;
-				throw new Error(
-					`Unhandled message type: ${(_exhaustive as unknown as Record<string, unknown>).type}`,
-				);
-			}
-		}
+      default: {
+        const _exhaustive: never = msg;
+        throw new Error(
+          `Unhandled message type: ${(_exhaustive as unknown as Record<string, unknown>).type}`,
+        );
+      }
+    }
 
-		// 避免 cache_breakpoint 消息滑动时影响其他的消息的 index
-		// 变更index可能会导致其他消息格式化的时候格式化后的内容发生变化，从而影响提示词缓存。
-		if (affectsSubsequent(msg.type)) {
-			i++;
-		}
-	}
+    // 避免 cache_breakpoint 消息滑动时影响其他的消息的 index
+    // 变更index可能会导致其他消息格式化的时候格式化后的内容发生变化，从而影响提示词缓存。
+    if (affectsSubsequent(msg.type)) {
+      i++;
+    }
+  }
 
-	return mergeConsecutiveSystem(result);
+  return mergeConsecutiveSystem(result);
 }
 
 export { formatSkills } from "./format-skill.ts";

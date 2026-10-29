@@ -13,24 +13,24 @@ const out = process.stderr;
 // ── 角色标签 ──
 
 export const label = {
-	user: () => pc.bgGreen(pc.black(" USER ")),
-	agent: () => pc.bgYellow(pc.black(" AGENT ")),
-	tool: () => pc.bgBlue(pc.black(" TOOL ")),
-	system: () => pc.bgMagenta(pc.black(" SYS ")),
+  user: () => pc.bgGreen(pc.black(" USER ")),
+  agent: () => pc.bgYellow(pc.black(" AGENT ")),
+  tool: () => pc.bgBlue(pc.black(" TOOL ")),
+  system: () => pc.bgMagenta(pc.black(" SYS ")),
 } as const;
 
 // ── 文本样式 ──
 
 export const style = {
-	dim: pc.dim,
-	gray: pc.gray,
-	green: pc.green,
-	red: pc.red,
-	yellow: pc.yellow,
-	cyan: pc.cyan,
-	bold: pc.bold,
-	white: pc.white,
-	bgGreen: pc.bgGreen,
+  dim: pc.dim,
+  gray: pc.gray,
+  green: pc.green,
+  red: pc.red,
+  yellow: pc.yellow,
+  cyan: pc.cyan,
+  bold: pc.bold,
+  white: pc.white,
+  bgGreen: pc.bgGreen,
 } as const;
 
 // ── 光标控制（写入 stderr） ──
@@ -41,42 +41,42 @@ export const style = {
 
 /** 开始批量更新（终端暂停渲染） */
 export function beginSyncUpdate(): void {
-	out.write("\x1b[?2026h");
+  out.write("\x1b[?2026h");
 }
 
 /** 结束批量更新（终端一次性刷新） */
 export function endSyncUpdate(): void {
-	out.write("\x1b[?2026l");
+  out.write("\x1b[?2026l");
 }
 
 /** 光标上移 n 行 */
 export function cursorUp(n: number): void {
-	if (n > 0) out.write(`\x1b[${n}A`);
+  if (n > 0) out.write(`\x1b[${n}A`);
 }
 
 /** 清除当前行 + 光标移到行首 */
 export function clearLine(): void {
-	out.write("\x1b[2K\x1b[0G");
+  out.write("\x1b[2K\x1b[0G");
 }
 
 /** 清除从光标到行尾 */
 export function clearToEnd(): void {
-	out.write("\x1b[0K");
+  out.write("\x1b[0K");
 }
 
 /** 清除从光标到屏幕末尾（含当前行） */
 export function clearDown(): void {
-	out.write("\x1b[J");
+  out.write("\x1b[J");
 }
 
 /** 隐藏光标 */
 export function hideCursor(): void {
-	out.write("\x1b[?25l");
+  out.write("\x1b[?25l");
 }
 
 /** 显示光标 */
 export function showCursor(): void {
-	out.write("\x1b[?25h");
+  out.write("\x1b[?25h");
 }
 
 /**
@@ -90,17 +90,17 @@ export function showCursor(): void {
  *   - CRLF 终端：\r 回列 0 + \n（被翻译为 \r\n）→ 列 0 两次，无害。
  */
 function normalizeCRLF(text: string): string {
-	return text.replace(/(?<!\r)\n/g, "\r\n");
+  return text.replace(/(?<!\r)\n/g, "\r\n");
 }
 
 /** 写入 stderr（不换行） */
 export function write(text: string): void {
-	out.write(normalizeCRLF(text));
+  out.write(normalizeCRLF(text));
 }
 
 /** 写入 stderr（换行） */
 export function writeln(text = ""): void {
-	out.write(normalizeCRLF(`${text}\r\n`));
+  out.write(normalizeCRLF(`${text}\r\n`));
 }
 
 /**
@@ -117,17 +117,17 @@ export const isTTY: boolean = out.isTTY ?? pc.isColorSupported;
 const ANSI_RE = /\x1b\[[0-9;]*[a-zA-Z]|\x1b\[\?[0-9;]*[a-zA-Z]/g;
 
 export function stripAnsi(s: string): string {
-	return s.replace(ANSI_RE, "");
+  return s.replace(ANSI_RE, "");
 }
 
 /** 计算字符串的可见终端列宽（自动去除 ANSI，正确处理 CJK/全角/emoji） */
 export function visibleWidth(s: string): number {
-	return stringWidth(s);
+  return stringWidth(s);
 }
 
 /** 获取终端列宽 */
 export function terminalColumns(): number {
-	return out.columns || 80;
+  return out.columns || 80;
 }
 
 /** style 对象的类型（picocolors 子集） */

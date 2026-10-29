@@ -17,6 +17,7 @@
 
 import type { ToolDefinition } from "@n0n/types";
 import { PostArgsSchema, PostParamDefs, withDescriptions } from "@n0n/types";
+
 import { SCHEMES } from "../schemes/index.ts";
 import type { SchemeContext } from "../schemes/types.ts";
 import { paramsFromDefs } from "../zod-to-parameters.ts";
@@ -30,34 +31,34 @@ export { PostArgsSchema };
  * 即执行顺序。说明这一点是为了避免为"等待上一步"而无谓地拆分响应。
  */
 const EXECUTION_ORDER_NOTE =
-	"Calls run in submission order, so a call that depends on an earlier one can still be issued in the same response. Split into a separate response only when you must see a result before deciding what to do next.";
+  "Calls run in submission order, so a call that depends on an earlier one can still be issued in the same response. Split into a separate response only when you must see a result before deciding what to do next.";
 
 const NUM_WORDS = ["Zero", "One", "Two", "Three", "Four", "Five", "Six"];
 
 export function makePostToolDefinition(ctx: SchemeContext): ToolDefinition {
-	// 可见 scheme 的描述段落，注册序 = 呈现序（prompt cache 稳定性依赖此顺序）
-	const visibleSections = SCHEMES.flatMap((s) => s.describe(ctx));
-	const schemeSection = [
-		`${NUM_WORDS[visibleSections.length] ?? visibleSections.length} uri schemes route this tool to different backends:`,
-		"",
-		...visibleSections,
-	].join("\n");
+  // 可见 scheme 的描述段落，注册序 = 呈现序（prompt cache 稳定性依赖此顺序）
+  const visibleSections = SCHEMES.flatMap((s) => s.describe(ctx));
+  const schemeSection = [
+    `${NUM_WORDS[visibleSections.length] ?? visibleSections.length} uri schemes route this tool to different backends:`,
+    "",
+    ...visibleSections,
+  ].join("\n");
 
-	const schemeNames = SCHEMES.map((s) => s.scheme).join(" / ");
-	const bodyHints = SCHEMES.map((s) => s.bodyHint).join(", ");
-	const descriptions = {
-		uri: `The target address. Its scheme (${schemeNames}) decides which backend runs and how body is interpreted — see the tool description for the uri template of each scheme.`,
-		body: `The payload. ${bodyHints}.`,
-	};
-	const parameters = paramsFromDefs(
-		withDescriptions(PostParamDefs, descriptions),
-	);
+  const schemeNames = SCHEMES.map((s) => s.scheme).join(" / ");
+  const bodyHints = SCHEMES.map((s) => s.bodyHint).join(", ");
+  const descriptions = {
+    uri: `The target address. Its scheme (${schemeNames}) decides which backend runs and how body is interpreted — see the tool description for the uri template of each scheme.`,
+    body: `The payload. ${bodyHints}.`,
+  };
+  const parameters = paramsFromDefs(
+    withDescriptions(PostParamDefs, descriptions),
+  );
 
-	return {
-		name: "post",
-		description: `${schemeSection}\n\n${EXECUTION_ORDER_NOTE}`,
-		parameters,
-	};
+  return {
+    name: "post",
+    description: `${schemeSection}\n\n${EXECUTION_ORDER_NOTE}`,
+    parameters,
+  };
 }
 
 /**
@@ -66,5 +67,5 @@ export function makePostToolDefinition(ctx: SchemeContext): ToolDefinition {
  * 输出预算的 clamp 在 executor 内完成。
  */
 export function makePostArgsSchema(_maxOutputTokens: number) {
-	return PostArgsSchema;
+  return PostArgsSchema;
 }

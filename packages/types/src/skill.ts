@@ -10,12 +10,12 @@
  * - 第一方支持：skill 是领域层一等概念，SystemWithSkillMessage / UserInputMessage 直接引用。
  */
 export interface Skill {
-	/** skill 名称（用于在提示词中标识，如 <skill name="..."> ） */
-	name: string;
-	/** SKILL.md 的 Markdown 正文（指令内容） */
-	body: string;
-	/** skill 目录下的脚本文件列表（相对路径），供模型感知可执行能力 */
-	scripts: string[];
-	/** skill 目录下的额外资源文件列表（路径），供模型感知可读取资源 */
-	resources: string[];
+  /** skill 名称（用于在提示词中标识，如 <skill name="..."> ） */
+  name: string;
+  /** SKILL.md 的 Markdown 正文（指令内容） */
+  body: string;
+  /** skill 目录下的脚本文件列表（相对路径），供模型感知可执行能力 */
+  scripts: string[];
+  /** skill 目录下的额外资源文件列表（路径），供模型感知可读取资源 */
+  resources: string[];
 }

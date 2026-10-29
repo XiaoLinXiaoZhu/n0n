@@ -10,35 +10,32 @@ import type { MakeResult } from "./registry.ts";
 
 /** file 后端结果的公共字段 */
 interface FileResultBase extends MakeResult<"post", string> {
-	scheme: "write";
-	/** 已解析的目标文件路径（与写入路径一致） */
-	path: string;
+  scheme: "write";
+  /** 已解析的目标文件路径（与写入路径一致） */
+  path: string;
 }
 
 /** file 正常写入成功 */
 export interface WriteCompleted extends FileResultBase {
-	status: "completed";
+  status: "completed";
 }
 
 /** file 写入失败 */
 export interface WriteFailed extends FileResultBase {
-	status: "failed";
-	error: string;
+  status: "failed";
+  error: string;
 }
 
 /** file 从截断恢复后写入成功（内容不完整） */
 export interface WriteRecovered extends FileResultBase {
-	status: "recovered";
+  status: "recovered";
 }
 
 /** file 从截断恢复失败（参数无法解析） */
 export interface WriteRecoverFailed extends FileResultBase {
-	status: "recover_failed";
-	error: string;
+  status: "recover_failed";
+  error: string;
 }
 
 export type WriteToolResult =
-	| WriteCompleted
-	| WriteFailed
-	| WriteRecovered
-	| WriteRecoverFailed;
+  WriteCompleted | WriteFailed | WriteRecovered | WriteRecoverFailed;

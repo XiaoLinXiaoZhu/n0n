@@ -15,29 +15,29 @@ import { z } from "zod";
  * 由调用方提供。
  */
 export interface ParamDef<
-	Name extends string = string,
-	S extends z.ZodType = z.ZodType,
+  Name extends string = string,
+  S extends z.ZodType = z.ZodType,
 > {
-	readonly name: Name;
-	readonly schema: S;
+  readonly name: Name;
+  readonly schema: S;
 }
 
 /** 从 ParamDef 列表派生 Zod object shape 类型 */
 export type InferShape<T extends readonly ParamDef[]> = {
-	-readonly [K in T[number] as K["name"]]: K["schema"];
+  -readonly [K in T[number] as K["name"]]: K["schema"];
 };
 
 /** 从 ParamDef 列表构建 Zod object schema（类型安全） */
 export function buildSchema<T extends readonly ParamDef[]>(defs: T) {
-	const shape = Object.fromEntries(
-		defs.map((d) => [d.name, d.schema]),
-	) as InferShape<T>;
-	return z.object(shape);
+  const shape = Object.fromEntries(
+    defs.map((d) => [d.name, d.schema]),
+  ) as InferShape<T>;
+  return z.object(shape);
 }
 
 /** description 映射：key = ParamDef.name, value = LLM 可见描述 */
 export type ParamDescriptions<T extends readonly ParamDef[]> = {
-	[K in T[number] as K["name"]]: string;
+  [K in T[number] as K["name"]]: string;
 };
 
 /**
@@ -45,13 +45,13 @@ export type ParamDescriptions<T extends readonly ParamDef[]> = {
  * 返回 { name, schema, required, description }[]，可直接传给 paramsFromDefs()。
  */
 export function withDescriptions<T extends readonly ParamDef[]>(
-	defs: T,
-	descriptions: ParamDescriptions<T>,
+  defs: T,
+  descriptions: ParamDescriptions<T>,
 ): (T[number] & { description: string })[] {
-	return defs.map((d) => ({
-		...d,
-		description: (descriptions as Record<string, string>)[d.name],
-	})) as (T[number] & { description: string })[];
+  return defs.map((d) => ({
+    ...d,
+    description: (descriptions as Record<string, string>)[d.name],
+  })) as (T[number] & { description: string })[];
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -59,8 +59,8 @@ export function withDescriptions<T extends readonly ParamDef[]>(
 // ═══════════════════════════════════════════════════════════════
 
 export const PostParamDefs = [
-	{ name: "uri", schema: z.string() },
-	{ name: "body", schema: z.string() },
+  { name: "uri", schema: z.string() },
+  { name: "body", schema: z.string() },
 ] as const satisfies readonly ParamDef[];
 
 export const PostArgsSchema = buildSchema(PostParamDefs);

@@ -17,14 +17,14 @@ const BASE_SEED = 42;
  * 对连续和等差数列输入均有良好的雪崩特性。
  */
 function hash(seed: number, index: number): number {
-	let h = Math.imul(index, 0x9e3779b9); // golden ratio
-	h = Math.imul(h ^ (h >>> 16), 0x85ebca6b);
-	h = Math.imul(h ^ (h >>> 13), 0xc2b2ae35);
-	h = (h ^ (h >>> 16)) >>> 0;
-	h = (h + Math.imul(seed, 0x517cc1b7)) | 0;
-	h = Math.imul(h ^ (h >>> 16), 0x85ebca6b);
-	h = Math.imul(h ^ (h >>> 13), 0xc2b2ae35);
-	return (h ^ (h >>> 16)) >>> 0;
+  let h = Math.imul(index, 0x9e3779b9); // golden ratio
+  h = Math.imul(h ^ (h >>> 16), 0x85ebca6b);
+  h = Math.imul(h ^ (h >>> 13), 0xc2b2ae35);
+  h = (h ^ (h >>> 16)) >>> 0;
+  h = (h + Math.imul(seed, 0x517cc1b7)) | 0;
+  h = Math.imul(h ^ (h >>> 16), 0x85ebca6b);
+  h = Math.imul(h ^ (h >>> 13), 0xc2b2ae35);
+  return (h ^ (h >>> 16)) >>> 0;
 }
 
 /**
@@ -38,6 +38,6 @@ function hash(seed: number, index: number): number {
  * @returns 选中的变体
  */
 export function pick<T>(variants: T[], msgIndex: number): T {
-	const h = hash(BASE_SEED, msgIndex);
-	return variants[Math.floor((h / 0x100000000) * variants.length)] as T;
+  const h = hash(BASE_SEED, msgIndex);
+  return variants[Math.floor((h / 0x100000000) * variants.length)] as T;
 }

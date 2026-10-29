@@ -11,23 +11,23 @@ type MessageType = DomainMessage["type"];
  * 格式化内容变化 → Anthropic prompt cache 失效。
  */
 export const AFFECTS_SUBSEQUENT: Record<MessageType, boolean> = {
-	system: true,
-	system_with_skill: true,
-	generic_user_text: true,
-	generic_tool_call: true,
-	generic_tool_result: true,
-	user_input: true,
-	user_image: true,
-	assistant_text: true,
-	assistant_tool_call: true,
-	tool_result: true,
-	turn_feedback: true,
-	tool_arg_error: true,
-	cache_breakpoint: false,
-	token_usage: false, // 不产生提示词输出，不参与 msgIndex 计数（与 cache_breakpoint 同理）
+  system: true,
+  system_with_skill: true,
+  generic_user_text: true,
+  generic_tool_call: true,
+  generic_tool_result: true,
+  user_input: true,
+  user_image: true,
+  assistant_text: true,
+  assistant_tool_call: true,
+  tool_result: true,
+  turn_feedback: true,
+  tool_arg_error: true,
+  cache_breakpoint: false,
+  token_usage: false, // 不产生提示词输出，不参与 msgIndex 计数（与 cache_breakpoint 同理）
 };
 
 /** 判断给定消息类型是否影响后续消息的 msgIndex 计数 */
 export function affectsSubsequent(type: MessageType): boolean {
-	return AFFECTS_SUBSEQUENT[type];
+  return AFFECTS_SUBSEQUENT[type];
 }

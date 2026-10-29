@@ -10,145 +10,147 @@ import { describe, expect, test } from "bun:test";
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+
 import { resolvePlatform } from "@n0n/shared";
 import type { ExecToolResult } from "@n0n/types";
+
 import { execToolStream } from "../exec";
 import { parseExecUri } from "./exec-test-helpers.ts";
 
 /** 内部调用类型 — 与 ExecCall 对齐 */
 interface TestCall {
-	id: string;
-	tool: "post";
-	args: { uri: string; body: string };
+  id: string;
+  tool: "post";
+  args: { uri: string; body: string };
 }
 
 const SESSION_DIR = mkdtempSync(join(tmpdir(), "n0n-exec-waitfor-"));
 
 /** 收集 exec 流式输出，带硬超时保护 */
 async function collectWithHardTimeout(
-	script: string,
-	execWaitfor: number,
-	hardTimeoutMs: number,
-	runtime?: string,
+  script: string,
+  execWaitfor: number,
+  hardTimeoutMs: number,
+  runtime?: string,
 ): Promise<
-	| { status: "completed"; result: ExecToolResult }
-	| { status: "hung"; elapsedMs: number }
+  | { status: "completed"; result: ExecToolResult }
+  | { status: "hung"; elapsedMs: number }
 > {
-	const rt = runtime ?? (resolvePlatform() === "win32" ? "cmd" : "sh");
-	const call: TestCall = {
-		id: "waitfor-test",
-		tool: "post",
-		args: { uri: `exec://${rt}/probe?waitfor=${execWaitfor}`, body: script },
-	};
-	const start = Date.now();
+  const rt = runtime ?? (resolvePlatform() === "win32" ? "cmd" : "sh");
+  const call: TestCall = {
+    id: "waitfor-test",
+    tool: "post",
+    args: { uri: `exec://${rt}/probe?waitfor=${execWaitfor}`, body: script },
+  };
+  const start = Date.now();
 
-	const execPromise = (async () => {
-		for await (const event of execToolStream(
-			call,
-			parseExecUri(call.args.uri),
-			undefined,
-			{
-				workspace: process.cwd(),
-				sessionDir: SESSION_DIR,
-				blocked_commands: [],
-				default_exec_waitfor: execWaitfor,
-				max_exec_output_tokens: 32_000,
-				platform: resolvePlatform(),
-			},
-		)) {
-			if (event.type === "tool_result" && event.scheme === "exec") {
-				return { status: "completed" as const, result: event };
-			}
-		}
-		throw new Error("No tool_result yielded");
-	})();
+  const execPromise = (async () => {
+    for await (const event of execToolStream(
+      call,
+      parseExecUri(call.args.uri),
+      undefined,
+      {
+        workspace: process.cwd(),
+        sessionDir: SESSION_DIR,
+        blocked_commands: [],
+        default_exec_waitfor: execWaitfor,
+        max_exec_output_tokens: 32_000,
+        platform: resolvePlatform(),
+      },
+    )) {
+      if (event.type === "tool_result" && event.scheme === "exec") {
+        return { status: "completed" as const, result: event };
+      }
+    }
+    throw new Error("No tool_result yielded");
+  })();
 
-	const hardTimeout = new Promise<{ status: "hung"; elapsedMs: number }>(
-		(resolve) => {
-			setTimeout(() => {
-				resolve({ status: "hung", elapsedMs: Date.now() - start });
-			}, hardTimeoutMs);
-		},
-	);
+  const hardTimeout = new Promise<{ status: "hung"; elapsedMs: number }>(
+    (resolve) => {
+      setTimeout(() => {
+        resolve({ status: "hung", elapsedMs: Date.now() - start });
+      }, hardTimeoutMs);
+    },
+  );
 
-	return Promise.race([execPromise, hardTimeout]);
+  return Promise.race([execPromise, hardTimeout]);
 }
 
 describe("exec waitfor 行为验证", () => {
-	test("正常脚本在 waitfor 内完成 — 应返回正常结果", async () => {
-		const outcome = await collectWithHardTimeout("echo hello", 10, 5000);
-		expect(outcome.status).toBe("completed");
-		if (
-			outcome.status === "completed" &&
-			outcome.result.status === "completed"
-		) {
-			expect(outcome.result.exitCode).toBe(0);
-			expect(outcome.result.stdout.trim()).toBe("hello");
-		}
-	});
+  test("正常脚本在 waitfor 内完成 — 应返回正常结果", async () => {
+    const outcome = await collectWithHardTimeout("echo hello", 10, 5000);
+    expect(outcome.status).toBe("completed");
+    if (
+      outcome.status === "completed" &&
+      outcome.result.status === "completed"
+    ) {
+      expect(outcome.result.exitCode).toBe(0);
+      expect(outcome.result.stdout.trim()).toBe("hello");
+    }
+  });
 
-	test("阻塞脚本超过 waitfor — 应返回 backgrounded 结果而非卡死", async () => {
-		const outcome = await collectWithHardTimeout(
-			"await Bun.sleep(5000);",
-			2,
-			5000,
-			"bun",
-		);
+  test("阻塞脚本超过 waitfor — 应返回 backgrounded 结果而非卡死", async () => {
+    const outcome = await collectWithHardTimeout(
+      "await Bun.sleep(5000);",
+      2,
+      5000,
+      "bun",
+    );
 
-		expect(outcome.status).toBe("completed");
-		if (outcome.status === "completed") {
-			expect(outcome.result.status === "backgrounded").toBe(true);
-			if (outcome.result.status === "backgrounded") {
-				expect(outcome.result.pid).toBeGreaterThan(0);
-				expect(outcome.result.artifact.kind).toBe("execution");
-				try {
-					process.kill(outcome.result.pid, "SIGKILL");
-				} catch {}
-			}
-		}
-	}, 15000);
+    expect(outcome.status).toBe("completed");
+    if (outcome.status === "completed") {
+      expect(outcome.result.status === "backgrounded").toBe(true);
+      if (outcome.result.status === "backgrounded") {
+        expect(outcome.result.pid).toBeGreaterThan(0);
+        expect(outcome.result.artifact.kind).toBe("execution");
+        try {
+          process.kill(outcome.result.pid, "SIGKILL");
+        } catch {}
+      }
+    }
+  }, 15000);
 
-	test("shell fork 子进程场景 — 应返回 backgrounded 结果而非卡死", async () => {
-		const script = [
-			'const proc = Bun.spawn(["bun", "-e", "await Bun.sleep(5000)"], { stdout: "inherit" });',
-			"await proc.exited;",
-		].join("\n");
-		const outcome = await collectWithHardTimeout(script, 2, 5000, "bun");
+  test("shell fork 子进程场景 — 应返回 backgrounded 结果而非卡死", async () => {
+    const script = [
+      'const proc = Bun.spawn(["bun", "-e", "await Bun.sleep(5000)"], { stdout: "inherit" });',
+      "await proc.exited;",
+    ].join("\n");
+    const outcome = await collectWithHardTimeout(script, 2, 5000, "bun");
 
-		expect(outcome.status).toBe("completed");
-		if (outcome.status === "completed") {
-			expect(outcome.result.status === "backgrounded").toBe(true);
-			if (outcome.result.status === "backgrounded") {
-				try {
-					process.kill(outcome.result.pid, "SIGKILL");
-				} catch {}
-			}
-		}
-	}, 15000);
+    expect(outcome.status).toBe("completed");
+    if (outcome.status === "completed") {
+      expect(outcome.result.status === "backgrounded").toBe(true);
+      if (outcome.result.status === "backgrounded") {
+        try {
+          process.kill(outcome.result.pid, "SIGKILL");
+        } catch {}
+      }
+    }
+  }, 15000);
 
-	test("有持续输出的脚本等待超限 — 应捕获超限前的部分输出", async () => {
-		const script = [
-			"for (let i = 1; i <= 10; i++) {",
-			"  console.log(`line_${i}`);",
-			"  await Bun.sleep(500);",
-			"}",
-		].join("\n");
-		const outcome = await collectWithHardTimeout(script, 2, 5000, "bun");
+  test("有持续输出的脚本等待超限 — 应捕获超限前的部分输出", async () => {
+    const script = [
+      "for (let i = 1; i <= 10; i++) {",
+      "  console.log(`line_${i}`);",
+      "  await Bun.sleep(500);",
+      "}",
+    ].join("\n");
+    const outcome = await collectWithHardTimeout(script, 2, 5000, "bun");
 
-		expect(outcome.status).toBe("completed");
-		if (outcome.status === "completed") {
-			expect(outcome.result.status === "backgrounded").toBe(true);
-			if (outcome.result.status === "backgrounded") {
-				const lines = outcome.result.stdoutSoFar
-					.trim()
-					.split("\n")
-					.filter(Boolean);
-				expect(lines.length).toBeGreaterThanOrEqual(2);
-				expect(lines.length).toBeLessThanOrEqual(5);
-				try {
-					process.kill(outcome.result.pid, "SIGKILL");
-				} catch {}
-			}
-		}
-	}, 15000);
+    expect(outcome.status).toBe("completed");
+    if (outcome.status === "completed") {
+      expect(outcome.result.status === "backgrounded").toBe(true);
+      if (outcome.result.status === "backgrounded") {
+        const lines = outcome.result.stdoutSoFar
+          .trim()
+          .split("\n")
+          .filter(Boolean);
+        expect(lines.length).toBeGreaterThanOrEqual(2);
+        expect(lines.length).toBeLessThanOrEqual(5);
+        try {
+          process.kill(outcome.result.pid, "SIGKILL");
+        } catch {}
+      }
+    }
+  }, 15000);
 });

@@ -7,75 +7,77 @@
 
 import { existsSync, mkdirSync, rmSync } from "node:fs";
 import { resolve } from "node:path";
+
 import { SKILL_CATEGORIES } from "@n0n/skills";
 import { Glob } from "bun";
+
 import { getBuiltinSkillsDir, getUserSkillsDir } from "../paths.ts";
 
 /** skill 源目录：项目根 data/skills/ */
 const BUILTIN_SOURCE = resolve(import.meta.dir, "../../../../data/skills");
 
 export async function initCommand(): Promise<void> {
-	const targetDir = getBuiltinSkillsDir();
+  const targetDir = getBuiltinSkillsDir();
 
-	if (!existsSync(BUILTIN_SOURCE)) {
-		throw new Error("内置 skill 源目录不存在。安装可能不完整。");
-	}
+  if (!existsSync(BUILTIN_SOURCE)) {
+    throw new Error("内置 skill 源目录不存在。安装可能不完整。");
+  }
 
-	// 清除旧内容，避免残留已删除的 skill
-	if (existsSync(targetDir)) {
-		rmSync(targetDir, { recursive: true });
-	}
+  // 清除旧内容，避免残留已删除的 skill
+  if (existsSync(targetDir)) {
+    rmSync(targetDir, { recursive: true });
+  }
 
-	let count = 0;
+  let count = 0;
 
-	for (const category of SKILL_CATEGORIES) {
-		const srcCatDir = resolve(BUILTIN_SOURCE, category);
-		if (!existsSync(srcCatDir)) continue;
+  for (const category of SKILL_CATEGORIES) {
+    const srcCatDir = resolve(BUILTIN_SOURCE, category);
+    if (!existsSync(srcCatDir)) continue;
 
-		const destCatDir = resolve(targetDir, category);
+    const destCatDir = resolve(targetDir, category);
 
-		// 扫描该分类下所有 SKILL.md，按其所在目录树完整复制
-		const glob = new Glob("**/SKILL.md");
-		const skillFiles = Array.from(glob.scanSync({ cwd: srcCatDir }));
+    // 扫描该分类下所有 SKILL.md，按其所在目录树完整复制
+    const glob = new Glob("**/SKILL.md");
+    const skillFiles = Array.from(glob.scanSync({ cwd: srcCatDir }));
 
-		for (const rel of skillFiles) {
-			const skillDir = resolve(srcCatDir, rel, "..");
-			// 计算 skill 目录相对于分类目录的路径，保持嵌套结构
-			const relSkillDir = skillDir.slice(srcCatDir.length + 1);
-			const destDir = resolve(destCatDir, relSkillDir);
+    for (const rel of skillFiles) {
+      const skillDir = resolve(srcCatDir, rel, "..");
+      // 计算 skill 目录相对于分类目录的路径，保持嵌套结构
+      const relSkillDir = skillDir.slice(srcCatDir.length + 1);
+      const destDir = resolve(destCatDir, relSkillDir);
 
-			await copyDir(skillDir, destDir);
-			count++;
-		}
-	}
+      await copyDir(skillDir, destDir);
+      count++;
+    }
+  }
 
-	// 确保 builtin 和 user 目录下四个分类子目录都存在（即使为空）
-	const userDir = getUserSkillsDir();
-	for (const category of SKILL_CATEGORIES) {
-		const builtinCatDir = resolve(targetDir, category);
-		if (!existsSync(builtinCatDir))
-			mkdirSync(builtinCatDir, { recursive: true });
-		const userCatDir = resolve(userDir, category);
-		if (!existsSync(userCatDir)) mkdirSync(userCatDir, { recursive: true });
-	}
+  // 确保 builtin 和 user 目录下四个分类子目录都存在（即使为空）
+  const userDir = getUserSkillsDir();
+  for (const category of SKILL_CATEGORIES) {
+    const builtinCatDir = resolve(targetDir, category);
+    if (!existsSync(builtinCatDir))
+      mkdirSync(builtinCatDir, { recursive: true });
+    const userCatDir = resolve(userDir, category);
+    if (!existsSync(userCatDir)) mkdirSync(userCatDir, { recursive: true });
+  }
 
-	console.log(`✓ 已初始化 ${count} 个内置 skill 到 ${targetDir}`);
+  console.log(`✓ 已初始化 ${count} 个内置 skill 到 ${targetDir}`);
 }
 
 async function copyDir(src: string, dest: string): Promise<void> {
-	if (!existsSync(dest)) mkdirSync(dest, { recursive: true });
+  if (!existsSync(dest)) mkdirSync(dest, { recursive: true });
 
-	const glob = new Glob("**/*");
-	for (const rel of glob.scanSync({ cwd: src })) {
-		const srcPath = resolve(src, rel);
-		const destPath = resolve(dest, rel);
-		const file = Bun.file(srcPath);
-		const stat = await file.exists();
-		if (!stat) continue;
+  const glob = new Glob("**/*");
+  for (const rel of glob.scanSync({ cwd: src })) {
+    const srcPath = resolve(src, rel);
+    const destPath = resolve(dest, rel);
+    const file = Bun.file(srcPath);
+    const stat = await file.exists();
+    if (!stat) continue;
 
-		const destParent = resolve(destPath, "..");
-		if (!existsSync(destParent)) mkdirSync(destParent, { recursive: true });
+    const destParent = resolve(destPath, "..");
+    if (!existsSync(destParent)) mkdirSync(destParent, { recursive: true });
 
-		await Bun.write(destPath, file);
-	}
+    await Bun.write(destPath, file);
+  }
 }

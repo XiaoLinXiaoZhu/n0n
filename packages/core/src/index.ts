@@ -9,16 +9,8 @@
 export type { AgentOptions, AgentResult } from "./agent/loop.ts";
 export { agentLoop } from "./agent/loop.ts";
 // Heartbeat
-export type {
-	Clock,
-	HeartbeatCallbacks,
-	HeartbeatConfig,
-} from "./heartbeat";
-export {
-	HeartbeatKeeper,
-	HeartbeatState,
-	realClock,
-} from "./heartbeat";
+export type { Clock, HeartbeatCallbacks, HeartbeatConfig } from "./heartbeat";
+export { HeartbeatKeeper, HeartbeatState, realClock } from "./heartbeat";
 // 配置构建辅助
 export type { AgentConfig, SecurityConfig } from "./runtime.ts";
 export { buildToolsConfig } from "./runtime.ts";

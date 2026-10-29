@@ -28,15 +28,15 @@ export type AnySchemeHandler = SchemeHandler<{ scheme: string }>;
  * 新 scheme 加在此数组尾部（不要插入中间——会破坏 prompt cache）。
  */
 export const SCHEMES = [
-	execScheme,
-	writeScheme,
-	customerScheme,
-	todoScheme,
+  execScheme,
+  writeScheme,
+  customerScheme,
+  todoScheme,
 ] as const satisfies readonly AnySchemeHandler[];
 
 /** scheme 字面量 → handler 查表 */
 const BY_SCHEME = new Map<string, AnySchemeHandler>(
-	SCHEMES.map((s) => [s.scheme, s]),
+  SCHEMES.map((s) => [s.scheme, s]),
 );
 
 /** uri 前缀列表（错误消息的单一事实源） */
@@ -44,25 +44,25 @@ export const URI_PREFIXES: readonly string[] = SCHEMES.map((s) => s.uriPrefix);
 
 /** 按 scheme 字面量查 handler；未知 scheme 返回 undefined */
 export function schemeFor(scheme: string): AnySchemeHandler | undefined {
-	return BY_SCHEME.get(scheme);
+  return BY_SCHEME.get(scheme);
 }
 
 /** 查表解析：按前缀匹配 scheme 并委托其 parse。未知 scheme 抛错。 */
 export function dispatchParse(uri: string): ParsedUri {
-	const schemeEnd = uri.indexOf("://");
-	if (schemeEnd === -1) {
-		throw new Error(
-			`Malformed uri "${uri}". Expected scheme://... — supported schemes: ${URI_PREFIXES.join(", ")}.`,
-		);
-	}
-	const scheme = uri.slice(0, schemeEnd).toLowerCase();
-	const handler = BY_SCHEME.get(scheme);
-	if (!handler) {
-		throw new Error(
-			`Unsupported uri scheme "${scheme}:" in "${uri}". Supported schemes: ${URI_PREFIXES.join(", ")}.`,
-		);
-	}
-	// SchemeHandler 的 parse 由具体 P 约束；擦除类型下此处即分发点，
-	// 返回值经 SCHEME 联合收窄回 ParsedUri。
-	return handler.parse(uri.slice(schemeEnd + 3), uri) as ParsedUri;
+  const schemeEnd = uri.indexOf("://");
+  if (schemeEnd === -1) {
+    throw new Error(
+      `Malformed uri "${uri}". Expected scheme://... — supported schemes: ${URI_PREFIXES.join(", ")}.`,
+    );
+  }
+  const scheme = uri.slice(0, schemeEnd).toLowerCase();
+  const handler = BY_SCHEME.get(scheme);
+  if (!handler) {
+    throw new Error(
+      `Unsupported uri scheme "${scheme}:" in "${uri}". Supported schemes: ${URI_PREFIXES.join(", ")}.`,
+    );
+  }
+  // SchemeHandler 的 parse 由具体 P 约束；擦除类型下此处即分发点，
+  // 返回值经 SCHEME 联合收窄回 ParsedUri。
+  return handler.parse(uri.slice(schemeEnd + 3), uri) as ParsedUri;
 }

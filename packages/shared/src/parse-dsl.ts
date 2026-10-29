@@ -12,8 +12,8 @@
  */
 
 export interface DslItem {
-	label: string;
-	detail: string;
+  label: string;
+  detail: string;
 }
 
 /**
@@ -21,32 +21,32 @@ export interface DslItem {
  * 空字符串或仅空白返回空数组。
  */
 export function parseDsl(input: string): DslItem[] {
-	if (!input.trim()) return [];
+  if (!input.trim()) return [];
 
-	const items: DslItem[] = [];
-	const lines = input.split("\n");
-	let currentLabel = "";
-	const currentDetail: string[] = [];
+  const items: DslItem[] = [];
+  const lines = input.split("\n");
+  let currentLabel = "";
+  const currentDetail: string[] = [];
 
-	for (const raw of lines) {
-		const line = raw.trim();
-		const match = /^##\s+(.+)$/.exec(line);
-		if (match) {
-			if (currentLabel) {
-				items.push({
-					label: currentLabel,
-					detail: currentDetail.join(" ").trim(),
-				});
-			}
-			currentLabel = match[1] ?? "";
-			currentDetail.length = 0;
-		} else if (line && currentLabel) {
-			currentDetail.push(line);
-		}
-	}
-	if (currentLabel) {
-		items.push({ label: currentLabel, detail: currentDetail.join(" ").trim() });
-	}
+  for (const raw of lines) {
+    const line = raw.trim();
+    const match = /^##\s+(.+)$/.exec(line);
+    if (match) {
+      if (currentLabel) {
+        items.push({
+          label: currentLabel,
+          detail: currentDetail.join(" ").trim(),
+        });
+      }
+      currentLabel = match[1] ?? "";
+      currentDetail.length = 0;
+    } else if (line && currentLabel) {
+      currentDetail.push(line);
+    }
+  }
+  if (currentLabel) {
+    items.push({ label: currentLabel, detail: currentDetail.join(" ").trim() });
+  }
 
-	return items;
+  return items;
 }

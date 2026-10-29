@@ -11,12 +11,13 @@
  */
 
 import type {
-	CompleteRequest,
-	CompleteResponse,
-	LLMClient,
-	StreamEvent,
-	StreamRequest,
+  CompleteRequest,
+  CompleteResponse,
+  LLMClient,
+  StreamEvent,
+  StreamRequest,
 } from "@n0n/types";
+
 import { type BaseUrl, chatCompletionsUrl, parseBaseUrl } from "../base-url.ts";
 import type { OpenAICompatibleProviderConfig } from "../config.ts";
 import { isAbortError } from "../errors.ts";
@@ -31,128 +32,128 @@ import type { OpenAIRequest } from "./types.ts";
 
 export { toOpenAIMessages, toOpenAITools } from "./format.ts";
 export type {
-	OpenAIMessage,
-	OpenAIRequest,
-	OpenAIToolCall,
-	OpenAIToolDef,
+  OpenAIMessage,
+  OpenAIRequest,
+  OpenAIToolCall,
+  OpenAIToolDef,
 } from "./types.ts";
 
 export class OpenAICompatibleClient implements LLMClient {
-	readonly modelId: string;
-	private readonly apiKey: string;
-	private readonly baseUrl: BaseUrl;
-	private readonly format: FormatFn;
-	private readonly backendProvider: string | undefined;
-	private readonly extraBody: Record<string, unknown> | undefined;
+  readonly modelId: string;
+  private readonly apiKey: string;
+  private readonly baseUrl: BaseUrl;
+  private readonly format: FormatFn;
+  private readonly backendProvider: string | undefined;
+  private readonly extraBody: Record<string, unknown> | undefined;
 
-	constructor(pc: OpenAICompatibleProviderConfig, format: FormatFn) {
-		this.modelId = pc.model;
-		this.apiKey = pc.api_key;
-		this.format = format;
-		this.backendProvider = pc.backend_provider;
-		this.extraBody = pc.extra_body;
+  constructor(pc: OpenAICompatibleProviderConfig, format: FormatFn) {
+    this.modelId = pc.model;
+    this.apiKey = pc.api_key;
+    this.format = format;
+    this.backendProvider = pc.backend_provider;
+    this.extraBody = pc.extra_body;
 
-		const result = parseBaseUrl(pc.base_url);
-		if (!result.ok) throw new Error(`无效的 base_url: ${result.error}`);
-		this.baseUrl = result.baseUrl;
-	}
+    const result = parseBaseUrl(pc.base_url);
+    if (!result.ok) throw new Error(`无效的 base_url: ${result.error}`);
+    this.baseUrl = result.baseUrl;
+  }
 
-	async *stream(
-		request: StreamRequest,
-		signal?: AbortSignal,
-	): AsyncGenerator<StreamEvent> {
-		const promptMessages = this.format(request.messages);
-		const apiMessages = toOpenAIMessages(promptMessages, this.backendProvider);
+  async *stream(
+    request: StreamRequest,
+    signal?: AbortSignal,
+  ): AsyncGenerator<StreamEvent> {
+    const promptMessages = this.format(request.messages);
+    const apiMessages = toOpenAIMessages(promptMessages, this.backendProvider);
 
-		const filteredMessages = filterEmptyMessages(apiMessages);
+    const filteredMessages = filterEmptyMessages(apiMessages);
 
-		const body: OpenAIRequest = {
-			model: this.modelId,
-			messages: filteredMessages,
-			stream: true,
-			stream_options: { include_usage: true },
-		};
+    const body: OpenAIRequest = {
+      model: this.modelId,
+      messages: filteredMessages,
+      stream: true,
+      stream_options: { include_usage: true },
+    };
 
-		if (request.tools?.length) {
-			body.tools = toOpenAITools(request.tools);
-			body.tool_choice = request.toolChoice ?? "auto";
-		}
+    if (request.tools?.length) {
+      body.tools = toOpenAITools(request.tools);
+      body.tool_choice = request.toolChoice ?? "auto";
+    }
 
-		// extra_body 透传 — 可覆盖以上任意字段（含 thinking、enable_thinking 等）
-		if (this.extraBody) {
-			Object.assign(body, this.extraBody);
-		}
+    // extra_body 透传 — 可覆盖以上任意字段（含 thinking、enable_thinking 等）
+    if (this.extraBody) {
+      Object.assign(body, this.extraBody);
+    }
 
-		let res: Response;
-		try {
-			res = await fetch(chatCompletionsUrl(this.baseUrl), {
-				method: "POST",
-				headers: {
-					"Content-Type": "application/json",
-					Authorization: `Bearer ${this.apiKey}`,
-				},
-				body: JSON.stringify(body),
-				signal,
-			});
-		} catch (err) {
-			if (isAbortError(err)) return;
-			yield {
-				type: "error",
-				error: err instanceof Error ? err.message : String(err),
-			};
-			return;
-		}
+    let res: Response;
+    try {
+      res = await fetch(chatCompletionsUrl(this.baseUrl), {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${this.apiKey}`,
+        },
+        body: JSON.stringify(body),
+        signal,
+      });
+    } catch (err) {
+      if (isAbortError(err)) return;
+      yield {
+        type: "error",
+        error: err instanceof Error ? err.message : String(err),
+      };
+      return;
+    }
 
-		if (!res.ok) {
-			const text = await res.text();
-			yield { type: "error", error: `LLM API ${res.status}: ${text}` };
-			return;
-		}
+    if (!res.ok) {
+      const text = await res.text();
+      yield { type: "error", error: `LLM API ${res.status}: ${text}` };
+      return;
+    }
 
-		if (!res.body) {
-			yield { type: "error", error: "LLM streaming response has no body" };
-			return;
-		}
+    if (!res.body) {
+      yield { type: "error", error: "LLM streaming response has no body" };
+      return;
+    }
 
-		yield* runSSEStream(res.body.getReader(), chunkToStreamEvents);
-	}
+    yield* runSSEStream(res.body.getReader(), chunkToStreamEvents);
+  }
 
-	async complete(request: CompleteRequest): Promise<CompleteResponse> {
-		const messages = request.messages.map((m) => ({
-			role: m.role,
-			content: m.content,
-		}));
+  async complete(request: CompleteRequest): Promise<CompleteResponse> {
+    const messages = request.messages.map((m) => ({
+      role: m.role,
+      content: m.content,
+    }));
 
-		const body: OpenAIRequest = {
-			model: this.modelId,
-			messages,
-			stream: false,
-		};
+    const body: OpenAIRequest = {
+      model: this.modelId,
+      messages,
+      stream: false,
+    };
 
-		if (request.temperature !== undefined) {
-			body.temperature = request.temperature;
-		}
+    if (request.temperature !== undefined) {
+      body.temperature = request.temperature;
+    }
 
-		if (this.extraBody) {
-			Object.assign(body, this.extraBody);
-		}
+    if (this.extraBody) {
+      Object.assign(body, this.extraBody);
+    }
 
-		const res = await fetchWithRetry(() =>
-			fetch(chatCompletionsUrl(this.baseUrl), {
-				method: "POST",
-				headers: {
-					"Content-Type": "application/json",
-					Authorization: `Bearer ${this.apiKey}`,
-				},
-				body: JSON.stringify(body),
-			}),
-		);
+    const res = await fetchWithRetry(() =>
+      fetch(chatCompletionsUrl(this.baseUrl), {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${this.apiKey}`,
+        },
+        body: JSON.stringify(body),
+      }),
+    );
 
-		const json: unknown = await res.json();
-		return { text: parseChatCompletionText(json) };
-	}
+    const json: unknown = await res.json();
+    return { text: parseChatCompletionText(json) };
+  }
 
-	async ping(): Promise<{ ok: boolean; error?: string }> {
-		return pingModelsEndpoint(this.baseUrl, this.apiKey);
-	}
+  async ping(): Promise<{ ok: boolean; error?: string }> {
+    return pingModelsEndpoint(this.baseUrl, this.apiKey);
+  }
 }

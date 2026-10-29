@@ -5,21 +5,22 @@
  */
 
 import type { TodoToolResult } from "@n0n/types";
+
 import type { FormattedToolResult, TagAdapter } from "./utils.ts";
 import { pick } from "./utils.ts";
 
 const successTemplates = [
-	"Todo list saved.",
-	"Plan updated.",
-	"Progress recorded.",
+  "Todo list saved.",
+  "Plan updated.",
+  "Progress recorded.",
 ];
 
 export function formatTodoResult(
-	_msg: TodoToolResult,
-	tags: TagAdapter,
-	msgIndex: number,
+  _msg: TodoToolResult,
+  tags: TagAdapter,
+  msgIndex: number,
 ): FormattedToolResult {
-	const text = pick(successTemplates, msgIndex);
-	const textWithTag = tags.wrapTag("result", text);
-	return { fact: textWithTag, hint: null };
+  const text = pick(successTemplates, msgIndex);
+  const textWithTag = tags.wrapTag("result", text);
+  return { fact: textWithTag, hint: null };
 }

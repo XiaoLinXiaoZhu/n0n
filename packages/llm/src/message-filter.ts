@@ -7,10 +7,10 @@
  */
 
 interface FilterableMessage {
-	role: string;
-	content?: string | null;
-	/** 仅需数组判断（length > 0），不关心元素类型 */
-	tool_calls?: unknown[] | null;
+  role: string;
+  content?: string | null;
+  /** 仅需数组判断（length > 0），不关心元素类型 */
+  tool_calls?: unknown[] | null;
 }
 
 /**
@@ -20,16 +20,16 @@ interface FilterableMessage {
  * - assistant 消息无 content 且无 tool_calls → 移除
  */
 export function filterEmptyMessages<T extends FilterableMessage>(
-	messages: T[],
+  messages: T[],
 ): T[] {
-	return messages.filter((msg) => {
-		if (msg.role === "user" && !(msg.content ?? "").trim()) return false;
-		if (
-			msg.role === "assistant" &&
-			!msg.content?.trim() &&
-			!(msg.tool_calls && msg.tool_calls.length > 0)
-		)
-			return false;
-		return true;
-	});
+  return messages.filter((msg) => {
+    if (msg.role === "user" && !(msg.content ?? "").trim()) return false;
+    if (
+      msg.role === "assistant" &&
+      !msg.content?.trim() &&
+      !(msg.tool_calls && msg.tool_calls.length > 0)
+    )
+      return false;
+    return true;
+  });
 }

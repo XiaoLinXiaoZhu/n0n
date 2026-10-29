@@ -13,19 +13,19 @@ import { resolve } from "node:path";
  * 不存在时返回 null。
  */
 export async function loadAgentsMd(workspace: string): Promise<string | null> {
-	const filePath = resolve(workspace, "AGENTS.md");
-	if (!existsSync(filePath)) return null;
-	try {
-		const content = await Bun.file(filePath).text();
-		return content.trim() || null;
-	} catch {
-		return null;
-	}
+  const filePath = resolve(workspace, "AGENTS.md");
+  if (!existsSync(filePath)) return null;
+  try {
+    const content = await Bun.file(filePath).text();
+    return content.trim() || null;
+  } catch {
+    return null;
+  }
 }
 
 /**
  * 将 AGENTS.md 内容格式化为 system prompt 片段。
  */
 export function formatAgentsMdPrompt(content: string): string {
-	return ["## Project Instructions (from AGENTS.md)", "", content].join("\n");
+  return ["## Project Instructions (from AGENTS.md)", "", content].join("\n");
 }

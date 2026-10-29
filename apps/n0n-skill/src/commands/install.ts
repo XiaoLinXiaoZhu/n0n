@@ -7,34 +7,36 @@
 
 import { existsSync, mkdirSync } from "node:fs";
 import { basename, resolve } from "node:path";
+
 import { Glob } from "bun";
+
 import { getUserSkillsDir } from "../paths.ts";
 
 export async function installCommand(source: string): Promise<void> {
-	const absSource = resolve(source);
-	const skillMdPath = resolve(absSource, "SKILL.md");
+  const absSource = resolve(source);
+  const skillMdPath = resolve(absSource, "SKILL.md");
 
-	if (!existsSync(skillMdPath)) {
-		throw new Error(`"${absSource}" 不是有效的 skill 目录（缺少 SKILL.md）。`);
-	}
+  if (!existsSync(skillMdPath)) {
+    throw new Error(`"${absSource}" 不是有效的 skill 目录（缺少 SKILL.md）。`);
+  }
 
-	const skillName = basename(absSource);
-	const destDir = resolve(getUserSkillsDir(), skillName);
+  const skillName = basename(absSource);
+  const destDir = resolve(getUserSkillsDir(), skillName);
 
-	if (!existsSync(getUserSkillsDir())) {
-		mkdirSync(getUserSkillsDir(), { recursive: true });
-	}
+  if (!existsSync(getUserSkillsDir())) {
+    mkdirSync(getUserSkillsDir(), { recursive: true });
+  }
 
-	// 复制 skill 目录
-	if (!existsSync(destDir)) mkdirSync(destDir, { recursive: true });
-	const glob = new Glob("**/*");
-	for (const rel of glob.scanSync({ cwd: absSource })) {
-		const srcPath = resolve(absSource, rel);
-		const destPath = resolve(destDir, rel);
-		const destParent = resolve(destPath, "..");
-		if (!existsSync(destParent)) mkdirSync(destParent, { recursive: true });
-		await Bun.write(destPath, Bun.file(srcPath));
-	}
+  // 复制 skill 目录
+  if (!existsSync(destDir)) mkdirSync(destDir, { recursive: true });
+  const glob = new Glob("**/*");
+  for (const rel of glob.scanSync({ cwd: absSource })) {
+    const srcPath = resolve(absSource, rel);
+    const destPath = resolve(destDir, rel);
+    const destParent = resolve(destPath, "..");
+    if (!existsSync(destParent)) mkdirSync(destParent, { recursive: true });
+    await Bun.write(destPath, Bun.file(srcPath));
+  }
 
-	console.log(`✓ 已安装 skill "${skillName}" 到 ${destDir}`);
+  console.log(`✓ 已安装 skill "${skillName}" 到 ${destDir}`);
 }

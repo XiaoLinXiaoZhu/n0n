@@ -21,51 +21,51 @@ export type { TagAdapter, TagStyle };
 
 /** 将属性对象渲染为 XML 属性字符串（含前导空格） */
 function renderAttrs(attrs?: Record<string, string>): string {
-	if (!attrs) return "";
-	const entries = Object.entries(attrs);
-	if (entries.length === 0) return "";
-	return ` ${entries.map(([k, v]) => `${k}="${v}"`).join(" ")}`;
+  if (!attrs) return "";
+  const entries = Object.entries(attrs);
+  if (entries.length === 0) return "";
+  return ` ${entries.map(([k, v]) => `${k}="${v}"`).join(" ")}`;
 }
 
 /** 生成开标签 */
 export function openTag(
-	style: TagStyle,
-	name: string,
-	attrs?: Record<string, string>,
+  style: TagStyle,
+  name: string,
+  attrs?: Record<string, string>,
 ): string {
-	const attrStr = renderAttrs(attrs);
-	switch (style) {
-		case "minimax":
-			return `]~b]${name}${attrStr}`;
-		case "glm":
-		case "deepseek":
-		case "default":
-			return `<${name}${attrStr}>`;
-		default: {
-			const _exhaustive: never = style;
-			return `<${name}${attrStr}>`;
-		}
-	}
+  const attrStr = renderAttrs(attrs);
+  switch (style) {
+    case "minimax":
+      return `]~b]${name}${attrStr}`;
+    case "glm":
+    case "deepseek":
+    case "default":
+      return `<${name}${attrStr}>`;
+    default: {
+      const _exhaustive: never = style;
+      return `<${name}${attrStr}>`;
+    }
+  }
 }
 
 /** 生成闭标签。attrs 参数仅为接口统一，闭标签一般不携带属性。 */
 export function closeTag(
-	style: TagStyle,
-	name: string,
-	_attrs?: Record<string, string>,
+  style: TagStyle,
+  name: string,
+  _attrs?: Record<string, string>,
 ): string {
-	switch (style) {
-		case "minimax":
-			return "[e~[";
-		case "glm":
-		case "deepseek":
-		case "default":
-			return `</${name}>`;
-		default: {
-			const _exhaustive: never = style;
-			return `</${name}>`;
-		}
-	}
+  switch (style) {
+    case "minimax":
+      return "[e~[";
+    case "glm":
+    case "deepseek":
+    case "default":
+      return `</${name}>`;
+    default: {
+      const _exhaustive: never = style;
+      return `</${name}>`;
+    }
+  }
 }
 
 /**
@@ -73,20 +73,20 @@ export function closeTag(
  * 匹配 <tagName> 和 </tagName> 形式。
  */
 function adaptTagsByStyle(text: string, style: TagStyle): string {
-	if (style === "default" || style === "glm") return text;
-	return text
-		.replace(/<(\w+)>/g, (_, name) => openTag(style, name))
-		.replace(/<\/(\w+)>/g, (_, name) => closeTag(style, name));
+  if (style === "default" || style === "glm") return text;
+  return text
+    .replace(/<(\w+)>/g, (_, name) => openTag(style, name))
+    .replace(/<\/(\w+)>/g, (_, name) => closeTag(style, name));
 }
 
 /** 用指定风格包裹内容 */
 function wrapTagByStyle(
-	name: string,
-	content: string,
-	style: TagStyle,
-	attrs?: Record<string, string>,
+  name: string,
+  content: string,
+  style: TagStyle,
+  attrs?: Record<string, string>,
 ): string {
-	return `${openTag(style, name, attrs)}\n${content}\n${closeTag(style, name, attrs)}`;
+  return `${openTag(style, name, attrs)}\n${content}\n${closeTag(style, name, attrs)}`;
 }
 
 /**
@@ -95,9 +95,9 @@ function wrapTagByStyle(
  * 大多数 provider（OpenAI、Anthropic、Gemini、DeepSeek）使用此工厂。
  */
 export function createTagAdapter(style: TagStyle): TagAdapter {
-	return {
-		wrapTag: (name, content, attrs) =>
-			wrapTagByStyle(name, content, style, attrs),
-		adaptTags: (text) => adaptTagsByStyle(text, style),
-	};
+  return {
+    wrapTag: (name, content, attrs) =>
+      wrapTagByStyle(name, content, style, attrs),
+    adaptTags: (text) => adaptTagsByStyle(text, style),
+  };
 }

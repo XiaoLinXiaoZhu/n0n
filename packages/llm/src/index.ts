@@ -20,14 +20,14 @@
 
 // 配置类型
 export type {
-	AnthropicProviderConfig,
-	DeepSeekProviderConfig,
-	GoogleProviderConfig,
-	LLMConfig,
-	OpenAICompatibleProviderConfig,
-	OpenAIProviderConfig,
-	OpenAIResponseProviderConfig,
-	ProviderConfig,
+  AnthropicProviderConfig,
+  DeepSeekProviderConfig,
+  GoogleProviderConfig,
+  LLMConfig,
+  OpenAICompatibleProviderConfig,
+  OpenAIProviderConfig,
+  OpenAIResponseProviderConfig,
+  ProviderConfig,
 } from "./config.ts";
 export { LLMConfigSchema, ProviderConfigSchema } from "./config.ts";
 // Error

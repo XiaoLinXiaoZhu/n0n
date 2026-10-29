@@ -6,28 +6,28 @@
 
 export type { Skill, SkillContent, SkillMeta } from "./api.ts";
 export {
-	listSkills,
-	loadInitSkills,
-	loadInitSkillsFromDirs,
-	readSkill,
-	readSkills,
-	toSkill,
+  listSkills,
+  loadInitSkills,
+  loadInitSkillsFromDirs,
+  readSkill,
+  readSkills,
+  toSkill,
 } from "./api.ts";
 export {
-	createCommand as createSkill,
-	parseSkillLocation,
-	type SkillLocation,
+  createCommand as createSkill,
+  parseSkillLocation,
+  type SkillLocation,
 } from "./commands/create.ts";
 export { helpCommand as showSkillHelp } from "./commands/help.ts";
 export { initCommand as initializeBuiltinSkills } from "./commands/init.ts";
 export { installCommand as installSkill } from "./commands/install.ts";
 export {
-	type ListCommandOptions,
-	listCommand as showSkillList,
+  type ListCommandOptions,
+  listCommand as showSkillList,
 } from "./commands/list.ts";
 export { readCommand as showSkill } from "./commands/read.ts";
 export {
-	getBuiltinSkillsDir,
-	getSkillDirs,
-	getUserSkillsDir,
+  getBuiltinSkillsDir,
+  getSkillDirs,
+  getUserSkillsDir,
 } from "./paths.ts";

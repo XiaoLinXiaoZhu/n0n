@@ -9,6 +9,7 @@
 
 import { style, writeln } from "@n0n/cli-ui";
 import type { CustomerCompleted } from "@n0n/types";
+
 import type { NotifyConfig } from "../notify-sound.ts";
 import { playNotifySound } from "../notify-sound.ts";
 
@@ -17,32 +18,32 @@ export type HandleResultOutcome = { action: "wait_for_customer" };
 
 /** 按 kind 渲染一条 customer 请求，通知并等待客户输入。 */
 export function handleCustomerResult(
-	result: CustomerCompleted,
-	notifyConfig: NotifyConfig,
-	notify: (config: NotifyConfig) => void = playNotifySound,
+  result: CustomerCompleted,
+  notifyConfig: NotifyConfig,
+  notify: (config: NotifyConfig) => void = playNotifySound,
 ): HandleResultOutcome {
-	const body = result.call.args.body;
+  const body = result.call.args.body;
 
-	switch (result.kind) {
-		case "question": {
-			writeln(`${style.yellow("?")} 问题：${body}`);
-			writeln();
-			notify(notifyConfig);
-			return { action: "wait_for_customer" };
-		}
-		case "form": {
-			writeln(`${style.cyan("✎")} 请填写：${body}`);
-			writeln();
-			notify(notifyConfig);
-			return { action: "wait_for_customer" };
-		}
-		case "action_required": {
-			writeln(`${style.yellow("↗")} 需要操作：${body}`);
-			writeln();
-			notify(notifyConfig);
-			return { action: "wait_for_customer" };
-		}
-	}
+  switch (result.kind) {
+    case "question": {
+      writeln(`${style.yellow("?")} 问题：${body}`);
+      writeln();
+      notify(notifyConfig);
+      return { action: "wait_for_customer" };
+    }
+    case "form": {
+      writeln(`${style.cyan("✎")} 请填写：${body}`);
+      writeln();
+      notify(notifyConfig);
+      return { action: "wait_for_customer" };
+    }
+    case "action_required": {
+      writeln(`${style.yellow("↗")} 需要操作：${body}`);
+      writeln();
+      notify(notifyConfig);
+      return { action: "wait_for_customer" };
+    }
+  }
 }
 
 /**
@@ -51,18 +52,18 @@ export function handleCustomerResult(
  * 每条都独立完成渲染和通知；全部返回 wait_for_customer。
  */
 export function handleCustomerResults(
-	results: readonly CustomerCompleted[],
-	notifyConfig: NotifyConfig,
-	notify: (config: NotifyConfig) => void = playNotifySound,
+  results: readonly CustomerCompleted[],
+  notifyConfig: NotifyConfig,
+  notify: (config: NotifyConfig) => void = playNotifySound,
 ): HandleResultOutcome {
-	if (results.length === 0) {
-		throw new Error(
-			"handleCustomerResults requires at least one customer result",
-		);
-	}
+  if (results.length === 0) {
+    throw new Error(
+      "handleCustomerResults requires at least one customer result",
+    );
+  }
 
-	for (const result of results) {
-		handleCustomerResult(result, notifyConfig, notify);
-	}
-	return { action: "wait_for_customer" };
+  for (const result of results) {
+    handleCustomerResult(result, notifyConfig, notify);
+  }
+  return { action: "wait_for_customer" };
 }

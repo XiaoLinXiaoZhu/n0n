@@ -15,6 +15,6 @@ import type { ToolCallRecord } from "./tools";
  * @returns true 表示可以立即启动，false 表示需要等待
  */
 export type CanStartFn = (
-	self: ToolCallRecord,
-	active: readonly ToolCallRecord[],
+  self: ToolCallRecord,
+  active: readonly ToolCallRecord[],
 ) => boolean;

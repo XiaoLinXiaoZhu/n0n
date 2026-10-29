@@ -17,12 +17,13 @@
  */
 
 import type {
-	CompleteRequest,
-	CompleteResponse,
-	LLMClient,
-	StreamEvent,
-	StreamRequest,
+  CompleteRequest,
+  CompleteResponse,
+  LLMClient,
+  StreamEvent,
+  StreamRequest,
 } from "@n0n/types";
+
 import { type BaseUrl, chatCompletionsUrl, parseBaseUrl } from "../base-url.ts";
 import type { GoogleProviderConfig } from "../config.ts";
 import { isAbortError } from "../errors.ts";
@@ -32,163 +33,163 @@ import { fetchWithRetry } from "../retry.ts";
 import { parseChatCompletionText } from "../schemas.ts";
 import { runSSEStream } from "../sse-utils.ts";
 import {
-	geminiChunkToStreamEvents,
-	toGeminiMessages,
-	toGeminiTools,
+  geminiChunkToStreamEvents,
+  toGeminiMessages,
+  toGeminiTools,
 } from "./format.ts";
 import type { GeminiRequest } from "./types.ts";
 
 export {
-	geminiChunkToStreamEvents,
-	toGeminiMessages,
-	toGeminiTools,
+  geminiChunkToStreamEvents,
+  toGeminiMessages,
+  toGeminiTools,
 } from "./format.ts";
 export type {
-	GeminiMessage,
-	GeminiRequest,
-	GeminiToolCall,
-	GeminiToolDef,
+  GeminiMessage,
+  GeminiRequest,
+  GeminiToolCall,
+  GeminiToolDef,
 } from "./types.ts";
 
 export class GeminiClient implements LLMClient {
-	readonly modelId: string;
-	private readonly pc: GoogleProviderConfig;
-	private readonly baseUrl: BaseUrl;
-	private readonly format: FormatFn;
+  readonly modelId: string;
+  private readonly pc: GoogleProviderConfig;
+  private readonly baseUrl: BaseUrl;
+  private readonly format: FormatFn;
 
-	constructor(pc: GoogleProviderConfig, format: FormatFn) {
-		this.pc = pc;
-		this.modelId = this.pc.model;
-		this.format = format;
+  constructor(pc: GoogleProviderConfig, format: FormatFn) {
+    this.pc = pc;
+    this.modelId = this.pc.model;
+    this.format = format;
 
-		const result = parseBaseUrl(this.pc.base_url);
-		if (!result.ok) throw new Error(`无效的 base_url: ${result.error}`);
-		this.baseUrl = result.baseUrl;
-	}
+    const result = parseBaseUrl(this.pc.base_url);
+    if (!result.ok) throw new Error(`无效的 base_url: ${result.error}`);
+    this.baseUrl = result.baseUrl;
+  }
 
-	async *stream(
-		request: StreamRequest,
-		signal?: AbortSignal,
-	): AsyncGenerator<StreamEvent> {
-		const promptMessages = this.format(request.messages);
-		const apiMessages = toGeminiMessages(promptMessages);
+  async *stream(
+    request: StreamRequest,
+    signal?: AbortSignal,
+  ): AsyncGenerator<StreamEvent> {
+    const promptMessages = this.format(request.messages);
+    const apiMessages = toGeminiMessages(promptMessages);
 
-		const filteredMessages = filterEmptyMessages(apiMessages);
+    const filteredMessages = filterEmptyMessages(apiMessages);
 
-		const body: GeminiRequest = {
-			model: this.modelId,
-			messages: filteredMessages,
-			stream: true,
-			stream_options: { include_usage: true },
-		};
+    const body: GeminiRequest = {
+      model: this.modelId,
+      messages: filteredMessages,
+      stream: true,
+      stream_options: { include_usage: true },
+    };
 
-		if (request.tools?.length) {
-			body.tools = toGeminiTools(request.tools);
-			body.tool_choice = request.toolChoice ?? "auto";
-		}
+    if (request.tools?.length) {
+      body.tools = toGeminiTools(request.tools);
+      body.tool_choice = request.toolChoice ?? "auto";
+    }
 
-		// Gemini 始终思考，必须传 reasoning_effort 才能让 thinking 独立流式传输
-		body.reasoning_effort = this.pc.reasoning_effort;
+    // Gemini 始终思考，必须传 reasoning_effort 才能让 thinking 独立流式传输
+    body.reasoning_effort = this.pc.reasoning_effort;
 
-		let res: Response;
-		try {
-			res = await fetch(chatCompletionsUrl(this.baseUrl), {
-				method: "POST",
-				headers: {
-					"Content-Type": "application/json",
-					Authorization: `Bearer ${this.pc.api_key}`,
-				},
-				body: JSON.stringify(body),
-				signal,
-			});
-		} catch (err) {
-			if (isAbortError(err)) return;
-			yield {
-				type: "error",
-				error: err instanceof Error ? err.message : String(err),
-			};
-			return;
-		}
+    let res: Response;
+    try {
+      res = await fetch(chatCompletionsUrl(this.baseUrl), {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${this.pc.api_key}`,
+        },
+        body: JSON.stringify(body),
+        signal,
+      });
+    } catch (err) {
+      if (isAbortError(err)) return;
+      yield {
+        type: "error",
+        error: err instanceof Error ? err.message : String(err),
+      };
+      return;
+    }
 
-		if (!res.ok) {
-			const text = await res.text();
-			yield { type: "error", error: `Gemini API ${res.status}: ${text}` };
-			return;
-		}
+    if (!res.ok) {
+      const text = await res.text();
+      yield { type: "error", error: `Gemini API ${res.status}: ${text}` };
+      return;
+    }
 
-		if (!res.body) {
-			yield {
-				type: "error",
-				error: "Gemini streaming response has no body",
-			};
-			return;
-		}
+    if (!res.body) {
+      yield {
+        type: "error",
+        error: "Gemini streaming response has no body",
+      };
+      return;
+    }
 
-		yield* runSSEStream(res.body.getReader(), geminiChunkToStreamEvents);
-	}
+    yield* runSSEStream(res.body.getReader(), geminiChunkToStreamEvents);
+  }
 
-	async complete(request: CompleteRequest): Promise<CompleteResponse> {
-		const messages = request.messages.map((m) => ({
-			role: m.role,
-			content: m.content,
-		}));
+  async complete(request: CompleteRequest): Promise<CompleteResponse> {
+    const messages = request.messages.map((m) => ({
+      role: m.role,
+      content: m.content,
+    }));
 
-		const body: GeminiRequest = {
-			model: this.modelId,
-			messages,
-			stream: false,
-			reasoning_effort: this.pc.reasoning_effort,
-		};
+    const body: GeminiRequest = {
+      model: this.modelId,
+      messages,
+      stream: false,
+      reasoning_effort: this.pc.reasoning_effort,
+    };
 
-		if (request.temperature !== undefined) {
-			body.temperature = request.temperature;
-		}
+    if (request.temperature !== undefined) {
+      body.temperature = request.temperature;
+    }
 
-		const res = await fetchWithRetry(() =>
-			fetch(chatCompletionsUrl(this.baseUrl), {
-				method: "POST",
-				headers: {
-					"Content-Type": "application/json",
-					Authorization: `Bearer ${this.pc.api_key}`,
-				},
-				body: JSON.stringify(body),
-			}),
-		);
+    const res = await fetchWithRetry(() =>
+      fetch(chatCompletionsUrl(this.baseUrl), {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${this.pc.api_key}`,
+        },
+        body: JSON.stringify(body),
+      }),
+    );
 
-		const json: unknown = await res.json();
-		return { text: parseChatCompletionText(json) };
-	}
+    const json: unknown = await res.json();
+    return { text: parseChatCompletionText(json) };
+  }
 
-	async ping(): Promise<{ ok: boolean; error?: string }> {
-		// XXX: Gemini 通过 OpenAI 兼容网关走 stream，当前仅用于排除网络问题。如果未来网关提供了 GET /models 等轻量端点，应切换为直接 HTTP 请求，避免消息构建和流式解析开销。
-		try {
-			const controller = new AbortController();
-			const timeout = setTimeout(() => controller.abort(), 15_000);
-			try {
-				for await (const event of this.stream(
-					{
-						messages: [{ type: "generic_user_text", content: "hi" }],
-					},
-					controller.signal,
-				)) {
-					if (event.type === "error") {
-						return { ok: false, error: event.error };
-					}
-					controller.abort();
-					break;
-				}
-			} finally {
-				clearTimeout(timeout);
-			}
-			return { ok: true };
-		} catch (err) {
-			if (err instanceof Error) {
-				if (isAbortError(err)) {
-					return { ok: false, error: "连接超时（15s），请检查网络或 API 地址" };
-				}
-				return { ok: false, error: err.message.slice(0, 200) };
-			}
-			return { ok: false, error: `连接失败: ${String(err)}` };
-		}
-	}
+  async ping(): Promise<{ ok: boolean; error?: string }> {
+    // XXX: Gemini 通过 OpenAI 兼容网关走 stream，当前仅用于排除网络问题。如果未来网关提供了 GET /models 等轻量端点，应切换为直接 HTTP 请求，避免消息构建和流式解析开销。
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 15_000);
+      try {
+        for await (const event of this.stream(
+          {
+            messages: [{ type: "generic_user_text", content: "hi" }],
+          },
+          controller.signal,
+        )) {
+          if (event.type === "error") {
+            return { ok: false, error: event.error };
+          }
+          controller.abort();
+          break;
+        }
+      } finally {
+        clearTimeout(timeout);
+      }
+      return { ok: true };
+    } catch (err) {
+      if (err instanceof Error) {
+        if (isAbortError(err)) {
+          return { ok: false, error: "连接超时（15s），请检查网络或 API 地址" };
+        }
+        return { ok: false, error: err.message.slice(0, 200) };
+      }
+      return { ok: false, error: `连接失败: ${String(err)}` };
+    }
+  }
 }

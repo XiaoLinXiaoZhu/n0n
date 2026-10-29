@@ -6,17 +6,17 @@
  */
 
 export {
-	clearLine,
-	cursorUp,
-	isTTY,
-	label,
-	type Styler,
-	stripAnsi,
-	style,
-	terminalColumns,
-	visibleWidth,
-	write,
-	writeln,
+  clearLine,
+  cursorUp,
+  isTTY,
+  label,
+  type Styler,
+  stripAnsi,
+  style,
+  terminalColumns,
+  visibleWidth,
+  write,
+  writeln,
 } from "./ansi.ts";
 export { LiveRegion } from "./live-region.ts";
 export { RichRenderer, type RichRendererOptions } from "./rich-renderer.ts";

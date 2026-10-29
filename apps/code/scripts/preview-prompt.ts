@@ -14,46 +14,41 @@
  *   bun run apps/code/scripts/preview-prompt.ts --user "修复登录 bug"
  */
 
+import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { writeFileSync, existsSync, mkdirSync } from "node:fs";
+
+import { agentLoop, buildToolsConfig, PlainRenderer } from "@n0n/core";
 import { formatPrompt } from "@n0n/format-prompt";
 import { createTagAdapter } from "@n0n/shared";
-import {
-	agentLoop,
-	buildToolsConfig,
-	PlainRenderer,
-} from "@n0n/core";
+import { loadInitSkills, loadInitSkillsFromDirs, toSkill } from "@n0n/skill";
 import { makeToolkit } from "@n0n/tools";
-import {
-	loadInitSkills,
-	loadInitSkillsFromDirs,
-	toSkill,
-} from "@n0n/skill";
 import type {
-	DomainMessage,
-	LLMClient,
-	StreamEvent,
-	StreamRequest,
-	PromptMessage,
-	ToolDefinition,
-	TagAdapter,
+  DomainMessage,
+  LLMClient,
+  PromptMessage,
+  StreamEvent,
+  StreamRequest,
+  TagAdapter,
+  ToolDefinition,
 } from "@n0n/types";
 
+import { buildEnvironmentContext } from "../src/context-env.ts";
 import { buildCodeSystemPrompt } from "../src/model-guidance.ts";
 import { getPrompt } from "../src/prompts";
-import { buildEnvironmentContext } from "../src/context-env.ts";
 import { CODE_TAIL_ANCHOR } from "../src/tail-anchor.ts";
 
 // ── CLI 参数 ──
 
 function getArg(name: string, fallback: string): string {
-	const idx = process.argv.indexOf(name);
-	return idx !== -1 && process.argv[idx + 1] ? process.argv[idx + 1]! : fallback;
+  const idx = process.argv.indexOf(name);
+  return idx !== -1 && process.argv[idx + 1]
+    ? process.argv[idx + 1]!
+    : fallback;
 }
 
 const userMessage = getArg(
-	"--user",
-	"项目里的 auth 模块最近频繁报 token 过期，帮我排查一下原因，如果能修就顺手修了。",
+  "--user",
+  "项目里的 auth 模块最近频繁报 token 过期，帮我排查一下原因，如果能修就顺手修了。",
 );
 const useRepositorySkills = process.argv.includes("--repository-skills");
 
@@ -68,8 +63,8 @@ const repositorySkillsDir = resolve(import.meta.dir, "../../../data/skills");
 // 截获 agentLoop 发来的第一次 stream() 请求，导出后用 customer:// 提问结束循环。
 
 interface CapturedRequest {
-	messages: DomainMessage[];
-	tools: ToolDefinition[];
+  messages: DomainMessage[];
+  tools: ToolDefinition[];
 }
 
 const captured: { request: CapturedRequest | null } = { request: null };
@@ -77,67 +72,70 @@ const captured: { request: CapturedRequest | null } = { request: null };
 const tags: TagAdapter = createTagAdapter("default");
 
 const mockClient: LLMClient = {
-	modelId: "mock-preview",
+  modelId: "mock-preview",
 
-	async *stream(request: StreamRequest): AsyncGenerator<StreamEvent> {
-		// structuredClone 避免 agentLoop 后续 push 污染截获的快照
-		captured.request = {
-			messages: structuredClone(request.messages),
-			tools: request.tools ?? [],
-		};
+  async *stream(request: StreamRequest): AsyncGenerator<StreamEvent> {
+    // structuredClone 避免 agentLoop 后续 push 污染截获的快照
+    captured.request = {
+      messages: structuredClone(request.messages),
+      tools: request.tools ?? [],
+    };
 
-		// 返回一个 customer:// 提问工具调用，让 agentLoop 正常结束
-		const callId = "preview_done";
-		const args = JSON.stringify({
-			uri: "customer://question",
-			body: "预览捕获完成。继续吗？\n推荐：继续",
-		});
+    // 返回一个 customer:// 提问工具调用，让 agentLoop 正常结束
+    const callId = "preview_done";
+    const args = JSON.stringify({
+      uri: "customer://question",
+      body: "预览捕获完成。继续吗？\n推荐：继续",
+    });
 
-		// tool_call_delta: 先发 name，再发 arguments，最后 done
-		yield { type: "tool_call_delta", index: 0, id: callId, name: "post", arguments: "" };
-		yield { type: "tool_call_delta", index: 0, arguments: args };
-		yield { type: "done", finishReason: "tool_calls", usage: null };
-	},
+    // tool_call_delta: 先发 name，再发 arguments，最后 done
+    yield {
+      type: "tool_call_delta",
+      index: 0,
+      id: callId,
+      name: "post",
+      arguments: "",
+    };
+    yield { type: "tool_call_delta", index: 0, arguments: args };
+    yield { type: "done", finishReason: "tool_calls", usage: null };
+  },
 
-	async complete() {
-		return { text: "" };
-	},
+  async complete() {
+    return { text: "" };
+  },
 
-	async ping() {
-		return { ok: true as const };
-	},
+  async ping() {
+    return { ok: true as const };
+  },
 };
 
 // ── 复用 repl.ts 的完整初始化流程 ──
 // 以下代码与 repl.ts startCodeRepl 中的初始化部分保持一致
 
-const baseSystemPrompt = buildCodeSystemPrompt(
-	getPrompt(),
-	mockClient.modelId,
-);
+const baseSystemPrompt = buildCodeSystemPrompt(getPrompt(), mockClient.modelId);
 
 const initSkills = useRepositorySkills
-	? await loadInitSkillsFromDirs([repositorySkillsDir])
-	: await loadInitSkills();
+  ? await loadInitSkillsFromDirs([repositorySkillsDir])
+  : await loadInitSkills();
 const skillSource = useRepositorySkills
-	? "repository data/skills"
-	: "installed runtime";
+  ? "repository data/skills"
+  : "installed runtime";
 const systemMessage: DomainMessage = {
-	type: "system_with_skill",
-	content: baseSystemPrompt,
-	skills: initSkills.map(toSkill),
+  type: "system_with_skill",
+  content: baseSystemPrompt,
+  skills: initSkills.map(toSkill),
 };
 
 const sessionDir = resolve(workspace, ".n0n", "previews", "preview-session");
 const toolsConfig = buildToolsConfig(
-	{
-		max_iterations: 1,
-		max_idle_rounds: 1,
-		default_exec_waitfor: 20,
-		max_exec_output_tokens: 32_000,
-	},
-	{ blocked_commands: [] },
-	{ workspace, sessionDir },
+  {
+    max_iterations: 1,
+    max_idle_rounds: 1,
+    default_exec_waitfor: 20,
+    max_exec_output_tokens: 32_000,
+  },
+  { blocked_commands: [] },
+  { workspace, sessionDir },
 );
 
 const toolkit = makeToolkit(toolsConfig, mockClient.modelId);
@@ -145,30 +143,30 @@ const toolkit = makeToolkit(toolsConfig, mockClient.modelId);
 const envContext = await buildEnvironmentContext(workspace);
 
 const history: DomainMessage[] = [
-	systemMessage,
-	{ type: "cache_breakpoint" } as DomainMessage,
-	{
-		type: "user_input",
-		content: userMessage,
-		context: envContext || null,
-		hint: CODE_TAIL_ANCHOR,
-		mentionedSkills: [],
-	},
+  systemMessage,
+  { type: "cache_breakpoint" } as DomainMessage,
+  {
+    type: "user_input",
+    content: userMessage,
+    context: envContext || null,
+    hint: CODE_TAIL_ANCHOR,
+    mentionedSkills: [],
+  },
 ];
 
 // ── 驱动 agentLoop — mock client 在第一次 stream() 时截获请求 ──
 
 await agentLoop(history, {
-	client: mockClient,
-	toolkit,
-	max_iterations: 1,
-	renderer: new PlainRenderer(),
-	confirmFn: async () => "y",
+  client: mockClient,
+  toolkit,
+  max_iterations: 1,
+  renderer: new PlainRenderer(),
+  confirmFn: async () => "y",
 });
 
 if (!captured.request) {
-	console.error("ERROR: mock client was never called — no request captured.");
-	process.exit(1);
+  console.error("ERROR: mock client was never called — no request captured.");
+  process.exit(1);
 }
 
 // ── 渲染 preview markdown ──
@@ -178,27 +176,25 @@ const promptMessages = formatPrompt(captured.request.messages, tags);
 const toolDefs = captured.request.tools;
 
 function toolCallSummary(msg: PromptMessage & { role: "assistant" }): string {
-	if (!msg.toolCalls?.length) return "";
-	return msg.toolCalls
-		.map((tc) => {
-			const argsStr = JSON.stringify(tc.args, null, 2);
-			const truncated =
-				argsStr.length > 300
-					? `${argsStr.slice(0, 300)}\n  ...`
-					: argsStr;
-			return `  - **${tc.tool}** (id: ${tc.id})\n    \`\`\`json\n    ${truncated.replace(/\n/g, "\n    ")}\n    \`\`\``;
-		})
-		.join("\n");
+  if (!msg.toolCalls?.length) return "";
+  return msg.toolCalls
+    .map((tc) => {
+      const argsStr = JSON.stringify(tc.args, null, 2);
+      const truncated =
+        argsStr.length > 300 ? `${argsStr.slice(0, 300)}\n  ...` : argsStr;
+      return `  - **${tc.tool}** (id: ${tc.id})\n    \`\`\`json\n    ${truncated.replace(/\n/g, "\n    ")}\n    \`\`\``;
+    })
+    .join("\n");
 }
 
 const sections: string[] = [];
 
 sections.push("# Code Agent — System Prompt & Fewshot Preview");
 sections.push(
-	`> Captured via mock client through real agentLoop. Skill source: ${skillSource}.`,
+  `> Captured via mock client through real agentLoop. Skill source: ${skillSource}.`,
 );
 sections.push(
-	"> Regenerate from repository source: `bun run apps/code/scripts/preview-prompt.ts --repository-skills`",
+  "> Regenerate from repository source: `bun run apps/code/scripts/preview-prompt.ts --repository-skills`",
 );
 sections.push("");
 
@@ -206,11 +202,9 @@ sections.push("");
 sections.push(`## Tool Definitions (${toolDefs.length} tools)`);
 sections.push("");
 for (const t of toolDefs) {
-	const descPreview = t.description.slice(0, 120).replace(/\n/g, " ");
-	const paramKeys = Object.keys(t.parameters.properties ?? {});
-	sections.push(
-		`- **${t.name}**(${paramKeys.join(", ")}): ${descPreview}...`,
-	);
+  const descPreview = t.description.slice(0, 120).replace(/\n/g, " ");
+  const paramKeys = Object.keys(t.parameters.properties ?? {});
+  sections.push(`- **${t.name}**(${paramKeys.join(", ")}): ${descPreview}...`);
 }
 sections.push("");
 
@@ -219,51 +213,51 @@ let totalChars = 0;
 const msgStats: { role: string; label: string; chars: number }[] = [];
 
 for (const msg of promptMessages) {
-	let chars = msg.content.length;
-	let label = "";
+  let chars = msg.content.length;
+  let label = "";
 
-	if (msg.role === "tool") {
-		label = `tool [${msg.toolName}]`;
-	} else if (
-		msg.role === "assistant" &&
-		"toolCalls" in msg &&
-		msg.toolCalls?.length
-	) {
-		label = `assistant → [${msg.toolCalls.map((tc) => tc.tool).join(", ")}]`;
-		chars += JSON.stringify(msg.toolCalls).length;
-	} else {
-		label = msg.role;
-	}
+  if (msg.role === "tool") {
+    label = `tool [${msg.toolName}]`;
+  } else if (
+    msg.role === "assistant" &&
+    "toolCalls" in msg &&
+    msg.toolCalls?.length
+  ) {
+    label = `assistant → [${msg.toolCalls.map((tc) => tc.tool).join(", ")}]`;
+    chars += JSON.stringify(msg.toolCalls).length;
+  } else {
+    label = msg.role;
+  }
 
-	msgStats.push({ role: msg.role, label, chars });
-	totalChars += chars;
+  msgStats.push({ role: msg.role, label, chars });
+  totalChars += chars;
 }
 
 sections.push(
-	`## Message Sequence (${promptMessages.length} messages, ~${Math.round(totalChars / 4)} tokens)`,
+  `## Message Sequence (${promptMessages.length} messages, ~${Math.round(totalChars / 4)} tokens)`,
 );
 sections.push("");
 sections.push("| # | Role | Approx Tokens | Chars |");
 sections.push("|---|------|--------------|-------|");
 for (let i = 0; i < msgStats.length; i++) {
-	const s = msgStats[i]!;
-	sections.push(
-		`| ${i + 1} | ${s.label} | ~${Math.round(s.chars / 4)} | ${s.chars.toLocaleString()} |`,
-	);
+  const s = msgStats[i]!;
+  sections.push(
+    `| ${i + 1} | ${s.label} | ~${Math.round(s.chars / 4)} | ${s.chars.toLocaleString()} |`,
+  );
 }
 sections.push("");
 
 // Token 预算分解
 const systemFormatted = formatPrompt([systemMessage], tags);
 const systemChars = systemFormatted
-	.filter((message) => message.role === "system")
-	.reduce((total, message) => total + message.content.length, 0);
+  .filter((message) => message.role === "system")
+  .reduce((total, message) => total + message.content.length, 0);
 const initSkillChars = systemFormatted
-	.filter((message) => message.role === "user")
-	.reduce((total, message) => total + message.content.length, 0);
+  .filter((message) => message.role === "user")
+  .reduce((total, message) => total + message.content.length, 0);
 const toolDefChars = toolDefs.reduce(
-	(s, t) => s + t.description.length + JSON.stringify(t.parameters).length,
-	0,
+  (s, t) => s + t.description.length + JSON.stringify(t.parameters).length,
+  0,
 );
 const envContextChars = envContext?.length ?? 0;
 const totalPrefixChars = totalChars + toolDefChars;
@@ -273,22 +267,22 @@ sections.push("");
 sections.push("| Component | Approx Tokens | Chars |");
 sections.push("|-----------|--------------|-------|");
 sections.push(
-	`| System prompt | ~${Math.round(systemChars / 4).toLocaleString()} | ${systemChars.toLocaleString()} |`,
+  `| System prompt | ~${Math.round(systemChars / 4).toLocaleString()} | ${systemChars.toLocaleString()} |`,
 );
 sections.push(
-	`| Init skills (user message) | ~${Math.round(initSkillChars / 4).toLocaleString()} | ${initSkillChars.toLocaleString()} |`,
+  `| Init skills (user message) | ~${Math.round(initSkillChars / 4).toLocaleString()} | ${initSkillChars.toLocaleString()} |`,
 );
 sections.push(
-	`| Tool definitions | ~${Math.round(toolDefChars / 4).toLocaleString()} | ${toolDefChars.toLocaleString()} (${toolDefs.length} tools) |`,
+  `| Tool definitions | ~${Math.round(toolDefChars / 4).toLocaleString()} | ${toolDefChars.toLocaleString()} (${toolDefs.length} tools) |`,
 );
 sections.push(
-	`| Environment context | ~${Math.round(envContextChars / 4)} | ${envContextChars.toLocaleString()} |`,
+  `| Environment context | ~${Math.round(envContextChars / 4)} | ${envContextChars.toLocaleString()} |`,
 );
 sections.push(
-	`| User input | ~${Math.round(userMessage.length / 4)} | ${userMessage.length} |`,
+  `| User input | ~${Math.round(userMessage.length / 4)} | ${userMessage.length} |`,
 );
 sections.push(
-	`| **Total prefix (messages + tools)** | **~${Math.round(totalPrefixChars / 4).toLocaleString()}** | **${totalPrefixChars.toLocaleString()}** |`,
+  `| **Total prefix (messages + tools)** | **~${Math.round(totalPrefixChars / 4).toLocaleString()}** | **${totalPrefixChars.toLocaleString()}** |`,
 );
 sections.push("");
 
@@ -298,7 +292,7 @@ sections.push("");
 sections.push("| Order | Name |");
 sections.push("|-------|------|");
 for (const s of initSkills) {
-	sections.push(`| ${s.order} | ${s.name} |`);
+  sections.push(`| ${s.order} | ${s.name} |`);
 }
 sections.push("");
 
@@ -307,45 +301,39 @@ sections.push("---");
 sections.push("");
 
 for (let i = 0; i < promptMessages.length; i++) {
-	const msg = promptMessages[i]!;
-	const stat = msgStats[i]!;
+  const msg = promptMessages[i]!;
+  const stat = msgStats[i]!;
 
-	sections.push(
-		`## [${i + 1}/${promptMessages.length}] ${stat.label}`,
-	);
-	sections.push("");
+  sections.push(`## [${i + 1}/${promptMessages.length}] ${stat.label}`);
+  sections.push("");
 
-	if (
-		msg.role === "assistant" &&
-		"toolCalls" in msg &&
-		msg.toolCalls?.length
-	) {
-		sections.push("**Tool Calls:**");
-		sections.push(
-			toolCallSummary(msg as PromptMessage & { role: "assistant" }),
-		);
-		sections.push("");
-		if (msg.content) {
-			sections.push("**Content:**");
-		}
-	}
+  if (msg.role === "assistant" && "toolCalls" in msg && msg.toolCalls?.length) {
+    sections.push("**Tool Calls:**");
+    sections.push(
+      toolCallSummary(msg as PromptMessage & { role: "assistant" }),
+    );
+    sections.push("");
+    if (msg.content) {
+      sections.push("**Content:**");
+    }
+  }
 
-	if (msg.role === "tool") {
-		sections.push(
-			`> tool_call_id: \`${msg.toolCallId}\`, tool: \`${msg.toolName}\``,
-		);
-		sections.push("");
-	}
+  if (msg.role === "tool") {
+    sections.push(
+      `> tool_call_id: \`${msg.toolCallId}\`, tool: \`${msg.toolName}\``,
+    );
+    sections.push("");
+  }
 
-	const content = msg.content;
-	if (content) {
-		const fence = content.includes("```") ? "~~~~" : "```";
-		sections.push(fence);
-		sections.push(content);
-		sections.push(fence);
-	}
+  const content = msg.content;
+  if (content) {
+    const fence = content.includes("```") ? "~~~~" : "```";
+    sections.push(fence);
+    sections.push(content);
+    sections.push(fence);
+  }
 
-	sections.push("");
+  sections.push("");
 }
 
 // ── 写入文件 ──
@@ -360,21 +348,21 @@ console.log(`Preview written to: ${outPath}`);
 console.log("");
 console.log("Token budget breakdown (approx):");
 console.log(
-	`  System prompt:    ~${Math.round(systemChars / 4).toLocaleString()} tokens (${systemChars.toLocaleString()} chars)`,
+  `  System prompt:    ~${Math.round(systemChars / 4).toLocaleString()} tokens (${systemChars.toLocaleString()} chars)`,
 );
 console.log(
-	`  Init skills:      ~${Math.round(initSkillChars / 4).toLocaleString()} tokens (${initSkillChars.toLocaleString()} chars)`,
+  `  Init skills:      ~${Math.round(initSkillChars / 4).toLocaleString()} tokens (${initSkillChars.toLocaleString()} chars)`,
 );
 console.log(
-	`  Tool definitions: ~${Math.round(toolDefChars / 4).toLocaleString()} tokens (${toolDefs.length} tools)`,
+  `  Tool definitions: ~${Math.round(toolDefChars / 4).toLocaleString()} tokens (${toolDefs.length} tools)`,
 );
 console.log(
-	`  Environment context: ~${Math.round(envContextChars / 4)} tokens (${envContextChars.toLocaleString()} chars)`,
+  `  Environment context: ~${Math.round(envContextChars / 4)} tokens (${envContextChars.toLocaleString()} chars)`,
 );
 console.log(
-	`  User input:       ~${Math.round(userMessage.length / 4)} tokens`,
+  `  User input:       ~${Math.round(userMessage.length / 4)} tokens`,
 );
 console.log("  ────────────────────────────");
 console.log(
-	`  Total prefix:     ~${Math.round(totalPrefixChars / 4).toLocaleString()} tokens (${totalPrefixChars.toLocaleString()} chars)`,
+  `  Total prefix:     ~${Math.round(totalPrefixChars / 4).toLocaleString()} tokens (${totalPrefixChars.toLocaleString()} chars)`,
 );

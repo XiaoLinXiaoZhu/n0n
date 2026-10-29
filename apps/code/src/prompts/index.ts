@@ -10,28 +10,28 @@
  * 添加新版本：在此文件新增一行 import + prompts 条目即可。
  */
 
-import codeDefault from "./code.md" with { type: "text" };
 import code20260821 from "./code-2026-0821.md" with { type: "text" };
+import codeDefault from "./code.md" with { type: "text" };
 
 /** 版本号 → 提示词文本。空字符串 key 为默认版本。 */
 export const prompts: Record<string, string> = {
-	"": codeDefault,
-	"2026-08-21": code20260821,
+  "": codeDefault,
+  "2026-08-21": code20260821,
 };
 
 /** 列出所有可用版本 */
 export function availableVersions(): string[] {
-	return Object.keys(prompts).filter((k) => k !== "");
+  return Object.keys(prompts).filter((k) => k !== "");
 }
 
 /** 获取指定版本的提示词，不存在则抛出明确错误 */
 export function getPrompt(version?: string): string {
-	const key = version ?? "";
-	const text = prompts[key];
-	if (text == null) {
-		throw new Error(
-			`提示词版本 "${version}" 不存在。可用版本: ${availableVersions().join(", ")}`,
-		);
-	}
-	return text;
+  const key = version ?? "";
+  const text = prompts[key];
+  if (text == null) {
+    throw new Error(
+      `提示词版本 "${version}" 不存在。可用版本: ${availableVersions().join(", ")}`,
+    );
+  }
+  return text;
 }

@@ -10,8 +10,8 @@ import type { Skill } from "../skill.ts";
 
 // ── 通用系统消息（pass-through） ──
 export interface GenericSystemMessage {
-	type: "system";
-	content: string;
+  type: "system";
+  content: string;
 }
 
 // ── 系统提示词 + Skill（需 adapter 组织） ──
@@ -26,39 +26,39 @@ export interface GenericSystemMessage {
  * 共用同一种拼装格式，形成统一的心智模型。
  */
 export interface SystemWithSkillMessage {
-	type: "system_with_skill";
-	content: string;
-	skills: Skill[];
+  type: "system_with_skill";
+  content: string;
+  skills: Skill[];
 }
 
 // ── 通用用户文本消息（pass-through） ──
 export interface GenericUserTextMessage {
-	type: "generic_user_text";
-	content: string;
+  type: "generic_user_text";
+  content: string;
 }
 
 /** 真实用户输入（交互模式），adapter 负责包装为设计线索并拼接上下文 */
 export interface UserInputMessage {
-	type: "user_input";
-	content: string;
-	context: string | null;
-	/** 注入到用户消息末尾的行为引导提示，各 app 自行定义。null 时 adapter 不追加额外提示。 */
-	hint: string | null;
-	/**
-	 * 用户在本次输入中提及/引用的 skill（如 @name 语法）。
-	 *
-	 * 与 hint 的区别：hint 是功能角度的字段（系统想让模型怎么做），
-	 * mentionedSkills 是语义角度的字段（实际发生了什么——用户引用了这些 skill）。
-	 * 消息承载原本含义，adapter 负责将其拼装为提示词。空数组表示未提及任何 skill。
-	 */
-	mentionedSkills: Skill[];
+  type: "user_input";
+  content: string;
+  context: string | null;
+  /** 注入到用户消息末尾的行为引导提示，各 app 自行定义。null 时 adapter 不追加额外提示。 */
+  hint: string | null;
+  /**
+   * 用户在本次输入中提及/引用的 skill（如 @name 语法）。
+   *
+   * 与 hint 的区别：hint 是功能角度的字段（系统想让模型怎么做），
+   * mentionedSkills 是语义角度的字段（实际发生了什么——用户引用了这些 skill）。
+   * 消息承载原本含义，adapter 负责将其拼装为提示词。空数组表示未提及任何 skill。
+   */
+  mentionedSkills: Skill[];
 }
 
 export interface UserImageMessage {
-	type: "user_image";
-	text: string;
-	imagePath: string;
-	focusX: number;
-	focusY: number;
-	scale: number;
+  type: "user_image";
+  text: string;
+  imagePath: string;
+  focusX: number;
+  focusY: number;
+  scale: number;
 }

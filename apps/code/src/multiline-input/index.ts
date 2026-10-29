@@ -5,7 +5,7 @@
  */
 
 export {
-	type MultilineInputOptions,
-	type MultilineInputResult,
-	readMultilineInput,
+  type MultilineInputOptions,
+  type MultilineInputResult,
+  readMultilineInput,
 } from "./reader.ts";

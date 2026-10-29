@@ -11,31 +11,31 @@ import type { ToolsConfig } from "@n0n/tools";
 // ── 类型 ──
 
 export interface AgentConfig {
-	max_iterations: number;
-	max_idle_rounds: number;
-	default_exec_waitfor: number;
-	max_exec_output_tokens: number;
+  max_iterations: number;
+  max_idle_rounds: number;
+  default_exec_waitfor: number;
+  max_exec_output_tokens: number;
 }
 
 export interface SecurityConfig {
-	blocked_commands: string[];
+  blocked_commands: string[];
 }
 
 /** 从工作区路径构建 ToolsConfig */
 export function buildToolsConfig(
-	agent: AgentConfig,
-	security: SecurityConfig,
-	paths: {
-		workspace: string;
-		sessionDir: string;
-		platform?: "win32" | "darwin" | "linux";
-	},
+  agent: AgentConfig,
+  security: SecurityConfig,
+  paths: {
+    workspace: string;
+    sessionDir: string;
+    platform?: "win32" | "darwin" | "linux";
+  },
 ): ToolsConfig {
-	return {
-		security,
-		agent,
-		workspace: paths.workspace,
-		sessionDir: paths.sessionDir,
-		platform: paths.platform ?? resolvePlatform(),
-	};
+  return {
+    security,
+    agent,
+    workspace: paths.workspace,
+    sessionDir: paths.sessionDir,
+    platform: paths.platform ?? resolvePlatform(),
+  };
 }

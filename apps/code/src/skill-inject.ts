@@ -14,12 +14,12 @@ import { listSkills, readSkills, toSkill } from "@n0n/skill";
 import type { Skill } from "@n0n/types";
 
 export interface SkillInjectResult {
-	/** 移除了 @name 行后的用户文本 */
-	cleanedText: string;
-	/** 用户引用的 skill（领域层最小表示），空数组表示无 skill 唤起 */
-	mentionedSkills: Skill[];
-	/** 找不到的 skill 名称列表 */
-	notFound: string[];
+  /** 移除了 @name 行后的用户文本 */
+  cleanedText: string;
+  /** 用户引用的 skill（领域层最小表示），空数组表示无 skill 唤起 */
+  mentionedSkills: Skill[];
+  /** 找不到的 skill 名称列表 */
+  notFound: string[];
 }
 
 /** 匹配独占一行的 @name（name 由小写字母、数字、连字符组成） */
@@ -33,43 +33,43 @@ const SKILL_LINE_RE = /^@([a-z0-9](?:[a-z0-9-]*[a-z0-9])?)$/;
  * @returns 清理后的文本 + 引用的 skill 列表 + 未找到列表
  */
 export async function parseAndInjectSkills(
-	input: string,
+  input: string,
 ): Promise<SkillInjectResult> {
-	const lines = input.split(/\r?\n/);
-	const skillNames: string[] = [];
-	const cleanedLines: string[] = [];
+  const lines = input.split(/\r?\n/);
+  const skillNames: string[] = [];
+  const cleanedLines: string[] = [];
 
-	for (const line of lines) {
-		const match = line.trim().match(SKILL_LINE_RE);
-		if (match?.[1]) {
-			skillNames.push(match[1]);
-		} else {
-			cleanedLines.push(line);
-		}
-	}
+  for (const line of lines) {
+    const match = line.trim().match(SKILL_LINE_RE);
+    if (match?.[1]) {
+      skillNames.push(match[1]);
+    } else {
+      cleanedLines.push(line);
+    }
+  }
 
-	if (skillNames.length === 0) {
-		return { cleanedText: input, mentionedSkills: [], notFound: [] };
-	}
+  if (skillNames.length === 0) {
+    return { cleanedText: input, mentionedSkills: [], notFound: [] };
+  }
 
-	const { found, notFound } = await readSkills(skillNames);
+  const { found, notFound } = await readSkills(skillNames);
 
-	return {
-		cleanedText: cleanedLines.join("\n").trim(),
-		mentionedSkills: found.map(toSkill),
-		notFound,
-	};
+  return {
+    cleanedText: cleanedLines.join("\n").trim(),
+    mentionedSkills: found.map(toSkill),
+    notFound,
+  };
 }
 
 /**
  * 列出可用 skill 名称和别名（用于提示用户）
  */
 export async function getAvailableSkillNames(): Promise<string[]> {
-	const skills = await listSkills();
-	const names: string[] = [];
-	for (const s of skills) {
-		names.push(s.name);
-		names.push(...s.alias);
-	}
-	return [...new Set(names)];
+  const skills = await listSkills();
+  const names: string[] = [];
+  for (const s of skills) {
+    names.push(s.name);
+    names.push(...s.alias);
+  }
+  return [...new Set(names)];
 }

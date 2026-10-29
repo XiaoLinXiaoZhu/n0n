@@ -7,9 +7,9 @@
  */
 
 import {
-	dispatchParse,
-	type ParsedUri,
-	URI_PREFIXES,
+  dispatchParse,
+  type ParsedUri,
+  URI_PREFIXES,
 } from "./schemes/index.ts";
 
 export type { ParsedUri } from "./schemes/index.ts";
@@ -20,10 +20,10 @@ export type { ParsedUri } from "./schemes/index.ts";
  * @throws Error 畸形或不支持的 uri（消息中列出全部受支持的 scheme）。
  */
 export function parsePostUri(uri: string): ParsedUri {
-	if (typeof uri !== "string" || uri.length === 0) {
-		throw new Error(
-			`Empty uri. Supported schemes: ${URI_PREFIXES.join(", ")}.`,
-		);
-	}
-	return dispatchParse(uri);
+  if (typeof uri !== "string" || uri.length === 0) {
+    throw new Error(
+      `Empty uri. Supported schemes: ${URI_PREFIXES.join(", ")}.`,
+    );
+  }
+  return dispatchParse(uri);
 }

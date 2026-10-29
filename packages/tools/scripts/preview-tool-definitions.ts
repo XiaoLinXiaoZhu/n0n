@@ -9,7 +9,9 @@
 
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
+
 import { resolvePlatform } from "@n0n/shared";
+
 import { makeToolkit } from "../src";
 
 const MODEL = "claude-sonnet-4-20250514";
@@ -18,62 +20,57 @@ mkdirSync(PREVIEW_DIR, { recursive: true });
 
 // 构建完整 toolkit（触发环境探测，与生产一致）
 const toolkit = makeToolkit(
-	{
-		workspace: process.cwd(),
-		sessionDir: join(
-			process.cwd(),
-			".n0n",
-			"previews",
-			"preview-session",
-		),
-		platform: resolvePlatform(),
-		security: { blocked_commands: [] },
-		agent: { default_exec_waitfor: 20, max_exec_output_tokens: 32_000 },
-	},
-	MODEL,
+  {
+    workspace: process.cwd(),
+    sessionDir: join(process.cwd(), ".n0n", "previews", "preview-session"),
+    platform: resolvePlatform(),
+    security: { blocked_commands: [] },
+    agent: { default_exec_waitfor: 20, max_exec_output_tokens: 32_000 },
+  },
+  MODEL,
 );
 
 let count = 0;
 for (const def of toolkit.tools) {
-	const lines = [
-		`# Tool Definition: ${def.name}`,
-		`<!-- generated for model: ${MODEL} -->`,
-		"",
-		"## parameters",
-		"",
-		"```json",
-		JSON.stringify(def.parameters, null, 2),
-		"```",
-		"",
-		"## description",
-		"",
-		"````",
-		def.description,
-		"````",
-		"",
-		"## Full OpenAI function format",
-		"",
-		"```json",
-		JSON.stringify(
-			{
-				type: "function",
-				function: {
-					name: def.name,
-					description: def.description,
-					parameters: def.parameters,
-				},
-			},
-			null,
-			2,
-		),
-		"```",
-		"",
-	];
+  const lines = [
+    `# Tool Definition: ${def.name}`,
+    `<!-- generated for model: ${MODEL} -->`,
+    "",
+    "## parameters",
+    "",
+    "```json",
+    JSON.stringify(def.parameters, null, 2),
+    "```",
+    "",
+    "## description",
+    "",
+    "````",
+    def.description,
+    "````",
+    "",
+    "## Full OpenAI function format",
+    "",
+    "```json",
+    JSON.stringify(
+      {
+        type: "function",
+        function: {
+          name: def.name,
+          description: def.description,
+          parameters: def.parameters,
+        },
+      },
+      null,
+      2,
+    ),
+    "```",
+    "",
+  ];
 
-	const outPath = join(PREVIEW_DIR, `tool-${def.name}.preview.md`);
-	await Bun.write(outPath, lines.join("\n"));
-	count++;
-	console.log(`  ${def.name} → ${outPath}`);
+  const outPath = join(PREVIEW_DIR, `tool-${def.name}.preview.md`);
+  await Bun.write(outPath, lines.join("\n"));
+  count++;
+  console.log(`  ${def.name} → ${outPath}`);
 }
 
 console.log(`\nGenerated ${count} tool previews in ${PREVIEW_DIR}/`);

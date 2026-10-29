@@ -16,18 +16,18 @@ import type { Skill, TagAdapter } from "@n0n/types";
 
 /** 单个 skill → 控制块：<skill name="xxx"> marker + body + 可选子标签 + 结束注释 */
 function formatOneSkill(skill: Skill, tags: TagAdapter): string {
-	const scriptsBlock =
-		skill.scripts.length > 0
-			? `\n\n${tags.wrapTag("scripts", skill.scripts.join("\n"))}`
-			: "";
-	const resourcesBlock =
-		skill.resources.length > 0
-			? `\n\n${tags.wrapTag("resources", skill.resources.join("\n"))}`
-			: "";
+  const scriptsBlock =
+    skill.scripts.length > 0
+      ? `\n\n${tags.wrapTag("scripts", skill.scripts.join("\n"))}`
+      : "";
+  const resourcesBlock =
+    skill.resources.length > 0
+      ? `\n\n${tags.wrapTag("resources", skill.resources.join("\n"))}`
+      : "";
 
-	const body = `<!-- begin of skill ${skill.name} -->\n\n${skill.body}${scriptsBlock}${resourcesBlock}\n\n<!-- end of skill ${skill.name} -->`;
+  const body = `<!-- begin of skill ${skill.name} -->\n\n${skill.body}${scriptsBlock}${resourcesBlock}\n\n<!-- end of skill ${skill.name} -->`;
 
-	return tags.wrapTag("skill", body, { name: skill.name });
+  return tags.wrapTag("skill", body, { name: skill.name });
 }
 
 /**
@@ -38,6 +38,6 @@ function formatOneSkill(skill: Skill, tags: TagAdapter): string {
  * @returns 拼接好的 skill 文本；skills 为空时返回空字符串
  */
 export function formatSkills(skills: Skill[], tags: TagAdapter): string {
-	if (skills.length === 0) return "";
-	return skills.map((s) => formatOneSkill(s, tags)).join("\n\n");
+  if (skills.length === 0) return "";
+  return skills.map((s) => formatOneSkill(s, tags)).join("\n\n");
 }

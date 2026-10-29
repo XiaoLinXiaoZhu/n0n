@@ -17,39 +17,39 @@ import { LLMError } from "./errors.ts";
  * @returns Response（已校验 ok）
  */
 export async function fetchWithRetry(
-	fn: () => Promise<Response>,
-	maxRetries = 3,
+  fn: () => Promise<Response>,
+  maxRetries = 3,
 ): Promise<Response> {
-	let lastError: Error | null = null;
+  let lastError: Error | null = null;
 
-	for (let attempt = 0; attempt < maxRetries; attempt++) {
-		if (attempt > 0) {
-			const delay = Math.min(1000 * 2 ** attempt, 10_000);
-			await new Promise((r) => setTimeout(r, delay));
-		}
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    if (attempt > 0) {
+      const delay = Math.min(1000 * 2 ** attempt, 10_000);
+      await new Promise((r) => setTimeout(r, delay));
+    }
 
-		try {
-			const res = await fn();
+    try {
+      const res = await fn();
 
-			if (!res.ok) {
-				const text = await res.text().catch(() => "");
-				if (res.status === 429 || res.status >= 500) {
-					lastError = new LLMError(
-						`LLM API ${res.status}: ${text}`,
-						res.status,
-						text,
-					);
-					continue;
-				}
-				throw new LLMError(`LLM API ${res.status}: ${text}`, res.status, text);
-			}
+      if (!res.ok) {
+        const text = await res.text().catch(() => "");
+        if (res.status === 429 || res.status >= 500) {
+          lastError = new LLMError(
+            `LLM API ${res.status}: ${text}`,
+            res.status,
+            text,
+          );
+          continue;
+        }
+        throw new LLMError(`LLM API ${res.status}: ${text}`, res.status, text);
+      }
 
-			return res;
-		} catch (err) {
-			if (err instanceof LLMError) throw err;
-			lastError = err instanceof Error ? err : new Error(String(err));
-		}
-	}
+      return res;
+    } catch (err) {
+      if (err instanceof LLMError) throw err;
+      lastError = err instanceof Error ? err : new Error(String(err));
+    }
+  }
 
-	throw lastError ?? new Error("LLM request failed after retries");
+  throw lastError ?? new Error("LLM request failed after retries");
 }

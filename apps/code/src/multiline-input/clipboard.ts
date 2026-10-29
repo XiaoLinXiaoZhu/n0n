@@ -22,48 +22,48 @@ import { spawnSync } from "node:child_process";
  *  - linux：wl-paste（Wayland）→ xclip（X11）
  */
 export function pasteFromClipboard(): string | null {
-	try {
-		if (process.platform === "win32") {
-			const proc = spawnSync(
-				"powershell",
-				["-NoProfile", "-Command", "Get-Clipboard"],
-				{ stdio: ["ignore", "pipe", "ignore"], timeout: 5000 },
-			);
-			if (proc.status === 0 && proc.stdout.length > 0) {
-				// Get-Clipboard 末尾会附加 \r\n
-				return proc.stdout.toString("utf-8").replace(/\r?\n$/, "");
-			}
-			return null;
-		}
-		if (process.platform === "darwin") {
-			const proc = spawnSync("pbpaste", {
-				stdio: ["ignore", "pipe", "ignore"],
-				timeout: 3000,
-			});
-			if (proc.status === 0) {
-				return proc.stdout.toString("utf-8").replace(/\n$/, "");
-			}
-			return null;
-		}
-		// linux: 先 Wayland 再 X11
-		const wl = spawnSync("wl-paste", {
-			stdio: ["ignore", "pipe", "ignore"],
-			timeout: 3000,
-		});
-		if (wl.status === 0) {
-			return wl.stdout.toString("utf-8").replace(/\n$/, "");
-		}
-		const xc = spawnSync("xclip", ["-selection", "clipboard", "-o"], {
-			stdio: ["ignore", "pipe", "ignore"],
-			timeout: 3000,
-		});
-		if (xc.status === 0) {
-			return xc.stdout.toString("utf-8").replace(/\n$/, "");
-		}
-		return null;
-	} catch {
-		return null;
-	}
+  try {
+    if (process.platform === "win32") {
+      const proc = spawnSync(
+        "powershell",
+        ["-NoProfile", "-Command", "Get-Clipboard"],
+        { stdio: ["ignore", "pipe", "ignore"], timeout: 5000 },
+      );
+      if (proc.status === 0 && proc.stdout.length > 0) {
+        // Get-Clipboard 末尾会附加 \r\n
+        return proc.stdout.toString("utf-8").replace(/\r?\n$/, "");
+      }
+      return null;
+    }
+    if (process.platform === "darwin") {
+      const proc = spawnSync("pbpaste", {
+        stdio: ["ignore", "pipe", "ignore"],
+        timeout: 3000,
+      });
+      if (proc.status === 0) {
+        return proc.stdout.toString("utf-8").replace(/\n$/, "");
+      }
+      return null;
+    }
+    // linux: 先 Wayland 再 X11
+    const wl = spawnSync("wl-paste", {
+      stdio: ["ignore", "pipe", "ignore"],
+      timeout: 3000,
+    });
+    if (wl.status === 0) {
+      return wl.stdout.toString("utf-8").replace(/\n$/, "");
+    }
+    const xc = spawnSync("xclip", ["-selection", "clipboard", "-o"], {
+      stdio: ["ignore", "pipe", "ignore"],
+      timeout: 3000,
+    });
+    if (xc.status === 0) {
+      return xc.stdout.toString("utf-8").replace(/\n$/, "");
+    }
+    return null;
+  } catch {
+    return null;
+  }
 }
 
 /**
@@ -71,5 +71,5 @@ export function pasteFromClipboard(): string | null {
  * 供 TextInput 插入（其内部以 \n 表示换行）。
  */
 export function normalizePastedText(text: string): string {
-	return text.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+  return text.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
 }

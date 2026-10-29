@@ -12,42 +12,43 @@
  */
 
 import {
-	debounce,
-	encodeStyle,
-	Grid,
-	parseKey,
-	TextInput,
-	Viewport,
+  debounce,
+  encodeStyle,
+  Grid,
+  parseKey,
+  TextInput,
+  Viewport,
 } from "@xlxz/terminal-renderer";
+
 import { normalizePastedText, pasteFromClipboard } from "./clipboard.ts";
 import type { UserInputConfig } from "./config.ts";
 import {
-	calcDescBox,
-	calcMenuPosition,
-	calcMenuScrollTop,
-	computeMentionDecorations,
-	detectMention,
-	filterMentions,
-	loadMentionItems,
-	type MentionItem,
-	maxLabelWidth,
-	mentionLabel,
-	paintDescBox,
-	paintMenu,
-	setupMenuOwnership,
+  calcDescBox,
+  calcMenuPosition,
+  calcMenuScrollTop,
+  computeMentionDecorations,
+  detectMention,
+  filterMentions,
+  loadMentionItems,
+  maxLabelWidth,
+  type MentionItem,
+  mentionLabel,
+  paintDescBox,
+  paintMenu,
+  setupMenuOwnership,
 } from "./mention.ts";
 import {
-	type ColSpan,
-	calcColSpan,
-	calcScrollOverflow,
-	countVisualLines,
-	getLayout,
-	INDICATOR_ROWS,
-	paintAboveIndicator,
-	paintBelowIndicator,
-	paintSideFrame,
-	paintStatusBar,
-	STATUS_ROWS,
+  calcColSpan,
+  calcScrollOverflow,
+  type ColSpan,
+  countVisualLines,
+  getLayout,
+  INDICATOR_ROWS,
+  paintAboveIndicator,
+  paintBelowIndicator,
+  paintSideFrame,
+  paintStatusBar,
+  STATUS_ROWS,
 } from "./ui.ts";
 
 // ── bracketed paste 控制序列 ──
@@ -84,569 +85,569 @@ const menuHighlightStyle = encodeStyle(0, 6, 0);
 const menuNormalStyle = encodeStyle(-1, -1, 0);
 
 export interface MultilineInputOptions {
-	prompt?: string;
-	hint?: string;
-	/** 编辑器配置（最大宽高、对齐）。未提供时用内部默认（全部无限制、左对齐）。 */
-	editor?: UserInputConfig;
-	output?: NodeJS.WriteStream;
-	/**
-	 * 外部 stdin 数据源注入点。提供时本函数不自管 stdin（不设 raw mode、
-	 * 不加 listener），通过 handler 接收数据，返回清理函数。
-	 *
-	 * 注意：repl 的 StdinController 使用 setEncoding("utf8")，handler 收到 string。
-	 */
-	connectStdin?: (handler: (data: string) => void) => () => void;
+  prompt?: string;
+  hint?: string;
+  /** 编辑器配置（最大宽高、对齐）。未提供时用内部默认（全部无限制、左对齐）。 */
+  editor?: UserInputConfig;
+  output?: NodeJS.WriteStream;
+  /**
+   * 外部 stdin 数据源注入点。提供时本函数不自管 stdin（不设 raw mode、
+   * 不加 listener），通过 handler 接收数据，返回清理函数。
+   *
+   * 注意：repl 的 StdinController 使用 setEncoding("utf8")，handler 收到 string。
+   */
+  connectStdin?: (handler: (data: string) => void) => () => void;
 }
 
 export interface MultilineInputResult {
-	text: string;
-	lineCount: number;
+  text: string;
+  lineCount: number;
 }
 
 /** 根据文本和终端尺寸计算输入区所需的 grid 行数（含状态栏和指标行预留） */
 function calcGridRows(
-	text: string,
-	termCols: number,
-	termRows: number,
-	maxInputRows: number,
-	menuReserveRows = 0,
+  text: string,
+  termCols: number,
+  termRows: number,
+  maxInputRows: number,
+  menuReserveRows = 0,
 ): number {
-	const maxRows = Math.max(
-		MIN_INPUT_ROWS,
-		Math.min(maxInputRows, termRows - TERM_RESERVE),
-	);
-	const needed =
-		countVisualLines(text, termCols) + STATUS_ROWS + INDICATOR_ROWS;
-	const base = Math.max(
-		MIN_INPUT_ROWS + STATUS_ROWS,
-		Math.min(needed, maxRows),
-	);
-	if (menuReserveRows <= 0) return base;
-	// 菜单打开时，保证 grid 高度能容纳「输入文本 + 菜单 + 状态栏」，
-	// 但整体仍受终端可见高度硬约束（动态区高度 ≤ termRows - TERM_RESERVE）。
-	const withMenu = needed + menuReserveRows;
-	const hardCap = Math.max(
-		MIN_INPUT_ROWS + STATUS_ROWS,
-		termRows - TERM_RESERVE,
-	);
-	return Math.max(base, Math.min(withMenu, hardCap));
+  const maxRows = Math.max(
+    MIN_INPUT_ROWS,
+    Math.min(maxInputRows, termRows - TERM_RESERVE),
+  );
+  const needed =
+    countVisualLines(text, termCols) + STATUS_ROWS + INDICATOR_ROWS;
+  const base = Math.max(
+    MIN_INPUT_ROWS + STATUS_ROWS,
+    Math.min(needed, maxRows),
+  );
+  if (menuReserveRows <= 0) return base;
+  // 菜单打开时，保证 grid 高度能容纳「输入文本 + 菜单 + 状态栏」，
+  // 但整体仍受终端可见高度硬约束（动态区高度 ≤ termRows - TERM_RESERVE）。
+  const withMenu = needed + menuReserveRows;
+  const hardCap = Math.max(
+    MIN_INPUT_ROWS + STATUS_ROWS,
+    termRows - TERM_RESERVE,
+  );
+  return Math.max(base, Math.min(withMenu, hardCap));
 }
 
 export function readMultilineInput(
-	options?: MultilineInputOptions,
+  options?: MultilineInputOptions,
 ): Promise<MultilineInputResult | null> {
-	const out = options?.output ?? process.stderr;
+  const out = options?.output ?? process.stderr;
 
-	return new Promise<MultilineInputResult | null>((resolve) => {
-		const getCols = (): number => out.columns || 80;
-		const getRows = (): number => out.rows || 24;
+  return new Promise<MultilineInputResult | null>((resolve) => {
+    const getCols = (): number => out.columns || 80;
+    const getRows = (): number => out.rows || 24;
 
-		const editorConfig = options?.editor ?? {
-			maxWidth: null,
-			maxHeight: null,
-			align: "left",
-		};
+    const editorConfig = options?.editor ?? {
+      maxWidth: null,
+      maxHeight: null,
+      align: "left",
+    };
 
-		const ti = new TextInput();
-		let allMentions: MentionItem[] = [];
-		let menuOpen = false;
-		let menuItems: MentionItem[] = [];
-		let menuSelected = 0;
-		let menuQuery = "";
-		// 异步加载 skill 候选（失败则补全不可用，不影响输入）
-		loadMentionItems()
-			.then((items) => {
-				allMentions = items;
-			})
-			.catch(() => {});
+    const ti = new TextInput();
+    let allMentions: MentionItem[] = [];
+    let menuOpen = false;
+    let menuItems: MentionItem[] = [];
+    let menuSelected = 0;
+    let menuQuery = "";
+    // 异步加载 skill 候选（失败则补全不可用，不影响输入）
+    loadMentionItems()
+      .then((items) => {
+        allMentions = items;
+      })
+      .catch(() => {});
 
-		const maxInputRows = editorConfig.maxHeight ?? MAX_INPUT_ROWS;
-		let gridRows = calcGridRows("", getCols(), getRows(), maxInputRows);
-		let colSpan: ColSpan = calcColSpan(
-			getCols(),
-			editorConfig.maxWidth,
-			editorConfig.align,
-		);
-		const grid = Grid.create(getCols(), gridRows);
-		const vp = new Viewport(grid, out);
+    const maxInputRows = editorConfig.maxHeight ?? MAX_INPUT_ROWS;
+    let gridRows = calcGridRows("", getCols(), getRows(), maxInputRows);
+    let colSpan: ColSpan = calcColSpan(
+      getCols(),
+      editorConfig.maxWidth,
+      editorConfig.align,
+    );
+    const grid = Grid.create(getCols(), gridRows);
+    const vp = new Viewport(grid, out);
 
-		// bracketed paste 跨 chunk 聚合状态
-		let isPasting = false;
-		let pasteBuffer = "";
-		// 末尾可能是被 chunk 边界截断的 paste 标记前缀（如 "\x1b[" / "\x1b[2"），
-		// hold 到下个 chunk 拼接后再判定，避免标记被拆开导致漏识别、内容残留。
-		let pasteCarry = "";
+    // bracketed paste 跨 chunk 聚合状态
+    let isPasting = false;
+    let pasteBuffer = "";
+    // 末尾可能是被 chunk 边界截断的 paste 标记前缀（如 "\x1b[" / "\x1b[2"），
+    // hold 到下个 chunk 拼接后再判定，避免标记被拆开导致漏识别、内容残留。
+    let pasteCarry = "";
 
-		const w = (s: string) => out.write(s);
+    const w = (s: string) => out.write(s);
 
-		// prompt/hint 作为静态前导行写入历史（不进动态区）
-		if (options?.prompt) {
-			const hint = options?.hint ?? "";
-			w(`${options.prompt}${hint ? ` ${hint}` : ""}\n`);
-		}
+    // prompt/hint 作为静态前导行写入历史（不进动态区）
+    if (options?.prompt) {
+      const hint = options?.hint ?? "";
+      w(`${options.prompt}${hint ? ` ${hint}` : ""}\n`);
+    }
 
-		w(BP_ON);
-		// 隐藏光标，渲染期间避免闪动
-		w("\x1b[?25l");
-		vp.mount();
-		render();
-		w("\x1b[?25h");
+    w(BP_ON);
+    // 隐藏光标，渲染期间避免闪动
+    w("\x1b[?25l");
+    vp.mount();
+    render();
+    w("\x1b[?25h");
 
-		let disconnectStdin: (() => void) | null = null;
+    let disconnectStdin: (() => void) | null = null;
 
-		function setupOwnership(hasAbove: boolean, hasBelow: boolean): void {
-			const layout = getLayout(grid.rows, hasAbove, hasBelow);
-			for (let r = 0; r < grid.rows; r++) {
-				for (let c = 0; c < grid.cols; c++) {
-					grid.setOwner(r, c, "");
-				}
-			}
-			for (let r = layout.inputStartRow; r <= layout.inputEndRow; r++) {
-				for (let c = colSpan.startCol; c < colSpan.endCol; c++) {
-					grid.setOwner(r, c, OWNER_INPUT);
-				}
-			}
-		}
+    function setupOwnership(hasAbove: boolean, hasBelow: boolean): void {
+      const layout = getLayout(grid.rows, hasAbove, hasBelow);
+      for (let r = 0; r < grid.rows; r++) {
+        for (let c = 0; c < grid.cols; c++) {
+          grid.setOwner(r, c, "");
+        }
+      }
+      for (let r = layout.inputStartRow; r <= layout.inputEndRow; r++) {
+        for (let c = colSpan.startCol; c < colSpan.endCol; c++) {
+          grid.setOwner(r, c, OWNER_INPUT);
+        }
+      }
+    }
 
-		function resizeGridIfNeeded(force = false): void {
-			const menuReserve =
-				menuOpen && menuItems.length > 0
-					? Math.min(menuItems.length + 2, MENU_MAX_RESERVE)
-					: 0;
-			const newRows = calcGridRows(
-				ti.text,
-				getCols(),
-				getRows(),
-				maxInputRows,
-				menuReserve,
-			);
-			const newCols = getCols();
-			// 编辑路径（force=false）：尺寸没变就跳过，避免无谓清屏闪烁。
-			// resize 路径（force=true）：终端尺寸已变，即使算出的 grid 尺寸相同也必须 remount——
-			// remount 内部的 \x1B[J 清除旧动态区残留并按回流高度重新对齐光标，缺它会导致清理不足。
-			if (!force && newRows === gridRows && newCols === grid.cols) return;
-			gridRows = newRows;
-			vp.remount(newCols, gridRows);
-		}
+    function resizeGridIfNeeded(force = false): void {
+      const menuReserve =
+        menuOpen && menuItems.length > 0
+          ? Math.min(menuItems.length + 2, MENU_MAX_RESERVE)
+          : 0;
+      const newRows = calcGridRows(
+        ti.text,
+        getCols(),
+        getRows(),
+        maxInputRows,
+        menuReserve,
+      );
+      const newCols = getCols();
+      // 编辑路径（force=false）：尺寸没变就跳过，避免无谓清屏闪烁。
+      // resize 路径（force=true）：终端尺寸已变，即使算出的 grid 尺寸相同也必须 remount——
+      // remount 内部的 \x1B[J 清除旧动态区残留并按回流高度重新对齐光标，缺它会导致清理不足。
+      if (!force && newRows === gridRows && newCols === grid.cols) return;
+      gridRows = newRows;
+      vp.remount(newCols, gridRows);
+    }
 
-		function refreshMention(): void {
-			const ctx = detectMention(ti.text, ti.cursorOffset);
-			if (ctx && allMentions.length > 0) {
-				menuQuery = ctx.query;
-				menuItems = filterMentions(allMentions, menuQuery);
-				if (menuItems.length > 0) {
-					menuOpen = true;
-					if (menuSelected >= menuItems.length) menuSelected = 0;
-					return;
-				}
-			}
-			menuOpen = false;
-			menuItems = [];
-			menuSelected = 0;
-		}
+    function refreshMention(): void {
+      const ctx = detectMention(ti.text, ti.cursorOffset);
+      if (ctx && allMentions.length > 0) {
+        menuQuery = ctx.query;
+        menuItems = filterMentions(allMentions, menuQuery);
+        if (menuItems.length > 0) {
+          menuOpen = true;
+          if (menuSelected >= menuItems.length) menuSelected = 0;
+          return;
+        }
+      }
+      menuOpen = false;
+      menuItems = [];
+      menuSelected = 0;
+    }
 
-		function acceptMention(): void {
-			const item = menuItems[menuSelected];
-			if (!item) return;
-			const ctx = detectMention(ti.text, ti.cursorOffset);
-			if (!ctx) return;
-			// 当前逻辑行从 lineStart 到光标处替换为 @name
-			const head = ti.text.slice(0, ctx.lineStart);
-			const tail = ti.text.slice(ti.cursorOffset);
-			const inserted = `@${item.name}`;
-			ti.text = head + inserted + tail;
-			ti.cursorOffset = head.length + inserted.length;
-			ti.stickyCol = null;
-			menuOpen = false;
-			menuItems = [];
-			menuSelected = 0;
-		}
+    function acceptMention(): void {
+      const item = menuItems[menuSelected];
+      if (!item) return;
+      const ctx = detectMention(ti.text, ti.cursorOffset);
+      if (!ctx) return;
+      // 当前逻辑行从 lineStart 到光标处替换为 @name
+      const head = ti.text.slice(0, ctx.lineStart);
+      const tail = ti.text.slice(ti.cursorOffset);
+      const inserted = `@${item.name}`;
+      ti.text = head + inserted + tail;
+      ti.cursorOffset = head.length + inserted.length;
+      ti.stickyCol = null;
+      menuOpen = false;
+      menuItems = [];
+      menuSelected = 0;
+    }
 
-		function render(): void {
-			vp.beginSync();
-			resizeGridIfNeeded();
-			colSpan = calcColSpan(
-				grid.cols,
-				editorConfig.maxWidth,
-				editorConfig.align,
-			);
-			// 每次重算 @token 高亮区间——decorations 是静态绝对 offset，不随编辑平移
-			ti.decorations = computeMentionDecorations(ti.text);
+    function render(): void {
+      vp.beginSync();
+      resizeGridIfNeeded();
+      colSpan = calcColSpan(
+        grid.cols,
+        editorConfig.maxWidth,
+        editorConfig.align,
+      );
+      // 每次重算 @token 高亮区间——decorations 是静态绝对 offset，不随编辑平移
+      ti.decorations = computeMentionDecorations(ti.text);
 
-			// 第一遍：无指示行布局，确定 scrollOffset 与可见行数，算溢出
-			setupOwnership(false, false);
-			ti.ensureCursorVisible(grid, OWNER_INPUT);
-			ti.paint(grid, OWNER_INPUT);
-			const layout0 = getLayout(grid.rows, false, false);
-			const visibleRows0 = layout0.inputEndRow - layout0.inputStartRow + 1;
-			let overflow = calcScrollOverflow(
-				ti.text,
-				ti.scrollOffset,
-				grid.cols,
-				visibleRows0,
-			);
-			const hasAbove = overflow.above > 0;
-			const hasBelow = overflow.below > 0;
-			const hasIndicator = hasAbove || hasBelow;
+      // 第一遍：无指示行布局，确定 scrollOffset 与可见行数，算溢出
+      setupOwnership(false, false);
+      ti.ensureCursorVisible(grid, OWNER_INPUT);
+      ti.paint(grid, OWNER_INPUT);
+      const layout0 = getLayout(grid.rows, false, false);
+      const visibleRows0 = layout0.inputEndRow - layout0.inputStartRow + 1;
+      let overflow = calcScrollOverflow(
+        ti.text,
+        ti.scrollOffset,
+        grid.cols,
+        visibleRows0,
+      );
+      const hasAbove = overflow.above > 0;
+      const hasBelow = overflow.below > 0;
+      const hasIndicator = hasAbove || hasBelow;
 
-			// 第二遍：若需指示行，输入区让出对应行数，重排并重算溢出
-			if (hasIndicator) {
-				setupOwnership(hasAbove, hasBelow);
-				ti.ensureCursorVisible(grid, OWNER_INPUT);
-				ti.paint(grid, OWNER_INPUT);
-				const layout1 = getLayout(grid.rows, hasAbove, hasBelow);
-				const visibleRows1 = layout1.inputEndRow - layout1.inputStartRow + 1;
-				overflow = calcScrollOverflow(
-					ti.text,
-					ti.scrollOffset,
-					grid.cols,
-					visibleRows1,
-				);
-			}
+      // 第二遍：若需指示行，输入区让出对应行数，重排并重算溢出
+      if (hasIndicator) {
+        setupOwnership(hasAbove, hasBelow);
+        ti.ensureCursorVisible(grid, OWNER_INPUT);
+        ti.paint(grid, OWNER_INPUT);
+        const layout1 = getLayout(grid.rows, hasAbove, hasBelow);
+        const visibleRows1 = layout1.inputEndRow - layout1.inputStartRow + 1;
+        overflow = calcScrollOverflow(
+          ti.text,
+          ti.scrollOffset,
+          grid.cols,
+          visibleRows1,
+        );
+      }
 
-			// 侧边框花纹作为底层背景先绘制，菜单/desc 浮层随后画在其上
-			paintSideFrame(grid, colSpan);
+      // 侧边框花纹作为底层背景先绘制，菜单/desc 浮层随后画在其上
+      paintSideFrame(grid, colSpan);
 
-			if (menuOpen && menuItems.length > 0) {
-				const labels = menuItems.map(mentionLabel);
-				const menuMaxWidth = Math.min(MENU_MAX_WIDTH, colSpan.width);
-				const box = calcMenuPosition(
-					grid.rows,
-					grid.cols,
-					ti.cursorRow,
-					ti.cursorCol,
-					menuItems.length,
-					maxLabelWidth(labels, menuMaxWidth),
-				);
-				if (box) {
-					// 菜单高度不能超过输入区可见高度（含边框），需求 3
-					const curLayout = hasIndicator
-						? getLayout(grid.rows, hasAbove, hasBelow)
-						: layout0;
-					const inputVisibleRows =
-						curLayout.inputEndRow - curLayout.inputStartRow + 1;
-					if (box.boxHeight > inputVisibleRows) {
-						box.boxHeight = inputVisibleRows;
-						box.visibleItems = Math.max(1, inputVisibleRows - 2);
-					}
-					setupMenuOwnership(grid, box, OWNER_MENU);
-					const descBox = calcDescBox(box, grid.cols);
-					if (descBox) {
-						setupMenuOwnership(grid, descBox, OWNER_DESC);
-					}
-					ti.paint(grid, OWNER_INPUT);
-					const scrollTop = calcMenuScrollTop(
-						menuSelected,
-						box.visibleItems,
-						menuItems.length,
-					);
-					paintMenu(
-						grid,
-						labels,
-						menuSelected,
-						box,
-						menuHighlightStyle,
-						menuNormalStyle,
-						scrollTop,
-					);
-					if (descBox) {
-						const desc = menuItems[menuSelected]?.description ?? "";
-						paintDescBox(grid, desc, descBox, descTextStyle);
-					}
-				}
-			}
+      if (menuOpen && menuItems.length > 0) {
+        const labels = menuItems.map(mentionLabel);
+        const menuMaxWidth = Math.min(MENU_MAX_WIDTH, colSpan.width);
+        const box = calcMenuPosition(
+          grid.rows,
+          grid.cols,
+          ti.cursorRow,
+          ti.cursorCol,
+          menuItems.length,
+          maxLabelWidth(labels, menuMaxWidth),
+        );
+        if (box) {
+          // 菜单高度不能超过输入区可见高度（含边框），需求 3
+          const curLayout = hasIndicator
+            ? getLayout(grid.rows, hasAbove, hasBelow)
+            : layout0;
+          const inputVisibleRows =
+            curLayout.inputEndRow - curLayout.inputStartRow + 1;
+          if (box.boxHeight > inputVisibleRows) {
+            box.boxHeight = inputVisibleRows;
+            box.visibleItems = Math.max(1, inputVisibleRows - 2);
+          }
+          setupMenuOwnership(grid, box, OWNER_MENU);
+          const descBox = calcDescBox(box, grid.cols);
+          if (descBox) {
+            setupMenuOwnership(grid, descBox, OWNER_DESC);
+          }
+          ti.paint(grid, OWNER_INPUT);
+          const scrollTop = calcMenuScrollTop(
+            menuSelected,
+            box.visibleItems,
+            menuItems.length,
+          );
+          paintMenu(
+            grid,
+            labels,
+            menuSelected,
+            box,
+            menuHighlightStyle,
+            menuNormalStyle,
+            scrollTop,
+          );
+          if (descBox) {
+            const desc = menuItems[menuSelected]?.description ?? "";
+            paintDescBox(grid, desc, descBox, descTextStyle);
+          }
+        }
+      }
 
-			// 绘制上下指示行（各自独立出现/隐藏）
-			const finalLayout = getLayout(grid.rows, hasAbove, hasBelow);
-			if (hasAbove) {
-				paintAboveIndicator(
-					grid,
-					finalLayout.aboveIndicatorRow,
-					overflow.above,
-					colSpan.startCol,
-				);
-			}
-			if (hasBelow) {
-				paintBelowIndicator(
-					grid,
-					finalLayout.belowIndicatorRow,
-					overflow.below,
-					colSpan.startCol,
-				);
-			}
+      // 绘制上下指示行（各自独立出现/隐藏）
+      const finalLayout = getLayout(grid.rows, hasAbove, hasBelow);
+      if (hasAbove) {
+        paintAboveIndicator(
+          grid,
+          finalLayout.aboveIndicatorRow,
+          overflow.above,
+          colSpan.startCol,
+        );
+      }
+      if (hasBelow) {
+        paintBelowIndicator(
+          grid,
+          finalLayout.belowIndicatorRow,
+          overflow.below,
+          colSpan.startCol,
+        );
+      }
 
-			paintStatusBar(grid, ti, finalLayout.statusRow, colSpan.startCol);
-			vp.render({ row: ti.cursorRow, col: ti.cursorCol });
-			vp.endSync();
-		}
+      paintStatusBar(grid, ti, finalLayout.statusRow, colSpan.startCol);
+      vp.render({ row: ti.cursorRow, col: ti.cursorCol });
+      vp.endSync();
+    }
 
-		function cleanup(): void {
-			w(BP_OFF);
-			disconnectStdin?.();
-			disconnectStdin = null;
-		}
+    function cleanup(): void {
+      w(BP_OFF);
+      disconnectStdin?.();
+      disconnectStdin = null;
+    }
 
-		function finish(result: MultilineInputResult | null): void {
-			// 把光标移到动态区底部之后，固化输入为历史并换行
-			vp.clear();
-			if (result) {
-				// 重新输出输入内容作为历史固定行
-				vp.commit(`${ti.text}\n`);
-			} else {
-				vp.commit("");
-			}
-			w("\x1b[?25h");
-			cleanup();
-			resolve(result);
-		}
+    function finish(result: MultilineInputResult | null): void {
+      // 把光标移到动态区底部之后，固化输入为历史并换行
+      vp.clear();
+      if (result) {
+        // 重新输出输入内容作为历史固定行
+        vp.commit(`${ti.text}\n`);
+      } else {
+        vp.commit("");
+      }
+      w("\x1b[?25h");
+      cleanup();
+      resolve(result);
+    }
 
-		function submit(): void {
-			finish({ text: ti.text, lineCount: ti.text.split("\n").length });
-		}
+    function submit(): void {
+      finish({ text: ti.text, lineCount: ti.text.split("\n").length });
+    }
 
-		function abort(): void {
-			finish(null);
-		}
+    function abort(): void {
+      finish(null);
+    }
 
-		function flushPaste(): void {
-			if (pasteBuffer.length > 0) {
-				ti.insertChar(normalizePastedText(pasteBuffer));
-				pasteBuffer = "";
-			}
-			isPasting = false;
-			refreshMention();
-			render();
-		}
+    function flushPaste(): void {
+      if (pasteBuffer.length > 0) {
+        ti.insertChar(normalizePastedText(pasteBuffer));
+        pasteBuffer = "";
+      }
+      isPasting = false;
+      refreshMention();
+      render();
+    }
 
-		/**
-		 * Ctrl+V 主动粘贴：从系统剪贴板读取，作为 bracketed paste 不可用时的兜底。
-		 * 读取是同步阻塞（spawnSync），仅在 Ctrl+V 低频动作时触发。
-		 */
-		function doPaste(): void {
-			const raw = pasteFromClipboard();
-			if (raw == null || raw.length === 0) return;
-			ti.insertChar(normalizePastedText(raw));
-			refreshMention();
-			render();
-		}
+    /**
+     * Ctrl+V 主动粘贴：从系统剪贴板读取，作为 bracketed paste 不可用时的兜底。
+     * 读取是同步阻塞（spawnSync），仅在 Ctrl+V 低频动作时触发。
+     */
+    function doPaste(): void {
+      const raw = pasteFromClipboard();
+      if (raw == null || raw.length === 0) return;
+      ti.insertChar(normalizePastedText(raw));
+      refreshMention();
+      render();
+    }
 
-		function dispatchKey(data: string): void {
-			const buf = Buffer.from(data, "utf8");
-			const key = parseKey(buf);
+    function dispatchKey(data: string): void {
+      const buf = Buffer.from(data, "utf8");
+      const key = parseKey(buf);
 
-			if (menuOpen) {
-				switch (key.type) {
-					case "up":
-						menuSelected =
-							(menuSelected - 1 + menuItems.length) % menuItems.length;
-						render();
-						return;
-					case "down":
-						menuSelected = (menuSelected + 1) % menuItems.length;
-						render();
-						return;
-					case "enter":
-						if (key.alt) {
-							submit();
-							return;
-						}
-						acceptMention();
-						render();
-						return;
-					case "tab":
-						acceptMention();
-						render();
-						return;
-					case "escape":
-						menuOpen = false;
-						menuItems = [];
-						menuSelected = 0;
-						render();
-						return;
-					case "ctrl":
-						if (key.key === "q") {
-							abort();
-							return;
-						}
-						if (key.key === "d") {
-							submit();
-							return;
-						}
-						if (key.key === "v") {
-							// Ctrl+V 主动粘贴：插入后 doPaste 内部 refreshMention 会按新内容更新/关闭菜单
-							doPaste();
-							return;
-						}
-						return;
-					default:
-						break;
-				}
-			}
+      if (menuOpen) {
+        switch (key.type) {
+          case "up":
+            menuSelected =
+              (menuSelected - 1 + menuItems.length) % menuItems.length;
+            render();
+            return;
+          case "down":
+            menuSelected = (menuSelected + 1) % menuItems.length;
+            render();
+            return;
+          case "enter":
+            if (key.alt) {
+              submit();
+              return;
+            }
+            acceptMention();
+            render();
+            return;
+          case "tab":
+            acceptMention();
+            render();
+            return;
+          case "escape":
+            menuOpen = false;
+            menuItems = [];
+            menuSelected = 0;
+            render();
+            return;
+          case "ctrl":
+            if (key.key === "q") {
+              abort();
+              return;
+            }
+            if (key.key === "d") {
+              submit();
+              return;
+            }
+            if (key.key === "v") {
+              // Ctrl+V 主动粘贴：插入后 doPaste 内部 refreshMention 会按新内容更新/关闭菜单
+              doPaste();
+              return;
+            }
+            return;
+          default:
+            break;
+        }
+      }
 
-			switch (key.type) {
-				case "ctrl":
-					if (key.key === "q") {
-						abort();
-						return;
-					}
-					if (key.key === "d") {
-						submit();
-						return;
-					}
-					if (key.key === "v") {
-						// Ctrl+V 主动粘贴（bracketed paste 不可用时的兜底）
-						doPaste();
-						return;
-					}
-					// 其他 ctrl 一律忽略——尤其 Ctrl+C（\x03）在 raw mode 下作为数据到达，
-					// 这里吞掉以阻止其终止进程（退出走 exit 命令 / Ctrl+Q）。
-					return;
-				case "enter":
-					if (key.alt) {
-						submit();
-						return;
-					}
-					ti.insertChar("\n");
-					break;
-				case "char":
-					ti.insertChar(key.char);
-					break;
-				case "backspace":
-					ti.deleteBeforeCursor();
-					break;
-				case "tab":
-					ti.insertChar(TAB_SPACES);
-					break;
-				case "left":
-					ti.moveLeft();
-					break;
-				case "right":
-					ti.moveRight();
-					break;
-				case "up":
-					ti.paint(grid, OWNER_INPUT);
-					ti.moveUp(grid, OWNER_INPUT);
-					break;
-				case "down":
-					ti.paint(grid, OWNER_INPUT);
-					ti.moveDown(grid, OWNER_INPUT);
-					break;
-				case "home": {
-					const before = ti.text.slice(0, ti.cursorOffset);
-					const lastNL = before.lastIndexOf("\n");
-					ti.cursorOffset = lastNL >= 0 ? lastNL + 1 : 0;
-					ti.stickyCol = null;
-					break;
-				}
-				case "end": {
-					const after = ti.text.slice(ti.cursorOffset);
-					const nextNL = after.indexOf("\n");
-					ti.cursorOffset += nextNL >= 0 ? nextNL : after.length;
-					ti.stickyCol = null;
-					break;
-				}
-				case "delete":
-					if (ti.cursorOffset < ti.text.length) {
-						const head = ti.text.slice(0, ti.cursorOffset);
-						const rest = ti.text.slice(ti.cursorOffset);
-						const first = [...rest][0] ?? "";
+      switch (key.type) {
+        case "ctrl":
+          if (key.key === "q") {
+            abort();
+            return;
+          }
+          if (key.key === "d") {
+            submit();
+            return;
+          }
+          if (key.key === "v") {
+            // Ctrl+V 主动粘贴（bracketed paste 不可用时的兜底）
+            doPaste();
+            return;
+          }
+          // 其他 ctrl 一律忽略——尤其 Ctrl+C（\x03）在 raw mode 下作为数据到达，
+          // 这里吞掉以阻止其终止进程（退出走 exit 命令 / Ctrl+Q）。
+          return;
+        case "enter":
+          if (key.alt) {
+            submit();
+            return;
+          }
+          ti.insertChar("\n");
+          break;
+        case "char":
+          ti.insertChar(key.char);
+          break;
+        case "backspace":
+          ti.deleteBeforeCursor();
+          break;
+        case "tab":
+          ti.insertChar(TAB_SPACES);
+          break;
+        case "left":
+          ti.moveLeft();
+          break;
+        case "right":
+          ti.moveRight();
+          break;
+        case "up":
+          ti.paint(grid, OWNER_INPUT);
+          ti.moveUp(grid, OWNER_INPUT);
+          break;
+        case "down":
+          ti.paint(grid, OWNER_INPUT);
+          ti.moveDown(grid, OWNER_INPUT);
+          break;
+        case "home": {
+          const before = ti.text.slice(0, ti.cursorOffset);
+          const lastNL = before.lastIndexOf("\n");
+          ti.cursorOffset = lastNL >= 0 ? lastNL + 1 : 0;
+          ti.stickyCol = null;
+          break;
+        }
+        case "end": {
+          const after = ti.text.slice(ti.cursorOffset);
+          const nextNL = after.indexOf("\n");
+          ti.cursorOffset += nextNL >= 0 ? nextNL : after.length;
+          ti.stickyCol = null;
+          break;
+        }
+        case "delete":
+          if (ti.cursorOffset < ti.text.length) {
+            const head = ti.text.slice(0, ti.cursorOffset);
+            const rest = ti.text.slice(ti.cursorOffset);
+            const first = [...rest][0] ?? "";
 
-						ti.text = head + rest.slice(first.length);
-					}
-					break;
-				case "escape":
-				case "pasteEnd":
-				case "unknown":
-					return;
-				default:
-					return;
-			}
+            ti.text = head + rest.slice(first.length);
+          }
+          break;
+        case "escape":
+        case "pasteEnd":
+        case "unknown":
+          return;
+        default:
+          return;
+      }
 
-			refreshMention();
-			render();
-		}
+      refreshMention();
+      render();
+    }
 
-		// 返回 s 末尾「可能是 BP_START / BP_END 被 chunk 边界截断的前缀」的起始下标
-		// （-1 表示无）。仅 hold 长度 ≥2 的前缀（如 "\x1b["、"\x1b[2"），不 hold 孤立的
-		// "\x1b"——否则单独的 ESC 键（如 menuOpen 时按 ESC 关菜单）会被延迟一拍。
-		// utf8 解码不会把 ASCII '[' 与前面的 "\x1b" 拆开，故标记拆分实际发生在 "\x1b[" 之后。
-		// 注意：纯逐字节拆分（\x1b 与 [200~ 分到不同 chunk）是终端不会产生的不可达场景，
-		// 不予支持——支持它需 hold 单 \x1b，会导致真实 ESC 键（关菜单）延迟一拍。
-		function trailingPartialMarker(s: string): number {
-			const maxCheck = Math.min(BP_START.length - 1, s.length);
-			for (let len = maxCheck; len >= 2; len--) {
-				const tail = s.slice(s.length - len);
-				if (BP_START.startsWith(tail) || BP_END.startsWith(tail)) {
-					return s.length - len;
-				}
-			}
-			return -1;
-		}
+    // 返回 s 末尾「可能是 BP_START / BP_END 被 chunk 边界截断的前缀」的起始下标
+    // （-1 表示无）。仅 hold 长度 ≥2 的前缀（如 "\x1b["、"\x1b[2"），不 hold 孤立的
+    // "\x1b"——否则单独的 ESC 键（如 menuOpen 时按 ESC 关菜单）会被延迟一拍。
+    // utf8 解码不会把 ASCII '[' 与前面的 "\x1b" 拆开，故标记拆分实际发生在 "\x1b[" 之后。
+    // 注意：纯逐字节拆分（\x1b 与 [200~ 分到不同 chunk）是终端不会产生的不可达场景，
+    // 不予支持——支持它需 hold 单 \x1b，会导致真实 ESC 键（关菜单）延迟一拍。
+    function trailingPartialMarker(s: string): number {
+      const maxCheck = Math.min(BP_START.length - 1, s.length);
+      for (let len = maxCheck; len >= 2; len--) {
+        const tail = s.slice(s.length - len);
+        if (BP_START.startsWith(tail) || BP_END.startsWith(tail)) {
+          return s.length - len;
+        }
+      }
+      return -1;
+    }
 
-		function onData(data: string): void {
-			let rest = pasteCarry + data;
-			pasteCarry = "";
-			// 末尾若是被截断的标记前缀，hold 到下个 chunk 拼接后再判定
-			const pp = trailingPartialMarker(rest);
-			if (pp !== -1) {
-				pasteCarry = rest.slice(pp);
-				rest = rest.slice(0, pp);
-			}
-			while (rest.length > 0) {
-				if (isPasting) {
-					const ei = rest.indexOf(BP_END);
-					if (ei === -1) {
-						pasteBuffer += rest;
-						return;
-					}
-					pasteBuffer += rest.slice(0, ei);
-					flushPaste();
-					rest = rest.slice(ei + BP_END.length);
-					continue;
-				}
-				const si = rest.indexOf(BP_START);
-				if (si === -1) {
-					dispatchKey(rest);
-					return;
-				}
-				if (si > 0) dispatchKey(rest.slice(0, si));
-				isPasting = true;
-				pasteBuffer = "";
-				rest = rest.slice(si + BP_START.length);
-			}
-		}
+    function onData(data: string): void {
+      let rest = pasteCarry + data;
+      pasteCarry = "";
+      // 末尾若是被截断的标记前缀，hold 到下个 chunk 拼接后再判定
+      const pp = trailingPartialMarker(rest);
+      if (pp !== -1) {
+        pasteCarry = rest.slice(pp);
+        rest = rest.slice(0, pp);
+      }
+      while (rest.length > 0) {
+        if (isPasting) {
+          const ei = rest.indexOf(BP_END);
+          if (ei === -1) {
+            pasteBuffer += rest;
+            return;
+          }
+          pasteBuffer += rest.slice(0, ei);
+          flushPaste();
+          rest = rest.slice(ei + BP_END.length);
+          continue;
+        }
+        const si = rest.indexOf(BP_START);
+        if (si === -1) {
+          dispatchKey(rest);
+          return;
+        }
+        if (si > 0) dispatchKey(rest.slice(0, si));
+        isPasting = true;
+        pasteBuffer = "";
+        rest = rest.slice(si + BP_START.length);
+      }
+    }
 
-		// ── 接管 stdin ──
-		if (options?.connectStdin) {
-			disconnectStdin = options.connectStdin(onData);
-		} else {
-			const stdin = process.stdin;
-			const wasRaw = stdin.isRaw;
-			stdin.setRawMode(true);
-			stdin.resume();
-			stdin.setEncoding("utf8");
-			stdin.on("data", onData);
-			disconnectStdin = () => {
-				stdin.removeListener("data", onData);
-				stdin.setRawMode(wasRaw ?? false);
-			};
-		}
+    // ── 接管 stdin ──
+    if (options?.connectStdin) {
+      disconnectStdin = options.connectStdin(onData);
+    } else {
+      const stdin = process.stdin;
+      const wasRaw = stdin.isRaw;
+      stdin.setRawMode(true);
+      stdin.resume();
+      stdin.setEncoding("utf8");
+      stdin.on("data", onData);
+      disconnectStdin = () => {
+        stdin.removeListener("data", onData);
+        stdin.setRawMode(wasRaw ?? false);
+      };
+    }
 
-		// resize 处理：debounce 后先强制 remount 再重绘。
-		// 终端尺寸变化时即使算出的 grid 尺寸相同也必须 remount——清除旧动态区残留并按回流
-		// 高度重新对齐光标（参照 terminal-renderer 的 centered demo）。render 内的
-		// resizeGridIfNeeded(默认 false) 此时尺寸已对齐会 return，不重复 remount。
-		// 延迟取 RESIZE_DEBOUNCE_MS（见常量说明）：须大于终端 resize 事件的最小间隔，
-		// 否则连续拖动时每次都触发完整重绘。
-		const onResize = debounce(() => {
-			resizeGridIfNeeded(true);
-			render();
-		}, RESIZE_DEBOUNCE_MS);
-		out.on("resize", onResize);
-		const prevDisconnect = disconnectStdin;
-		disconnectStdin = () => {
-			out.removeListener("resize", onResize);
-			prevDisconnect?.();
-		};
-	});
+    // resize 处理：debounce 后先强制 remount 再重绘。
+    // 终端尺寸变化时即使算出的 grid 尺寸相同也必须 remount——清除旧动态区残留并按回流
+    // 高度重新对齐光标（参照 terminal-renderer 的 centered demo）。render 内的
+    // resizeGridIfNeeded(默认 false) 此时尺寸已对齐会 return，不重复 remount。
+    // 延迟取 RESIZE_DEBOUNCE_MS（见常量说明）：须大于终端 resize 事件的最小间隔，
+    // 否则连续拖动时每次都触发完整重绘。
+    const onResize = debounce(() => {
+      resizeGridIfNeeded(true);
+      render();
+    }, RESIZE_DEBOUNCE_MS);
+    out.on("resize", onResize);
+    const prevDisconnect = disconnectStdin;
+    disconnectStdin = () => {
+      out.removeListener("resize", onResize);
+      prevDisconnect?.();
+    };
+  });
 }

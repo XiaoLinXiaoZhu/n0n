@@ -1,16 +1,18 @@
 // literal test scripts
 import { afterAll, describe, expect, test } from "bun:test";
 import {
-	existsSync,
-	mkdtempSync,
-	readFileSync,
-	rmSync,
-	statSync,
+  existsSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  statSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+
 import { resolvePlatform } from "@n0n/shared";
 import type { ExecToolResult, ExecutionArtifactRef } from "@n0n/types";
+
 import { execToolStream } from "../exec";
 import { parseExecUri } from "./exec-test-helpers.ts";
 
@@ -19,106 +21,106 @@ const dirsToCleanup: string[] = [];
 const SESSION_DIR = mkdtempSync(join(tmpdir(), "n0n-exec-bg-"));
 
 afterAll(() => {
-	for (const pid of pidsToCleanup) {
-		try {
-			process.kill(pid, "SIGKILL");
-		} catch {}
-	}
-	for (const dir of dirsToCleanup) {
-		rmSync(dir, { recursive: true, force: true });
-	}
+  for (const pid of pidsToCleanup) {
+    try {
+      process.kill(pid, "SIGKILL");
+    } catch {}
+  }
+  for (const dir of dirsToCleanup) {
+    rmSync(dir, { recursive: true, force: true });
+  }
 });
 
 async function collectResult(
-	script: string,
-	waitfor: number,
-	runtime?: string,
+  script: string,
+  waitfor: number,
+  runtime?: string,
 ): Promise<ExecToolResult> {
-	const rt = runtime ?? (resolvePlatform() === "win32" ? "cmd" : "sh");
-	const call = {
-		id: "bg-sync-test",
-		tool: "post" as const,
-		args: { uri: `exec://${rt}/probe?waitfor=${waitfor}`, body: script },
-	};
-	for await (const event of execToolStream(
-		call,
-		parseExecUri(call.args.uri),
-		undefined,
-		{
-			workspace: process.cwd(),
-			sessionDir: SESSION_DIR,
-			blocked_commands: [],
-			default_exec_waitfor: waitfor,
-			max_exec_output_tokens: 32_000,
-			bgSyncIntervalMs: 100,
-			platform: resolvePlatform(),
-		},
-	)) {
-		if (event.type === "tool_result" && event.scheme === "exec") return event;
-	}
-	throw new Error("No tool_result yielded");
+  const rt = runtime ?? (resolvePlatform() === "win32" ? "cmd" : "sh");
+  const call = {
+    id: "bg-sync-test",
+    tool: "post" as const,
+    args: { uri: `exec://${rt}/probe?waitfor=${waitfor}`, body: script },
+  };
+  for await (const event of execToolStream(
+    call,
+    parseExecUri(call.args.uri),
+    undefined,
+    {
+      workspace: process.cwd(),
+      sessionDir: SESSION_DIR,
+      blocked_commands: [],
+      default_exec_waitfor: waitfor,
+      max_exec_output_tokens: 32_000,
+      bgSyncIntervalMs: 100,
+      platform: resolvePlatform(),
+    },
+  )) {
+    if (event.type === "tool_result" && event.scheme === "exec") return event;
+  }
+  throw new Error("No tool_result yielded");
 }
 
 function executionArtifact(result: ExecToolResult): ExecutionArtifactRef {
-	expect(result.status).toBe("backgrounded");
-	if (result.status !== "backgrounded") throw new Error("not backgrounded");
-	expect(result.artifact.kind).toBe("execution");
-	pidsToCleanup.push(result.pid);
-	dirsToCleanup.push(result.artifact.runDir);
-	return result.artifact;
+  expect(result.status).toBe("backgrounded");
+  if (result.status !== "backgrounded") throw new Error("not backgrounded");
+  expect(result.artifact.kind).toBe("execution");
+  pidsToCleanup.push(result.pid);
+  dirsToCleanup.push(result.artifact.runDir);
+  return result.artifact;
 }
 
 describe("exec background artifact", () => {
-	test("初始产物包含分离输出文件和 backgrounded 状态", async () => {
-		const result = await collectResult("await Bun.sleep(2000);", 1, "bun");
-		const artifact = executionArtifact(result);
+  test("初始产物包含分离输出文件和 backgrounded 状态", async () => {
+    const result = await collectResult("await Bun.sleep(2000);", 1, "bun");
+    const artifact = executionArtifact(result);
 
-		expect(existsSync(artifact.stdoutFile)).toBe(true);
-		expect(existsSync(artifact.stderrFile)).toBe(true);
-		const metadata = JSON.parse(readFileSync(artifact.resultFile, "utf8"));
-		expect(metadata.status).toBe("backgrounded");
-		expect(metadata.pid).toBe(
-			result.status === "backgrounded" ? result.pid : 0,
-		);
-		expect(metadata.startedAt).toBeString();
-		expect(metadata.updatedAt).toBeString();
-	}, 15000);
+    expect(existsSync(artifact.stdoutFile)).toBe(true);
+    expect(existsSync(artifact.stderrFile)).toBe(true);
+    const metadata = JSON.parse(readFileSync(artifact.resultFile, "utf8"));
+    expect(metadata.status).toBe("backgrounded");
+    expect(metadata.pid).toBe(
+      result.status === "backgrounded" ? result.pid : 0,
+    );
+    expect(metadata.startedAt).toBeString();
+    expect(metadata.updatedAt).toBeString();
+  }, 15000);
 
-	test("heartbeat 只更新小型 result.json", async () => {
-		const result = await collectResult("await Bun.sleep(5000);", 2, "bun");
-		const artifact = executionArtifact(result);
-		const stdoutMtime = statSync(artifact.stdoutFile).mtimeMs;
-		const first = JSON.parse(readFileSync(artifact.resultFile, "utf8"));
+  test("heartbeat 只更新小型 result.json", async () => {
+    const result = await collectResult("await Bun.sleep(5000);", 2, "bun");
+    const artifact = executionArtifact(result);
+    const stdoutMtime = statSync(artifact.stdoutFile).mtimeMs;
+    const first = JSON.parse(readFileSync(artifact.resultFile, "utf8"));
 
-		await new Promise((resolve) => setTimeout(resolve, 500));
+    await new Promise((resolve) => setTimeout(resolve, 500));
 
-		const second = JSON.parse(readFileSync(artifact.resultFile, "utf8"));
-		expect(new Date(second.updatedAt).getTime()).toBeGreaterThan(
-			new Date(first.updatedAt).getTime(),
-		);
-		expect(statSync(artifact.stdoutFile).mtimeMs).toBe(stdoutMtime);
-	}, 15000);
+    const second = JSON.parse(readFileSync(artifact.resultFile, "utf8"));
+    expect(new Date(second.updatedAt).getTime()).toBeGreaterThan(
+      new Date(first.updatedAt).getTime(),
+    );
+    expect(statSync(artifact.stdoutFile).mtimeMs).toBe(stdoutMtime);
+  }, 15000);
 
-	test("新输出直接 append，结束后 result.json 进入 exited", async () => {
-		const script = [
-			"for (let i = 1; i <= 4; i++) {",
-			"  console.log(`output_line_${i}`);",
-			"  await Bun.sleep(500);",
-			"}",
-		].join("\n");
-		const result = await collectResult(script, 1, "bun");
-		const artifact = executionArtifact(result);
+  test("新输出直接 append，结束后 result.json 进入 exited", async () => {
+    const script = [
+      "for (let i = 1; i <= 4; i++) {",
+      "  console.log(`output_line_${i}`);",
+      "  await Bun.sleep(500);",
+      "}",
+    ].join("\n");
+    const result = await collectResult(script, 1, "bun");
+    const artifact = executionArtifact(result);
 
-		// 集成测试：真实等待后台 bun 进程跑完脚本（4×500ms 输出），
-		// fake timer 无法驱动已 spawn 的子进程，故用真实延时。
-		await new Promise((resolve) => setTimeout(resolve, 2500));
+    // 集成测试：真实等待后台 bun 进程跑完脚本（4×500ms 输出），
+    // fake timer 无法驱动已 spawn 的子进程，故用真实延时。
+    await new Promise((resolve) => setTimeout(resolve, 2500));
 
-		const stdout = readFileSync(artifact.stdoutFile, "utf8");
-		expect(stdout.match(/output_line_\d+/g)).toHaveLength(4);
-		const metadata = JSON.parse(readFileSync(artifact.resultFile, "utf8"));
-		expect(metadata.status).toBe("exited");
-		expect(metadata.exitCode).toBe(0);
-		expect(metadata.stdoutBytes).toBeGreaterThan(0);
-		expect(metadata.endedAt).toBeString();
-	}, 15000);
+    const stdout = readFileSync(artifact.stdoutFile, "utf8");
+    expect(stdout.match(/output_line_\d+/g)).toHaveLength(4);
+    const metadata = JSON.parse(readFileSync(artifact.resultFile, "utf8"));
+    expect(metadata.status).toBe("exited");
+    expect(metadata.exitCode).toBe(0);
+    expect(metadata.stdoutBytes).toBeGreaterThan(0);
+    expect(metadata.endedAt).toBeString();
+  }, 15000);
 });

@@ -12,16 +12,16 @@
 
 /** 单轮 LLM 调用的 token 用量统计 */
 export interface TokenUsage {
-	/** 新计算的输入 token 数（不含缓存命中部分，各 provider 已统一为此语义） */
-	inputTokens: number;
-	/** 输出 token 总量 */
-	outputTokens: number;
-	/** 总 token 量 */
-	totalTokens: number;
-	/** 缓存命中的输入 token 数 */
-	cacheReadTokens: number;
-	/** 写入缓存的输入 token 数 */
-	cacheWriteTokens: number;
+  /** 新计算的输入 token 数（不含缓存命中部分，各 provider 已统一为此语义） */
+  inputTokens: number;
+  /** 输出 token 总量 */
+  outputTokens: number;
+  /** 总 token 量 */
+  totalTokens: number;
+  /** 缓存命中的输入 token 数 */
+  cacheReadTokens: number;
+  /** 写入缓存的输入 token 数 */
+  cacheWriteTokens: number;
 }
 
 // ── FinishReason ──
@@ -33,14 +33,14 @@ export interface TokenUsage {
  * 消费方（agent loop 等）只引用这些常量，不使用魔法字符串。
  */
 export const FinishReason = {
-	/** 模型正常结束输出 */
-	STOP: "stop",
-	/** 输出因 max_tokens 截断 */
-	LENGTH: "length",
-	/** 模型请求调用工具 */
-	TOOL_CALLS: "tool_calls",
-	/** 内容被 provider 安全过滤器拦截 */
-	CONTENT_FILTER: "content_filter",
+  /** 模型正常结束输出 */
+  STOP: "stop",
+  /** 输出因 max_tokens 截断 */
+  LENGTH: "length",
+  /** 模型请求调用工具 */
+  TOOL_CALLS: "tool_calls",
+  /** 内容被 provider 安全过滤器拦截 */
+  CONTENT_FILTER: "content_filter",
 } as const;
 export type FinishReason = (typeof FinishReason)[keyof typeof FinishReason];
 
@@ -52,72 +52,72 @@ export type TagStyle = "deepseek" | "glm" | "minimax" | "default";
  * 不同 provider 可对特定 tag name 做特殊处理。
  */
 export interface TagAdapter {
-	/** 用标签包裹内容。attrs 为可选的标签属性（如 { name: "xxx" } → name="xxx"） */
-	wrapTag(
-		name: string,
-		content: string,
-		attrs?: Record<string, string>,
-	): string;
-	/** 将文本中的标准 XML 标签替换为当前风格 */
-	adaptTags(text: string): string;
+  /** 用标签包裹内容。attrs 为可选的标签属性（如 { name: "xxx" } → name="xxx"） */
+  wrapTag(
+    name: string,
+    content: string,
+    attrs?: Record<string, string>,
+  ): string;
+  /** 将文本中的标准 XML 标签替换为当前风格 */
+  adaptTags(text: string): string;
 }
 
 // ── StreamEvent ──
 
 export type StreamEvent =
-	| { type: "thinking"; text: string }
-	| { type: "thinking_signature"; signature: string }
-	| { type: "content"; text: string }
-	| {
-			type: "tool_call_delta";
-			index: number;
-			id?: string;
-			name?: string;
-			arguments: string;
-	  }
-	| { type: "done"; finishReason: string; usage: TokenUsage | null }
-	| { type: "error"; error: string };
+  | { type: "thinking"; text: string }
+  | { type: "thinking_signature"; signature: string }
+  | { type: "content"; text: string }
+  | {
+      type: "tool_call_delta";
+      index: number;
+      id?: string;
+      name?: string;
+      arguments: string;
+    }
+  | { type: "done"; finishReason: string; usage: TokenUsage | null }
+  | { type: "error"; error: string };
 
 // ── ToolDefinition ──
 
 /** 协议无关的工具定义格式。各 Client 内部转换为各自的 API 格式。 */
 export interface ToolDefinition {
-	name: string;
-	description: string;
-	parameters: {
-		type: "object";
-		properties?: Record<string, unknown>;
-		required?: string[];
-		additionalProperties?: false;
-	};
+  name: string;
+  description: string;
+  parameters: {
+    type: "object";
+    properties?: Record<string, unknown>;
+    required?: string[];
+    additionalProperties?: false;
+  };
 }
 
 // ── PromptMessage ──
 
 /** 提示词组织的输出格式。format-prompt 模块的产物，Client 内部消费。 */
 export type PromptMessage =
-	| { role: "system"; content: string; cacheBreakpoint?: boolean }
-	| { role: "user"; content: string; cacheBreakpoint?: boolean }
-	| {
-			role: "assistant";
-			content: string;
-			reasoning?: string;
-			reasoningSignature?: string;
-			toolCalls?: ToolCallPart[];
-			cacheBreakpoint?: boolean;
-	  }
-	| {
-			role: "tool";
-			toolCallId: string;
-			toolName: string;
-			content: string;
-			cacheBreakpoint?: boolean;
-	  };
+  | { role: "system"; content: string; cacheBreakpoint?: boolean }
+  | { role: "user"; content: string; cacheBreakpoint?: boolean }
+  | {
+      role: "assistant";
+      content: string;
+      reasoning?: string;
+      reasoningSignature?: string;
+      toolCalls?: ToolCallPart[];
+      cacheBreakpoint?: boolean;
+    }
+  | {
+      role: "tool";
+      toolCallId: string;
+      toolName: string;
+      content: string;
+      cacheBreakpoint?: boolean;
+    };
 
 export interface ToolCallPart {
-	id: string;
-	tool: string;
-	args: Record<string, unknown>;
+  id: string;
+  tool: string;
+  args: Record<string, unknown>;
 }
 
 // ── Request / Response ──
@@ -126,25 +126,25 @@ import type { DomainMessage } from "./domain.ts";
 
 /** 流式请求 — 走 DomainMessage 领域层，或直接传入 PromptMessage */
 export interface StreamRequest {
-	messages: DomainMessage[];
-	tools?: ToolDefinition[];
-	toolChoice?: "auto" | "none" | "required";
+  messages: DomainMessage[];
+  tools?: ToolDefinition[];
+  toolChoice?: "auto" | "none" | "required";
 }
 
 /** 非流式请求 — 简单场景，裸消息 */
 export interface CompleteRequest {
-	messages: SimpleMessage[];
-	temperature?: number;
+  messages: SimpleMessage[];
+  temperature?: number;
 }
 
 export interface SimpleMessage {
-	role: "system" | "user";
-	content: string;
+  role: "system" | "user";
+  content: string;
 }
 
 /** 非流式响应 */
 export interface CompleteResponse {
-	text: string;
+  text: string;
 }
 
 // ── LLMClient 接口 ──
@@ -156,72 +156,72 @@ export interface CompleteResponse {
  * 全部闭包在实现内部。消费方只看到这个接口。
  */
 export interface LLMClient {
-	/**
-	 * 流式调用 — agent loop 使用
-	 *
-	 * 接受 DomainMessage[]（领域消息），内部完成：
-	 * 1. 提示词组织（DomainMessage → PromptMessage，via format-prompt）
-	 * 2. 协议格式化（PromptMessage → API 消息格式）
-	 * 3. SSE 解析 → StreamEvent 映射
-	 */
-	stream(
-		request: StreamRequest,
-		signal?: AbortSignal,
-	): AsyncGenerator<StreamEvent>;
+  /**
+   * 流式调用 — agent loop 使用
+   *
+   * 接受 DomainMessage[]（领域消息），内部完成：
+   * 1. 提示词组织（DomainMessage → PromptMessage，via format-prompt）
+   * 2. 协议格式化（PromptMessage → API 消息格式）
+   * 3. SSE 解析 → StreamEvent 映射
+   */
+  stream(
+    request: StreamRequest,
+    signal?: AbortSignal,
+  ): AsyncGenerator<StreamEvent>;
 
-	/**
-	 * 非流式调用 — RAG 等简单场景使用
-	 *
-	 * 接受裸消息（不经过 DomainMessage 领域层）
-	 */
-	complete(request: CompleteRequest): Promise<CompleteResponse>;
+  /**
+   * 非流式调用 — RAG 等简单场景使用
+   *
+   * 接受裸消息（不经过 DomainMessage 领域层）
+   */
+  complete(request: CompleteRequest): Promise<CompleteResponse>;
 
-	/**
-	 * LLM 模型标识（只读）
-	 *
-	 * 如 "claude-3.5-sonnet"
-	 * 用途：makeToolkit 构建 exec 工具描述时需要 tag 风格
-	 */
-	readonly modelId: string;
+  /**
+   * LLM 模型标识（只读）
+   *
+   * 如 "claude-3.5-sonnet"
+   * 用途：makeToolkit 构建 exec 工具描述时需要 tag 风格
+   */
+  readonly modelId: string;
 
-	/**
-	 * 缓存保活心跳（可选）
-	 *
-	 * 发送轻量请求（max_tokens=1）刷新 prompt cache 前缀。
-	 * 仅支持 prompt caching 的 provider 实现此方法。
-	 * 调用方通过 `client.heartbeat` 是否存在判断能力。
-	 *
-	 * 使用与 stream() 相同的请求结构（messages + tools），确保缓存前缀一致
-	 *
-	 * @param request 当前请求
-	 * @returns 本次心跳的 token 用量，失败时返回 null
-	 */
-	heartbeat?(request: StreamRequest): Promise<TokenUsage | null>;
+  /**
+   * 缓存保活心跳（可选）
+   *
+   * 发送轻量请求（max_tokens=1）刷新 prompt cache 前缀。
+   * 仅支持 prompt caching 的 provider 实现此方法。
+   * 调用方通过 `client.heartbeat` 是否存在判断能力。
+   *
+   * 使用与 stream() 相同的请求结构（messages + tools），确保缓存前缀一致
+   *
+   * @param request 当前请求
+   * @returns 本次心跳的 token 用量，失败时返回 null
+   */
+  heartbeat?(request: StreamRequest): Promise<TokenUsage | null>;
 
-	/**
-	 * 连通性测试 — agent 初始化流程使用
-	 *
-	 * 发送最轻量请求验证 API 连通性与认证。
-	 * 各 provider 自行实现，错误消息由 provider 层生成。
-	 */
-	ping(): Promise<{ ok: boolean; error?: string }>;
+  /**
+   * 连通性测试 — agent 初始化流程使用
+   *
+   * 发送最轻量请求验证 API 连通性与认证。
+   * 各 provider 自行实现，错误消息由 provider 层生成。
+   */
+  ping(): Promise<{ ok: boolean; error?: string }>;
 }
 
 // ── StreamAccumulator ──
 
 /** 流式累积后的单个 tool call */
 export interface AssistantToolCallPart {
-	toolCallId: string;
-	toolName: string;
-	/** JSON 字符串形式的参数 */
-	input: string;
+  toolCallId: string;
+  toolName: string;
+  /** JSON 字符串形式的参数 */
+  input: string;
 }
 
 /** 累积后的 assistant 消息 */
 export interface AssistantMessage {
-	role: "assistant";
-	content: string | null;
-	reasoningText: string | null;
-	reasoningSignature: string | undefined;
-	toolCalls: AssistantToolCallPart[];
+  role: "assistant";
+  content: string | null;
+  reasoningText: string | null;
+  reasoningSignature: string | undefined;
+  toolCalls: AssistantToolCallPart[];
 }

@@ -9,16 +9,16 @@
  */
 
 export {
-	DEFAULT_CODE_SETTINGS,
-	DEFAULT_OPEN_COMMAND,
-	DEFAULT_TOML,
+  DEFAULT_CODE_SETTINGS,
+  DEFAULT_OPEN_COMMAND,
+  DEFAULT_TOML,
 } from "../config-defaults.ts";
 export { displayCodeConfig } from "./display.ts";
 export {
-	type ConfigLoadError,
-	type ConfigLoadResult,
-	type LoadedConfig,
-	loadCodeConfig,
+  type ConfigLoadError,
+  type ConfigLoadResult,
+  type LoadedConfig,
+  loadCodeConfig,
 } from "./loader.ts";
 export { type ConfigPaths, resolveConfigPaths } from "./paths.ts";
 export { type CodeSettings, codeConfigSchema } from "./schema.ts";

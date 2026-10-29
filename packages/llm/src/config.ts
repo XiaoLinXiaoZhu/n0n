@@ -22,8 +22,8 @@ import { z } from "zod";
 // ═══════════════════════════════════════════════════════════
 
 const tagStyleField = z
-	.enum(["deepseek", "glm", "minimax", "default"])
-	.default("default");
+  .enum(["deepseek", "glm", "minimax", "default"])
+  .default("default");
 
 /** 透传到 API 请求 body 的额外字段 — 覆盖同名显式参数 */
 const extraBodyField = z.record(z.string(), z.unknown()).optional();
@@ -33,82 +33,82 @@ const extraBodyField = z.record(z.string(), z.unknown()).optional();
 // ═══════════════════════════════════════════════════════════
 
 export const OpenAIProviderConfigSchema = z.object({
-	provider: z.literal("openai"),
-	api_key: z.string(),
-	model: z.string(),
-	base_url: z.string().default("https://api.openai.com"),
-	tag_style: tagStyleField,
+  provider: z.literal("openai"),
+  api_key: z.string(),
+  model: z.string(),
+  base_url: z.string().default("https://api.openai.com"),
+  tag_style: tagStyleField,
 });
 export type OpenAIProviderConfig = z.infer<typeof OpenAIProviderConfigSchema>;
 
 export const OpenAIResponseProviderConfigSchema = z.object({
-	provider: z.literal("openai-response"),
-	api_key: z.string(),
-	model: z.string(),
-	base_url: z.string().default("https://api.openai.com"),
-	tag_style: tagStyleField,
-	extra_body: extraBodyField,
+  provider: z.literal("openai-response"),
+  api_key: z.string(),
+  model: z.string(),
+  base_url: z.string().default("https://api.openai.com"),
+  tag_style: tagStyleField,
+  extra_body: extraBodyField,
 });
 export type OpenAIResponseProviderConfig = z.infer<
-	typeof OpenAIResponseProviderConfigSchema
+  typeof OpenAIResponseProviderConfigSchema
 >;
 
 export const AnthropicProviderConfigSchema = z.object({
-	provider: z.literal("anthropic"),
-	api_key: z.string(),
-	model: z.string(),
-	base_url: z.string().default("https://api.anthropic.com"),
-	tag_style: tagStyleField,
-	extra_body: extraBodyField,
+  provider: z.literal("anthropic"),
+  api_key: z.string(),
+  model: z.string(),
+  base_url: z.string().default("https://api.anthropic.com"),
+  tag_style: tagStyleField,
+  extra_body: extraBodyField,
 });
 export type AnthropicProviderConfig = z.infer<
-	typeof AnthropicProviderConfigSchema
+  typeof AnthropicProviderConfigSchema
 >;
 
 export const GoogleProviderConfigSchema = z.object({
-	provider: z.literal("google"),
-	api_key: z.string(),
-	model: z.string(),
-	base_url: z.string().default("https://generativelanguage.googleapis.com"),
-	tag_style: tagStyleField,
-	reasoning_effort: z.enum(["low", "medium", "high"]).default("high"),
+  provider: z.literal("google"),
+  api_key: z.string(),
+  model: z.string(),
+  base_url: z.string().default("https://generativelanguage.googleapis.com"),
+  tag_style: tagStyleField,
+  reasoning_effort: z.enum(["low", "medium", "high"]).default("high"),
 });
 export type GoogleProviderConfig = z.infer<typeof GoogleProviderConfigSchema>;
 
 export const OpenAICompatibleProviderConfigSchema = z.object({
-	provider: z.literal("openai-compatible"),
-	api_key: z.string(),
-	model: z.string(),
-	base_url: z.string(),
-	tag_style: tagStyleField,
-	backend_provider: z.enum(["anthropic", "google", "openai"]).default("openai"),
-	extra_body: extraBodyField,
+  provider: z.literal("openai-compatible"),
+  api_key: z.string(),
+  model: z.string(),
+  base_url: z.string(),
+  tag_style: tagStyleField,
+  backend_provider: z.enum(["anthropic", "google", "openai"]).default("openai"),
+  extra_body: extraBodyField,
 });
 export type OpenAICompatibleProviderConfig = z.infer<
-	typeof OpenAICompatibleProviderConfigSchema
+  typeof OpenAICompatibleProviderConfigSchema
 >;
 
 export const DeepSeekProviderConfigSchema = z.object({
-	provider: z.literal("deepseek"),
-	api_key: z.string(),
-	model: z.string(),
-	base_url: z.string().default("https://api.deepseek.com"),
-	tag_style: z
-		.enum(["deepseek", "glm", "minimax", "default"])
-		.default("deepseek"),
-	extra_body: extraBodyField,
+  provider: z.literal("deepseek"),
+  api_key: z.string(),
+  model: z.string(),
+  base_url: z.string().default("https://api.deepseek.com"),
+  tag_style: z
+    .enum(["deepseek", "glm", "minimax", "default"])
+    .default("deepseek"),
+  extra_body: extraBodyField,
 });
 export type DeepSeekProviderConfig = z.infer<
-	typeof DeepSeekProviderConfigSchema
+  typeof DeepSeekProviderConfigSchema
 >;
 
 export const ProviderConfigSchema = z.discriminatedUnion("provider", [
-	OpenAIProviderConfigSchema,
-	OpenAIResponseProviderConfigSchema,
-	AnthropicProviderConfigSchema,
-	GoogleProviderConfigSchema,
-	OpenAICompatibleProviderConfigSchema,
-	DeepSeekProviderConfigSchema,
+  OpenAIProviderConfigSchema,
+  OpenAIResponseProviderConfigSchema,
+  AnthropicProviderConfigSchema,
+  GoogleProviderConfigSchema,
+  OpenAICompatibleProviderConfigSchema,
+  DeepSeekProviderConfigSchema,
 ]);
 
 /** 统一的 LLM provider 配置 — discriminated union on `provider` */
@@ -119,7 +119,7 @@ export type ProviderConfig = z.infer<typeof ProviderConfigSchema>;
 // ═══════════════════════════════════════════════════════════
 
 export const LLMConfigSchema = z.object({
-	providerConfig: ProviderConfigSchema,
+  providerConfig: ProviderConfigSchema,
 });
 
 export type LLMConfig = z.infer<typeof LLMConfigSchema>;
@@ -131,5 +131,5 @@ export type LLMConfig = z.infer<typeof LLMConfigSchema>;
 import type { LLMProvider } from "@n0n/types";
 
 type _AssertExhaustive =
-	Exclude<LLMProvider, ProviderConfig["provider"]> extends never ? true : never;
+  Exclude<LLMProvider, ProviderConfig["provider"]> extends never ? true : never;
 const _: _AssertExhaustive = true;

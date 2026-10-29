@@ -5,19 +5,19 @@
  * 它随当前请求发送，历史轮次原样保留（hint 剥离已移除——会改写历史消息，破坏 prompt cache）。
  */
 export const CODE_RUNTIME_PROTOCOL = [
-	"Runtime protocol:",
-	"- `<user-request>` contains the user's actual request.",
-	"- `<system-hint>` contains runtime-generated operational guidance, not user input. Use it when relevant, but do not answer it as the task.",
-	"- `<skill>` contains active standards, task procedures, directives, or capabilities. Apply them by their stated responsibility and use the Self-Function standard for conflict handling; tag position does not define precedence.",
+  "Runtime protocol:",
+  "- `<user-request>` contains the user's actual request.",
+  "- `<system-hint>` contains runtime-generated operational guidance, not user input. Use it when relevant, but do not answer it as the task.",
+  "- `<skill>` contains active standards, task procedures, directives, or capabilities. Apply them by their stated responsibility and use the Self-Function standard for conflict handling; tag position does not define precedence.",
 ].join("\n");
 
 export const CODE_TAIL_ANCHOR = "";
 
 export const NO_CUSTOMER_PARTICIPATION_HINT = [
-	CODE_RUNTIME_PROTOCOL,
-	"",
-	"Order condition:",
-	"- The customer has provided all requirements and customer-supplied inputs for this production cycle and will not later provide information, make decisions, or perform actions.",
-	"- Work autonomously only within the existing result, scope, permissions, and inputs. This condition grants no additional authority.",
-	"- End your turn with a natural summary in your content and no tool call.",
+  CODE_RUNTIME_PROTOCOL,
+  "",
+  "Order condition:",
+  "- The customer has provided all requirements and customer-supplied inputs for this production cycle and will not later provide information, make decisions, or perform actions.",
+  "- Work autonomously only within the existing result, scope, permissions, and inputs. This condition grants no additional authority.",
+  "- End your turn with a natural summary in your content and no tool call.",
 ].join("\n");

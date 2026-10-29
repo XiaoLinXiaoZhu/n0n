@@ -12,98 +12,100 @@ import { describe, expect, test } from "bun:test";
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+
 import { resolvePlatform } from "@n0n/shared";
+
 import { execToolStream } from "../exec";
 import { parseExecUri } from "./exec-test-helpers.ts";
 
 /** 内部调用类型 — 与 ExecCall 对齐，用于测试 */
 interface TestCall {
-	id: string;
-	tool: "post";
-	args: { uri: string; body: string };
+  id: string;
+  tool: "post";
+  args: { uri: string; body: string };
 }
 
 const SESSION_DIR = mkdtempSync(join(tmpdir(), "n0n-exec-escape-"));
 
 /** 收集 exec 流式输出的最终结果 */
 async function collectExecResult(script: string, runtime?: string) {
-	const rt = runtime ?? (resolvePlatform() === "win32" ? "cmd" : "sh");
-	const call: TestCall = {
-		id: "test-id",
-		tool: "post",
-		args: { uri: `exec://${rt}/test`, body: script },
-	};
-	let stdout = "";
-	let stderr = "";
-	let exitCode = -1;
+  const rt = runtime ?? (resolvePlatform() === "win32" ? "cmd" : "sh");
+  const call: TestCall = {
+    id: "test-id",
+    tool: "post",
+    args: { uri: `exec://${rt}/test`, body: script },
+  };
+  let stdout = "";
+  let stderr = "";
+  let exitCode = -1;
 
-	for await (const event of execToolStream(
-		call,
-		parseExecUri(call.args.uri),
-		undefined,
-		{
-			workspace: process.cwd(),
-			sessionDir: SESSION_DIR,
-			blocked_commands: [],
-			default_exec_waitfor: 120,
-			max_exec_output_tokens: 32_000,
-			platform: resolvePlatform(),
-		},
-	)) {
-		if (
-			event.type === "tool_result" &&
-			event.scheme === "exec" &&
-			event.status === "completed"
-		) {
-			stdout = event.stdout;
-			stderr = event.stderr;
-			exitCode = event.exitCode;
-		}
-	}
-	return { stdout, stderr, exitCode };
+  for await (const event of execToolStream(
+    call,
+    parseExecUri(call.args.uri),
+    undefined,
+    {
+      workspace: process.cwd(),
+      sessionDir: SESSION_DIR,
+      blocked_commands: [],
+      default_exec_waitfor: 120,
+      max_exec_output_tokens: 32_000,
+      platform: resolvePlatform(),
+    },
+  )) {
+    if (
+      event.type === "tool_result" &&
+      event.scheme === "exec" &&
+      event.status === "completed"
+    ) {
+      stdout = event.stdout;
+      stderr = event.stderr;
+      exitCode = event.exitCode;
+    }
+  }
+  return { stdout, stderr, exitCode };
 }
 
 describe("exec tool — script+runtime model", () => {
-	test("simple command with default runtime (platform shell)", async () => {
-		const result = await collectExecResult("echo hello");
-		expect(result.exitCode).toBe(0);
-		expect(result.stdout.trim()).toBe("hello");
-	});
+  test("simple command with default runtime (platform shell)", async () => {
+    const result = await collectExecResult("echo hello");
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout.trim()).toBe("hello");
+  });
 
-	test("bun runtime executes TypeScript", async () => {
-		const result = await collectExecResult('console.log("from bun")', "bun");
-		expect(result.exitCode).toBe(0);
-		expect(result.stdout.trim()).toBe("from bun");
-	});
+  test("bun runtime executes TypeScript", async () => {
+    const result = await collectExecResult('console.log("from bun")', "bun");
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout.trim()).toBe("from bun");
+  });
 
-	test("bun runtime with multi-line script", async () => {
-		const script = ["const a = 1;", "const b = 2;", "console.log(a + b);"].join(
-			"\n",
-		);
-		const result = await collectExecResult(script, "bun");
-		expect(result.exitCode).toBe(0);
-		expect(result.stdout.trim()).toBe("3");
-	});
+  test("bun runtime with multi-line script", async () => {
+    const script = ["const a = 1;", "const b = 2;", "console.log(a + b);"].join(
+      "\n",
+    );
+    const result = await collectExecResult(script, "bun");
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout.trim()).toBe("3");
+  });
 
-	test("bun runtime with string containing newlines (no escape issues)", async () => {
-		const script = `const s = 'a\\nb'; console.log(s.split('\\n').length);`;
-		const result = await collectExecResult(script, "bun");
-		expect(result.exitCode).toBe(0);
-		expect(result.stdout.trim()).toBe("2");
-	});
+  test("bun runtime with string containing newlines (no escape issues)", async () => {
+    const script = `const s = 'a\\nb'; console.log(s.split('\\n').length);`;
+    const result = await collectExecResult(script, "bun");
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout.trim()).toBe("2");
+  });
 
-	test("bun runtime with imports", async () => {
-		const script = [
-			'import { join } from "node:path";',
-			'console.log(join("a", "b"));',
-		].join("\n");
-		const result = await collectExecResult(script, "bun");
-		expect(result.exitCode).toBe(0);
-		expect(result.stdout.trim()).toMatch(/a[/\\]b/);
-	});
+  test("bun runtime with imports", async () => {
+    const script = [
+      'import { join } from "node:path";',
+      'console.log(join("a", "b"));',
+    ].join("\n");
+    const result = await collectExecResult(script, "bun");
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout.trim()).toMatch(/a[/\\]b/);
+  });
 
-	test("non-zero exit code is captured", async () => {
-		const result = await collectExecResult("process.exit(42)", "bun");
-		expect(result.exitCode).toBe(42);
-	});
+  test("non-zero exit code is captured", async () => {
+    const result = await collectExecResult("process.exit(42)", "bun");
+    expect(result.exitCode).toBe(42);
+  });
 });

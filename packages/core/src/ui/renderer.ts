@@ -5,65 +5,65 @@
  */
 
 import type {
-	Renderer,
-	RoundTokenUsage,
-	ToolCallRecord,
-	ToolExecOutcome,
+  Renderer,
+  RoundTokenUsage,
+  ToolCallRecord,
+  ToolExecOutcome,
 } from "@n0n/types";
 
 export class PlainRenderer implements Renderer {
-	userMessage(_content: string): void {}
+  userMessage(_content: string): void {}
 
-	roundStart(round: number, maxRounds: number, msgCount: number): void {
-		console.error(`  [agent] round ${round}/${maxRounds} (${msgCount} msgs)`);
-	}
+  roundStart(round: number, maxRounds: number, msgCount: number): void {
+    console.error(`  [agent] round ${round}/${maxRounds} (${msgCount} msgs)`);
+  }
 
-	roundEnd(usage?: RoundTokenUsage | null): void {
-		if (!usage) return;
-		console.error(
-			`  [agent] usage: ${usage.totalTokens} tok, cache read=${usage.cacheReadTokens}, write=${usage.cacheWriteTokens}`,
-		);
-	}
+  roundEnd(usage?: RoundTokenUsage | null): void {
+    if (!usage) return;
+    console.error(
+      `  [agent] usage: ${usage.totalTokens} tok, cache read=${usage.cacheReadTokens}, write=${usage.cacheWriteTokens}`,
+    );
+  }
 
-	thinkingStart(): void {}
-	thinkingChunk(_token: string): void {}
-	thinkingEnd(): void {}
-	contentStart(): void {}
-	contentChunk(_token: string): void {}
-	contentEnd(): void {}
+  thinkingStart(): void {}
+  thinkingChunk(_token: string): void {}
+  thinkingEnd(): void {}
+  contentStart(): void {}
+  contentChunk(_token: string): void {}
+  contentEnd(): void {}
 
-	toolCallArgStart(_index: number, _name: string): void {}
-	toolCallArgChunk(_index: number, _chunk: string): void {}
-	toolCallArgEnd(_index: number, _tc: ToolCallRecord): void {}
-	streamEnd(): void {}
+  toolCallArgStart(_index: number, _name: string): void {}
+  toolCallArgChunk(_index: number, _chunk: string): void {}
+  toolCallArgEnd(_index: number, _tc: ToolCallRecord): void {}
+  streamEnd(): void {}
 
-	textResponse(content: string, idleCount: number): void {
-		console.error(
-			`  [agent] text response (${content.length} chars), idle=${idleCount}`,
-		);
-	}
+  textResponse(content: string, idleCount: number): void {
+    console.error(
+      `  [agent] text response (${content.length} chars), idle=${idleCount}`,
+    );
+  }
 
-	toolExecStart(_tcId: string, tc: ToolCallRecord): void {
-		const args = tc.args as { uri?: string; body?: string };
-		const bodyPreview =
-			typeof args.body === "string" ? ` ${args.body.slice(0, 80)}` : "";
-		const suffix =
-			typeof args.uri === "string" ? ` → ${args.uri}${bodyPreview}` : "";
-		console.error(`  [agent] tool: ${tc.tool}${suffix}`);
-	}
+  toolExecStart(_tcId: string, tc: ToolCallRecord): void {
+    const args = tc.args as { uri?: string; body?: string };
+    const bodyPreview =
+      typeof args.body === "string" ? ` ${args.body.slice(0, 80)}` : "";
+    const suffix =
+      typeof args.uri === "string" ? ` → ${args.uri}${bodyPreview}` : "";
+    console.error(`  [agent] tool: ${tc.tool}${suffix}`);
+  }
 
-	toolExecChunk(_tcId: string, _tool: string, _chunk: string): void {}
-	toolExecEnd(_tcId: string, _outcome: ToolExecOutcome): void {}
+  toolExecChunk(_tcId: string, _tool: string, _chunk: string): void {}
+  toolExecEnd(_tcId: string, _outcome: ToolExecOutcome): void {}
 
-	customerAccepted(): void {
-		console.error("  [agent] customer request accepted ✓");
-	}
+  customerAccepted(): void {
+    console.error("  [agent] customer request accepted ✓");
+  }
 
-	agentTerminated(reason: string): void {
-		console.error(`  [agent] ${reason}`);
-	}
+  agentTerminated(reason: string): void {
+    console.error(`  [agent] ${reason}`);
+  }
 
-	aborted(): void {
-		console.error("  [agent] aborted by user");
-	}
+  aborted(): void {
+    console.error("  [agent] aborted by user");
+  }
 }

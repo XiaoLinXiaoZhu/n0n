@@ -12,44 +12,44 @@ import type { SkillContent, SkillMeta } from "./types.ts";
  * 生成 skill 摘要列表（用于注入 LLM context，每个 ~50-100 tokens）
  */
 export function formatSkillSummaries(skills: SkillMeta[]): string {
-	if (skills.length === 0) return "";
+  if (skills.length === 0) return "";
 
-	return skills
-		.map((s) => {
-			const aliasStr =
-				s.alias.length > 0 ? ` (alias: ${s.alias.join(", ")})` : "";
-			return `- **${s.name}**${aliasStr}: ${s.description}${s.compatibility ? ` (${s.compatibility})` : ""}`;
-		})
-		.join("\n");
+  return skills
+    .map((s) => {
+      const aliasStr =
+        s.alias.length > 0 ? ` (alias: ${s.alias.join(", ")})` : "";
+      return `- **${s.name}**${aliasStr}: ${s.description}${s.compatibility ? ` (${s.compatibility})` : ""}`;
+    })
+    .join("\n");
 }
 
 /**
  * 生成 skill 完整内容的 XML 格式（用于注入执行上下文）
  */
 export function formatSkillContents(contents: SkillContent[]): string {
-	if (contents.length === 0) return "";
+  if (contents.length === 0) return "";
 
-	return contents
-		.map((s) => {
-			const scriptInfo =
-				s.scripts.length > 0
-					? `\nAvailable scripts (run with \`bun run ${s.dir}/<script>\`):\n${s.scripts.map((p) => `  - ${p}`).join("\n")}`
-					: "";
+  return contents
+    .map((s) => {
+      const scriptInfo =
+        s.scripts.length > 0
+          ? `\nAvailable scripts (run with \`bun run ${s.dir}/<script>\`):\n${s.scripts.map((p) => `  - ${p}`).join("\n")}`
+          : "";
 
-			const resourceInfo =
-				s.resources.length > 0
-					? `\n额外资源（按需用 post 执行 exec:// 读取）：\n${s.resources.map((p) => `  - ${p}`).join("\n")}`
-					: "";
+      const resourceInfo =
+        s.resources.length > 0
+          ? `\n额外资源（按需用 post 执行 exec:// 读取）：\n${s.resources.map((p) => `  - ${p}`).join("\n")}`
+          : "";
 
-			return [
-				`<skill name="${s.name}" path="${s.dir}">`,
-				s.body,
-				scriptInfo,
-				resourceInfo,
-				"</skill>",
-			]
-				.filter(Boolean)
-				.join("\n");
-		})
-		.join("\n\n");
+      return [
+        `<skill name="${s.name}" path="${s.dir}">`,
+        s.body,
+        scriptInfo,
+        resourceInfo,
+        "</skill>",
+      ]
+        .filter(Boolean)
+        .join("\n");
+    })
+    .join("\n\n");
 }

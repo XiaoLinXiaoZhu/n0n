@@ -8,191 +8,193 @@
  */
 
 import { describe, expect, test } from "bun:test";
+
 import type { ToolCallRecord, ToolResult } from "@n0n/types";
+
 import { RenderBuffer, type RenderSink } from "../render-buffer.ts";
 
 // ── helpers ──
 
 function mockTC(id: string): ToolCallRecord {
-	return {
-		id,
-		tool: "post",
-		args: { uri: "exec://sh/echo", body: "echo" },
-	} as ToolCallRecord;
+  return {
+    id,
+    tool: "post",
+    args: { uri: "exec://sh/echo", body: "echo" },
+  } as ToolCallRecord;
 }
 
 function mockResult(id: string): ToolResult {
-	return {
-		type: "tool_result",
-		tool: "post",
-		scheme: "exec",
-		claim: "echo",
-		runtime: "sh",
-		cwd: "/tmp",
-		call: mockTC(id),
-		status: "completed",
-		exitCode: 0,
-		stdout: "",
-		stderr: "",
-		durationMs: 10,
-	} as ToolResult;
+  return {
+    type: "tool_result",
+    tool: "post",
+    scheme: "exec",
+    claim: "echo",
+    runtime: "sh",
+    cwd: "/tmp",
+    call: mockTC(id),
+    status: "completed",
+    exitCode: 0,
+    stdout: "",
+    stderr: "",
+    durationMs: 10,
+  } as ToolResult;
 }
 
 function createSink(): { sink: RenderSink; log: string[] } {
-	const log: string[] = [];
-	return {
-		log,
-		sink: {
-			onStart: (tc) => log.push(`start:${tc.id}`),
-			onChunk: (tool, chunk) => log.push(`chunk:${tool}:${chunk}`),
-			onEnd: (result) => log.push(`end:${result.call.id}`),
-		},
-	};
+  const log: string[] = [];
+  return {
+    log,
+    sink: {
+      onStart: (tc) => log.push(`start:${tc.id}`),
+      onChunk: (tool, chunk) => log.push(`chunk:${tool}:${chunk}`),
+      onEnd: (result) => log.push(`end:${result.call.id}`),
+    },
+  };
 }
 
 // ── tests ──
 
 describe("RenderBuffer", () => {
-	test("单个工具：register → chunk → end 按序输出", () => {
-		const { sink, log } = createSink();
-		const buf = new RenderBuffer(sink);
-		const tc = mockTC("a");
+  test("单个工具：register → chunk → end 按序输出", () => {
+    const { sink, log } = createSink();
+    const buf = new RenderBuffer(sink);
+    const tc = mockTC("a");
 
-		buf.resume();
-		buf.register(tc);
-		buf.pushChunk("a", "post", "hello");
-		buf.pushEnd("a", { status: "completed", result: mockResult("a") });
+    buf.resume();
+    buf.register(tc);
+    buf.pushChunk("a", "post", "hello");
+    buf.pushEnd("a", { status: "completed", result: mockResult("a") });
 
-		expect(log).toEqual(["start:a", "chunk:post:hello", "end:a"]);
-	});
+    expect(log).toEqual(["start:a", "chunk:post:hello", "end:a"]);
+  });
 
-	test("FIFO 顺序：第二个工具先完成，但在第一个之后输出", () => {
-		const { sink, log } = createSink();
-		const buf = new RenderBuffer(sink);
+  test("FIFO 顺序：第二个工具先完成，但在第一个之后输出", () => {
+    const { sink, log } = createSink();
+    const buf = new RenderBuffer(sink);
 
-		buf.resume();
-		buf.register(mockTC("a"));
-		buf.register(mockTC("b"));
+    buf.resume();
+    buf.register(mockTC("a"));
+    buf.register(mockTC("b"));
 
-		// b 先完成
-		buf.pushEnd("b", { status: "completed", result: mockResult("b") });
-		// b 的 end 应该被缓冲，a 还没完成
-		expect(log).toEqual(["start:a"]);
+    // b 先完成
+    buf.pushEnd("b", { status: "completed", result: mockResult("b") });
+    // b 的 end 应该被缓冲，a 还没完成
+    expect(log).toEqual(["start:a"]);
 
-		// a 完成，flush a 然后 b
-		buf.pushEnd("a", { status: "completed", result: mockResult("a") });
-		expect(log).toEqual(["start:a", "end:a", "start:b", "end:b"]);
-	});
+    // a 完成，flush a 然后 b
+    buf.pushEnd("a", { status: "completed", result: mockResult("a") });
+    expect(log).toEqual(["start:a", "end:a", "start:b", "end:b"]);
+  });
 
-	test("pause 状态下所有事件暂存，resume 时一次性 flush", () => {
-		const { sink, log } = createSink();
-		const buf = new RenderBuffer(sink);
+  test("pause 状态下所有事件暂存，resume 时一次性 flush", () => {
+    const { sink, log } = createSink();
+    const buf = new RenderBuffer(sink);
 
-		// 默认 paused
-		buf.register(mockTC("a"));
-		buf.pushChunk("a", "post", "data");
-		buf.pushEnd("a", { status: "completed", result: mockResult("a") });
+    // 默认 paused
+    buf.register(mockTC("a"));
+    buf.pushChunk("a", "post", "data");
+    buf.pushEnd("a", { status: "completed", result: mockResult("a") });
 
-		expect(log).toEqual([]);
+    expect(log).toEqual([]);
 
-		buf.resume();
-		expect(log).toEqual(["start:a", "chunk:post:data", "end:a"]);
-	});
+    buf.resume();
+    expect(log).toEqual(["start:a", "chunk:post:data", "end:a"]);
+  });
 
-	test("argError 跳过不渲染，推进到下一个工具", () => {
-		const { sink, log } = createSink();
-		const buf = new RenderBuffer(sink);
+  test("argError 跳过不渲染，推进到下一个工具", () => {
+    const { sink, log } = createSink();
+    const buf = new RenderBuffer(sink);
 
-		buf.resume();
-		buf.register(mockTC("a"));
-		buf.register(mockTC("b"));
+    buf.resume();
+    buf.register(mockTC("a"));
+    buf.register(mockTC("b"));
 
-		// a 是 argError
-		buf.pushEnd("a", { status: "arg_error" });
-		// a 被跳过，b 成为队首
-		buf.pushEnd("b", { status: "completed", result: mockResult("b") });
+    // a 是 argError
+    buf.pushEnd("a", { status: "arg_error" });
+    // a 被跳过，b 成为队首
+    buf.pushEnd("b", { status: "completed", result: mockResult("b") });
 
-		expect(log).toEqual(["start:a", "start:b", "end:b"]);
-	});
+    expect(log).toEqual(["start:a", "start:b", "end:b"]);
+  });
 
-	test("中间工具 argError，前后工具正常输出", () => {
-		const { sink, log } = createSink();
-		const buf = new RenderBuffer(sink);
+  test("中间工具 argError，前后工具正常输出", () => {
+    const { sink, log } = createSink();
+    const buf = new RenderBuffer(sink);
 
-		buf.resume();
-		buf.register(mockTC("a"));
-		buf.register(mockTC("b"));
-		buf.register(mockTC("c"));
+    buf.resume();
+    buf.register(mockTC("a"));
+    buf.register(mockTC("b"));
+    buf.register(mockTC("c"));
 
-		buf.pushEnd("a", { status: "completed", result: mockResult("a") });
-		buf.pushEnd("b", { status: "arg_error" });
-		buf.pushEnd("c", { status: "completed", result: mockResult("c") });
+    buf.pushEnd("a", { status: "completed", result: mockResult("a") });
+    buf.pushEnd("b", { status: "arg_error" });
+    buf.pushEnd("c", { status: "completed", result: mockResult("c") });
 
-		expect(log).toEqual([
-			"start:a",
-			"end:a",
-			"start:b", // b gets onStart when it becomes head after a completes
-			"start:c",
-			"end:c",
-		]);
-	});
+    expect(log).toEqual([
+      "start:a",
+      "end:a",
+      "start:b", // b gets onStart when it becomes head after a completes
+      "start:c",
+      "end:c",
+    ]);
+  });
 
-	test("队首工具的 chunk 实时输出，非队首暂存", () => {
-		const { sink, log } = createSink();
-		const buf = new RenderBuffer(sink);
+  test("队首工具的 chunk 实时输出，非队首暂存", () => {
+    const { sink, log } = createSink();
+    const buf = new RenderBuffer(sink);
 
-		buf.resume();
-		buf.register(mockTC("a"));
-		buf.register(mockTC("b"));
+    buf.resume();
+    buf.register(mockTC("a"));
+    buf.register(mockTC("b"));
 
-		buf.pushChunk("a", "post", "a1");
-		buf.pushChunk("b", "post", "b1"); // 非队首，暂存
+    buf.pushChunk("a", "post", "a1");
+    buf.pushChunk("b", "post", "b1"); // 非队首，暂存
 
-		expect(log).toEqual(["start:a", "chunk:post:a1"]);
+    expect(log).toEqual(["start:a", "chunk:post:a1"]);
 
-		buf.pushEnd("a", { status: "completed", result: mockResult("a") });
-		// a 完成后 b 被 flush
-		expect(log).toEqual([
-			"start:a",
-			"chunk:post:a1",
-			"end:a",
-			"start:b",
-			"chunk:post:b1",
-		]);
+    buf.pushEnd("a", { status: "completed", result: mockResult("a") });
+    // a 完成后 b 被 flush
+    expect(log).toEqual([
+      "start:a",
+      "chunk:post:a1",
+      "end:a",
+      "start:b",
+      "chunk:post:b1",
+    ]);
 
-		buf.pushEnd("b", { status: "completed", result: mockResult("b") });
-		expect(log).toEqual([
-			"start:a",
-			"chunk:post:a1",
-			"end:a",
-			"start:b",
-			"chunk:post:b1",
-			"end:b",
-		]);
-	});
+    buf.pushEnd("b", { status: "completed", result: mockResult("b") });
+    expect(log).toEqual([
+      "start:a",
+      "chunk:post:a1",
+      "end:a",
+      "start:b",
+      "chunk:post:b1",
+      "end:b",
+    ]);
+  });
 
-	test("reset 清除所有状态", () => {
-		const { sink, log } = createSink();
-		const buf = new RenderBuffer(sink);
+  test("reset 清除所有状态", () => {
+    const { sink, log } = createSink();
+    const buf = new RenderBuffer(sink);
 
-		buf.resume();
-		buf.register(mockTC("a"));
-		buf.pushChunk("a", "post", "data");
+    buf.resume();
+    buf.register(mockTC("a"));
+    buf.pushChunk("a", "post", "data");
 
-		buf.reset();
-		// reset 后 push 已注册的 id 被忽略
-		buf.pushEnd("a", { status: "completed", result: mockResult("a") });
-		expect(log).toEqual(["start:a", "chunk:post:data"]);
-	});
+    buf.reset();
+    // reset 后 push 已注册的 id 被忽略
+    buf.pushEnd("a", { status: "completed", result: mockResult("a") });
+    expect(log).toEqual(["start:a", "chunk:post:data"]);
+  });
 
-	test("未知 tcId 的 push 被静默忽略", () => {
-		const { sink, log } = createSink();
-		const buf = new RenderBuffer(sink);
+  test("未知 tcId 的 push 被静默忽略", () => {
+    const { sink, log } = createSink();
+    const buf = new RenderBuffer(sink);
 
-		buf.resume();
-		buf.pushChunk("unknown", "post", "data");
-		buf.pushEnd("unknown", { status: "completed", result: mockResult("x") });
+    buf.resume();
+    buf.pushChunk("unknown", "post", "data");
+    buf.pushEnd("unknown", { status: "completed", result: mockResult("x") });
 
-		expect(log).toEqual([]);
-	});
+    expect(log).toEqual([]);
+  });
 });

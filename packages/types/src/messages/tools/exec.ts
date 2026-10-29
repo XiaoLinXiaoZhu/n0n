@@ -10,71 +10,71 @@
 import type { MakeResult } from "./registry.ts";
 
 export interface ExecutionArtifactRef {
-	kind: "execution";
-	version: 1;
-	runId: string;
-	runDir: string;
-	stdoutFile: string;
-	stderrFile: string;
-	resultFile: string;
+  kind: "execution";
+  version: 1;
+  runId: string;
+  runDir: string;
+  stdoutFile: string;
+  stderrFile: string;
+  resultFile: string;
 }
 
 /** exec 后端结果的公共字段 */
 interface ExecResultBase extends MakeResult<"post", string> {
-	scheme: "exec";
-	/** uri 中的 NAME 路径段（URL 解码后） */
-	claim: string;
-	/** 实际使用的 runtime（默认值已解析） */
-	runtime: string;
-	/** 实际使用的绝对工作目录 */
-	cwd: string;
+  scheme: "exec";
+  /** uri 中的 NAME 路径段（URL 解码后） */
+  claim: string;
+  /** 实际使用的 runtime（默认值已解析） */
+  runtime: string;
+  /** 实际使用的绝对工作目录 */
+  cwd: string;
 }
 
 /** 正常完成，输出在阈值内 */
 export interface ExecCompleted extends ExecResultBase {
-	status: "completed";
-	exitCode: number;
-	stdout: string;
-	stderr: string;
-	durationMs: number;
+  status: "completed";
+  exitCode: number;
+  stdout: string;
+  stderr: string;
+  durationMs: number;
 }
 
 /** 正常完成，输出超长被截断并写入文件 */
 export interface ExecTruncated extends ExecResultBase {
-	status: "truncated";
-	exitCode: number;
-	/** stdout 在分配预算内的头尾预览 */
-	stdoutPreview: string;
-	/** stderr 在分配预算内的头尾预览 */
-	stderrPreview: string;
-	/** 完整输出文件路径 */
-	artifact: ExecutionArtifactRef;
-	/** 原始 stdout 总字符数 */
-	stdoutLength: number;
-	/** 原始 stderr 总字符数 */
-	stderrLength: number;
-	stdoutLines: number;
-	stderrLines: number;
-	/** 本次调用要求的模型输出预算 */
-	outputTokenBudget: number;
-	stdoutEstimatedTokens: number;
-	stderrEstimatedTokens: number;
-	totalEstimatedTokens: number;
-	durationMs: number;
+  status: "truncated";
+  exitCode: number;
+  /** stdout 在分配预算内的头尾预览 */
+  stdoutPreview: string;
+  /** stderr 在分配预算内的头尾预览 */
+  stderrPreview: string;
+  /** 完整输出文件路径 */
+  artifact: ExecutionArtifactRef;
+  /** 原始 stdout 总字符数 */
+  stdoutLength: number;
+  /** 原始 stderr 总字符数 */
+  stderrLength: number;
+  stdoutLines: number;
+  stderrLines: number;
+  /** 本次调用要求的模型输出预算 */
+  outputTokenBudget: number;
+  stdoutEstimatedTokens: number;
+  stderrEstimatedTokens: number;
+  totalEstimatedTokens: number;
+  durationMs: number;
 }
 
 /** 等待超限，进程转入后台继续执行 */
 export interface ExecBackgrounded extends ExecResultBase {
-	status: "backgrounded";
-	/** 后台进程 PID */
-	pid: number;
-	/** 持续更新的执行产物 */
-	artifact: ExecutionArtifactRef;
-	/** 超时前已捕获的 stdout */
-	stdoutSoFar: string;
-	/** 超时前已捕获的 stderr */
-	stderrSoFar: string;
-	durationMs: number;
+  status: "backgrounded";
+  /** 后台进程 PID */
+  pid: number;
+  /** 持续更新的执行产物 */
+  artifact: ExecutionArtifactRef;
+  /** 超时前已捕获的 stdout */
+  stdoutSoFar: string;
+  /** 超时前已捕获的 stderr */
+  stderrSoFar: string;
+  durationMs: number;
 }
 
 export type ExecToolResult = ExecCompleted | ExecTruncated | ExecBackgrounded;

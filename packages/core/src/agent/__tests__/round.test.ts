@@ -10,222 +10,224 @@
  */
 
 import { describe, expect, it } from "bun:test";
+
 import { StreamAccumulator } from "@n0n/shared";
 import type { ToolRecover, UnrecoverableCall } from "@n0n/tools";
 import type { ToolArgErrorMessage, ToolCallRecord } from "@n0n/types";
+
 import {
-	buildToolCallMessage,
-	collectJobMessages,
-	recoverTruncatedCalls,
+  buildToolCallMessage,
+  collectJobMessages,
+  recoverTruncatedCalls,
 } from "../round.ts";
 import {
-	mockCompletedJob,
-	mockExecResult,
-	mockExecTC,
-	mockFailedJob,
+  mockCompletedJob,
+  mockExecResult,
+  mockExecTC,
+  mockFailedJob,
 } from "./test-helpers.ts";
 
 // ── 辅助 ──
 
 function makeAccWithToolCalls(
-	tools: Array<{ index: number; id: string; name: string; input: string }>,
+  tools: Array<{ index: number; id: string; name: string; input: string }>,
 ): StreamAccumulator {
-	const acc = new StreamAccumulator();
-	for (const t of tools) {
-		acc.push({
-			type: "tool_call_delta",
-			index: t.index,
-			id: t.id,
-			name: t.name,
-			arguments: t.input,
-		});
-	}
-	return acc;
+  const acc = new StreamAccumulator();
+  for (const t of tools) {
+    acc.push({
+      type: "tool_call_delta",
+      index: t.index,
+      id: t.id,
+      name: t.name,
+      arguments: t.input,
+    });
+  }
+  return acc;
 }
 
 function makeUnrecoverable(
-	partial: Parameters<ToolRecover>[0],
-	kind: "unknown_tool" | "truncated_recovery",
+  partial: Parameters<ToolRecover>[0],
+  kind: "unknown_tool" | "truncated_recovery",
 ): UnrecoverableCall {
-	return {
-		status: "unrecoverable",
-		call: {
-			id: partial.toolCallId,
-			tool: partial.toolName,
-			args: {},
-		},
-		result: {
-			type: "tool_arg_error",
-			callId: partial.toolCallId,
-			tool: partial.toolName,
-			error: { kind },
-		},
-	};
+  return {
+    status: "unrecoverable",
+    call: {
+      id: partial.toolCallId,
+      tool: partial.toolName,
+      args: {},
+    },
+    result: {
+      type: "tool_arg_error",
+      callId: partial.toolCallId,
+      tool: partial.toolName,
+      error: { kind },
+    },
+  };
 }
 
 // ── recoverTruncatedCalls ──
 
 describe("recoverTruncatedCalls", () => {
-	it("无截断工具 → 空 pairs", async () => {
-		const acc = makeAccWithToolCalls([
-			{
-				index: 0,
-				id: "tc_1",
-				name: "post",
-				input: '{"uri":"exec://sh/probe","body":"ls"}',
-			},
-		]);
-		const readyTools = new Map<number, ToolCallRecord>();
-		readyTools.set(0, {
-			id: "tc_1",
-			tool: "post",
-			args: { uri: "exec://sh/probe", body: "ls" },
-		});
+  it("无截断工具 → 空 pairs", async () => {
+    const acc = makeAccWithToolCalls([
+      {
+        index: 0,
+        id: "tc_1",
+        name: "post",
+        input: '{"uri":"exec://sh/probe","body":"ls"}',
+      },
+    ]);
+    const readyTools = new Map<number, ToolCallRecord>();
+    readyTools.set(0, {
+      id: "tc_1",
+      tool: "post",
+      args: { uri: "exec://sh/probe", body: "ls" },
+    });
 
-		const result = await recoverTruncatedCalls(
-			{
-				accumulator: acc,
-				readyTools,
-				interrupt: null,
-			},
-			(async (partial) =>
-				makeUnrecoverable(partial, "unknown_tool")) satisfies ToolRecover,
-		);
+    const result = await recoverTruncatedCalls(
+      {
+        accumulator: acc,
+        readyTools,
+        interrupt: null,
+      },
+      (async (partial) =>
+        makeUnrecoverable(partial, "unknown_tool")) satisfies ToolRecover,
+    );
 
-		expect(result).toHaveLength(0);
-	});
+    expect(result).toHaveLength(0);
+  });
 
-	it("截断的非 write:// 调用（无 recover）→ 占位 call + tool_arg_error", async () => {
-		const acc = makeAccWithToolCalls([
-			{ index: 0, id: "tc_1", name: "post", input: '{"uri":"exec://sh/l' },
-		]);
+  it("截断的非 write:// 调用（无 recover）→ 占位 call + tool_arg_error", async () => {
+    const acc = makeAccWithToolCalls([
+      { index: 0, id: "tc_1", name: "post", input: '{"uri":"exec://sh/l' },
+    ]);
 
-		const result = await recoverTruncatedCalls(
-			{
-				accumulator: acc,
-				readyTools: new Map(),
-				interrupt: "length",
-			},
-			(async (partial) =>
-				makeUnrecoverable(partial, "truncated_recovery")) satisfies ToolRecover,
-		);
+    const result = await recoverTruncatedCalls(
+      {
+        accumulator: acc,
+        readyTools: new Map(),
+        interrupt: "length",
+      },
+      (async (partial) =>
+        makeUnrecoverable(partial, "truncated_recovery")) satisfies ToolRecover,
+    );
 
-		expect(result).toHaveLength(1);
-		expect(result[0]!.status).toBe("unrecoverable");
-		expect(result[0]!.call.tool).toBe("post");
-		expect(result[0]!.call.args).toEqual({});
-		expect(result[0]!.result.type).toBe("tool_arg_error");
-	});
+    expect(result).toHaveLength(1);
+    expect(result[0]!.status).toBe("unrecoverable");
+    expect(result[0]!.call.tool).toBe("post");
+    expect(result[0]!.call.args).toEqual({});
+    expect(result[0]!.result.type).toBe("tool_arg_error");
+  });
 
-	it("截断的 write:// 调用（有 recover）→ 恢复+执行", async () => {
-		const acc = makeAccWithToolCalls([
-			{
-				index: 0,
-				id: "tc_1",
-				name: "post",
-				input: '{"uri":"write://test.ts","body":"partial con',
-			},
-		]);
+  it("截断的 write:// 调用（有 recover）→ 恢复+执行", async () => {
+    const acc = makeAccWithToolCalls([
+      {
+        index: 0,
+        id: "tc_1",
+        name: "post",
+        input: '{"uri":"write://test.ts","body":"partial con',
+      },
+    ]);
 
-		// 模拟 recover：恢复参数 + 执行 → 返回 {call, result}
-		const recover: ToolRecover = async (partial) => {
-			const call: ToolCallRecord = {
-				id: partial.toolCallId,
-				tool: "post",
-				args: { uri: "write://test.ts", body: "partial con" },
-			};
-			const result = {
-				type: "tool_result" as const,
-				tool: "post" as const,
-				call,
-				status: "recovered" as const,
-				scheme: "write" as const,
-				path: "test.ts",
-			};
-			return { status: "recovered" as const, call, result };
-		};
+    // 模拟 recover：恢复参数 + 执行 → 返回 {call, result}
+    const recover: ToolRecover = async (partial) => {
+      const call: ToolCallRecord = {
+        id: partial.toolCallId,
+        tool: "post",
+        args: { uri: "write://test.ts", body: "partial con" },
+      };
+      const result = {
+        type: "tool_result" as const,
+        tool: "post" as const,
+        call,
+        status: "recovered" as const,
+        scheme: "write" as const,
+        path: "test.ts",
+      };
+      return { status: "recovered" as const, call, result };
+    };
 
-		const result = await recoverTruncatedCalls(
-			{
-				accumulator: acc,
-				readyTools: new Map(),
-				interrupt: "length",
-			},
-			recover,
-		);
+    const result = await recoverTruncatedCalls(
+      {
+        accumulator: acc,
+        readyTools: new Map(),
+        interrupt: "length",
+      },
+      recover,
+    );
 
-		expect(result).toHaveLength(1);
-		expect(result[0]!.status).toBe("recovered");
-		expect(result[0]!.call.tool).toBe("post");
-		expect(result[0]!.call.args.uri).toBe("write://test.ts");
-		expect(result[0]!.result.type).toBe("tool_result");
-	});
+    expect(result).toHaveLength(1);
+    expect(result[0]!.status).toBe("recovered");
+    expect(result[0]!.call.tool).toBe("post");
+    expect(result[0]!.call.args.uri).toBe("write://test.ts");
+    expect(result[0]!.result.type).toBe("tool_result");
+  });
 });
 
 // ── buildToolCallMessage ──
 
 describe("buildToolCallMessage", () => {
-	it("构建包含工具调用的 assistant 消息", () => {
-		const acc = new StreamAccumulator();
-		acc.push({ type: "content", text: "Let me do this" });
-		acc.push({ type: "thinking", text: "reasoning" });
+  it("构建包含工具调用的 assistant 消息", () => {
+    const acc = new StreamAccumulator();
+    acc.push({ type: "content", text: "Let me do this" });
+    acc.push({ type: "thinking", text: "reasoning" });
 
-		const tc: ToolCallRecord = {
-			id: "tc_1",
-			tool: "post",
-			args: { uri: "exec://sh/probe", body: "ls" },
-		};
-		const msg = buildToolCallMessage(acc, [tc]);
+    const tc: ToolCallRecord = {
+      id: "tc_1",
+      tool: "post",
+      args: { uri: "exec://sh/probe", body: "ls" },
+    };
+    const msg = buildToolCallMessage(acc, [tc]);
 
-		expect(msg.type).toBe("assistant_tool_call");
-		expect(msg.content).toBe("Let me do this");
-		expect(msg.reasoning).toEqual({ ok: true, value: "reasoning" });
-		expect(msg.toolCalls).toHaveLength(1);
-		expect(msg.toolCalls[0]!.id).toBe("tc_1");
-	});
+    expect(msg.type).toBe("assistant_tool_call");
+    expect(msg.content).toBe("Let me do this");
+    expect(msg.reasoning).toEqual({ ok: true, value: "reasoning" });
+    expect(msg.toolCalls).toHaveLength(1);
+    expect(msg.toolCalls[0]!.id).toBe("tc_1");
+  });
 });
 
 // ── collectJobMessages ──
 
 describe("collectJobMessages", () => {
-	it("收集正常结果", () => {
-		const tc = mockExecTC("tc_1");
-		const result = mockExecResult(tc);
-		const jobs = [mockCompletedJob(tc, result)];
+  it("收集正常结果", () => {
+    const tc = mockExecTC("tc_1");
+    const result = mockExecResult(tc);
+    const jobs = [mockCompletedJob(tc, result)];
 
-		const msgs = collectJobMessages(jobs);
-		expect(msgs).toHaveLength(1);
-		expect(msgs[0]!.type).toBe("tool_result");
-	});
+    const msgs = collectJobMessages(jobs);
+    expect(msgs).toHaveLength(1);
+    expect(msgs[0]!.type).toBe("tool_result");
+  });
 
-	it("收集参数错误", () => {
-		const tc = mockExecTC("tc_1");
-		const argError: ToolArgErrorMessage = {
-			type: "tool_arg_error",
-			callId: "tc_1",
-			tool: "post",
-			error: { kind: "internal_error", message: "bad args" },
-		};
-		const jobs = [mockFailedJob(tc, argError)];
+  it("收集参数错误", () => {
+    const tc = mockExecTC("tc_1");
+    const argError: ToolArgErrorMessage = {
+      type: "tool_arg_error",
+      callId: "tc_1",
+      tool: "post",
+      error: { kind: "internal_error", message: "bad args" },
+    };
+    const jobs = [mockFailedJob(tc, argError)];
 
-		const msgs = collectJobMessages(jobs);
-		expect(msgs).toHaveLength(1);
-		expect(msgs[0]!.type).toBe("tool_arg_error");
-	});
+    const msgs = collectJobMessages(jobs);
+    expect(msgs).toHaveLength(1);
+    expect(msgs[0]!.type).toBe("tool_arg_error");
+  });
 
-	it("空 jobs → 空消息", () => {
-		expect(collectJobMessages([])).toHaveLength(0);
-	});
+  it("空 jobs → 空消息", () => {
+    expect(collectJobMessages([])).toHaveLength(0);
+  });
 
-	it("多个 jobs 按顺序收集", () => {
-		const tc1 = mockExecTC("tc_1");
-		const tc2 = mockExecTC("tc_2");
-		const jobs = [
-			mockCompletedJob(tc1, mockExecResult(tc1)),
-			mockCompletedJob(tc2, mockExecResult(tc2)),
-		];
+  it("多个 jobs 按顺序收集", () => {
+    const tc1 = mockExecTC("tc_1");
+    const tc2 = mockExecTC("tc_2");
+    const jobs = [
+      mockCompletedJob(tc1, mockExecResult(tc1)),
+      mockCompletedJob(tc2, mockExecResult(tc2)),
+    ];
 
-		const msgs = collectJobMessages(jobs);
-		expect(msgs).toHaveLength(2);
-	});
+    const msgs = collectJobMessages(jobs);
+    expect(msgs).toHaveLength(2);
+  });
 });

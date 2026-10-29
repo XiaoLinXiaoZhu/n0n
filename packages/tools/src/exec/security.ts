@@ -6,98 +6,99 @@
  */
 
 import type { ExecToolResult } from "@n0n/types";
+
 import type { ExecCall } from "./executor.ts";
 
 /** 从脚本内容中提取命令名列表 */
 export function extractCommandNames(script: string): string[] {
-	const parts = script.split(/\r?\n|&&|\|\||;|\||&/);
-	return parts
-		.map((part) => {
-			const tokens = part.trim().split(/\s+/);
-			const firstNonAssign = tokens.find(
-				(t) => !/^[A-Za-z_][A-Za-z0-9_]*=/.test(t),
-			);
-			return firstNonAssign ?? "";
-		})
-		.filter((name) => name.length > 0);
+  const parts = script.split(/\r?\n|&&|\|\||;|\||&/);
+  return parts
+    .map((part) => {
+      const tokens = part.trim().split(/\s+/);
+      const firstNonAssign = tokens.find(
+        (t) => !/^[A-Za-z_][A-Za-z0-9_]*=/.test(t),
+      );
+      return firstNonAssign ?? "";
+    })
+    .filter((name) => name.length > 0);
 }
 
 /** 检查脚本中是否包含被封禁的命令，返回首个命中的命令名或 null */
 export function findBlockedCommand(
-	script: string,
-	blockedCommands: string[],
-	platform: "win32" | "darwin" | "linux",
+  script: string,
+  blockedCommands: string[],
+  platform: "win32" | "darwin" | "linux",
 ): string | null {
-	if (blockedCommands.length === 0) return null;
-	const isWindows = platform === "win32";
-	const blockedNormalized = isWindows
-		? blockedCommands.map((b) => b.toLowerCase())
-		: blockedCommands;
-	const names = extractCommandNames(script);
-	for (const name of names) {
-		const basename = name.split(/[\\/]/).at(-1) ?? name;
-		const basenameNormalized = isWindows ? basename.toLowerCase() : basename;
-		if (blockedNormalized.includes(basenameNormalized)) return basename;
-	}
-	return null;
+  if (blockedCommands.length === 0) return null;
+  const isWindows = platform === "win32";
+  const blockedNormalized = isWindows
+    ? blockedCommands.map((b) => b.toLowerCase())
+    : blockedCommands;
+  const names = extractCommandNames(script);
+  for (const name of names) {
+    const basename = name.split(/[\\/]/).at(-1) ?? name;
+    const basenameNormalized = isWindows ? basename.toLowerCase() : basename;
+    if (blockedNormalized.includes(basenameNormalized)) return basename;
+  }
+  return null;
 }
 
 /** 处理被封禁的命令：请求用户确认或直接拒绝（runtime/claim 由调用方从边界解析结果传入） */
 export async function handleBlockedCommand(
-	call: ExecCall,
-	runtime: string,
-	claim: string,
-	cwd: string,
-	blockedCmd: string,
-	confirmFn?: (question: string) => Promise<string>,
+  call: ExecCall,
+  runtime: string,
+  claim: string,
+  cwd: string,
+  blockedCmd: string,
+  confirmFn?: (question: string) => Promise<string>,
 ): Promise<ExecToolResult | null> {
-	if (confirmFn) {
-		const safeScript = [...call.args.body]
-			.map((ch) => {
-				const code = ch.charCodeAt(0);
-				if (code > 31 && code !== 127) return ch;
-				if (ch === "\n") return "↵";
-				if (ch === "\t") return "→";
-				return `[^${String.fromCharCode(code + 64)}]`;
-			})
-			.join("");
-		const answer = await confirmFn(
-			`\n⚠  Script requires review: '${blockedCmd}' is in BLOCKED_COMMANDS\n` +
-				`   Runtime: ${runtime}\n` +
-				`   Script: ${safeScript}\n` +
-				`   Allow execution? [y/N] `,
-		);
-		const normalized = answer.trim().toLowerCase();
-		if (normalized !== "y" && normalized !== "yes") {
-			return {
-				type: "tool_result",
-				tool: "post",
-				call,
-				scheme: "exec",
-				claim,
-				runtime,
-				cwd,
-				status: "completed" as const,
-				exitCode: 1,
-				stdout: "",
-				stderr: `Command '${blockedCmd}' was rejected by the user.`,
-				durationMs: 0,
-			} satisfies ExecToolResult;
-		}
-		return null;
-	}
-	return {
-		type: "tool_result",
-		tool: "post",
-		call,
-		scheme: "exec",
-		claim,
-		runtime,
-		cwd,
-		status: "completed" as const,
-		exitCode: 1,
-		stdout: "",
-		stderr: `Command blocked: '${blockedCmd}' is in the BLOCKED_COMMANDS list and requires manual review before execution.`,
-		durationMs: 0,
-	} satisfies ExecToolResult;
+  if (confirmFn) {
+    const safeScript = [...call.args.body]
+      .map((ch) => {
+        const code = ch.charCodeAt(0);
+        if (code > 31 && code !== 127) return ch;
+        if (ch === "\n") return "↵";
+        if (ch === "\t") return "→";
+        return `[^${String.fromCharCode(code + 64)}]`;
+      })
+      .join("");
+    const answer = await confirmFn(
+      `\n⚠  Script requires review: '${blockedCmd}' is in BLOCKED_COMMANDS\n` +
+        `   Runtime: ${runtime}\n` +
+        `   Script: ${safeScript}\n` +
+        `   Allow execution? [y/N] `,
+    );
+    const normalized = answer.trim().toLowerCase();
+    if (normalized !== "y" && normalized !== "yes") {
+      return {
+        type: "tool_result",
+        tool: "post",
+        call,
+        scheme: "exec",
+        claim,
+        runtime,
+        cwd,
+        status: "completed" as const,
+        exitCode: 1,
+        stdout: "",
+        stderr: `Command '${blockedCmd}' was rejected by the user.`,
+        durationMs: 0,
+      } satisfies ExecToolResult;
+    }
+    return null;
+  }
+  return {
+    type: "tool_result",
+    tool: "post",
+    call,
+    scheme: "exec",
+    claim,
+    runtime,
+    cwd,
+    status: "completed" as const,
+    exitCode: 1,
+    stdout: "",
+    stderr: `Command blocked: '${blockedCmd}' is in the BLOCKED_COMMANDS list and requires manual review before execution.`,
+    durationMs: 0,
+  } satisfies ExecToolResult;
 }

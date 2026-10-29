@@ -8,32 +8,32 @@
  * CLI 不可用时静默跳过，不影响 agent 启动。
  */
 
-import { type RunCommandFn, runCommand } from "@n0n/shared";
+import { runCommand, type RunCommandFn } from "@n0n/shared";
 
 export interface BuildEnvironmentContextOptions {
-	/** 注入的 runCommand 实现；默认使用 @n0n/shared 的真实实现（测试用） */
-	runCommandFn?: RunCommandFn;
+  /** 注入的 runCommand 实现；默认使用 @n0n/shared 的真实实现（测试用） */
+  runCommandFn?: RunCommandFn;
 }
 
 async function execCli(
-	args: readonly string[],
-	cwd: string,
-	runCommandFn: RunCommandFn,
+  args: readonly string[],
+  cwd: string,
+  runCommandFn: RunCommandFn,
 ): Promise<string | null> {
-	try {
-		const { stdout } = await runCommandFn(["n0n", ...args], {
-			cwd,
-			timeoutMs: 15_000,
-		});
-		return stdout.trim();
-	} catch {
-		return null;
-	}
+  try {
+    const { stdout } = await runCommandFn(["n0n", ...args], {
+      cwd,
+      timeoutMs: 15_000,
+    });
+    return stdout.trim();
+  } catch {
+    return null;
+  }
 }
 
 function formatSection(label: string, output: string | null): string {
-	if (output === null) return "";
-	return `执行 ${label} 的结果为：\n\`\`\`\n${output}\n\`\`\``;
+  if (output === null) return "";
+  return `执行 ${label} 的结果为：\n\`\`\`\n${output}\n\`\`\``;
 }
 
 /**
@@ -47,21 +47,21 @@ function formatSection(label: string, output: string | null): string {
  * @returns 格式化后的环境信息；CLI 不可用时返回空字符串
  */
 export async function buildEnvironmentContext(
-	workspace: string,
-	options: BuildEnvironmentContextOptions = {},
+  workspace: string,
+  options: BuildEnvironmentContextOptions = {},
 ): Promise<string> {
-	const runCommandFn = options.runCommandFn ?? runCommand;
-	const [globalOutput, projectOutput, skillOutput] = await Promise.all([
-		execCli(["scan", "global"], workspace, runCommandFn),
-		execCli(["scan", "project"], workspace, runCommandFn),
-		execCli(["skill"], workspace, runCommandFn),
-	]);
+  const runCommandFn = options.runCommandFn ?? runCommand;
+  const [globalOutput, projectOutput, skillOutput] = await Promise.all([
+    execCli(["scan", "global"], workspace, runCommandFn),
+    execCli(["scan", "project"], workspace, runCommandFn),
+    execCli(["skill"], workspace, runCommandFn),
+  ]);
 
-	const sections = [
-		formatSection("n0n scan global", globalOutput),
-		formatSection("n0n scan project", projectOutput),
-		formatSection("n0n skill", skillOutput),
-	];
+  const sections = [
+    formatSection("n0n scan global", globalOutput),
+    formatSection("n0n scan project", projectOutput),
+    formatSection("n0n skill", skillOutput),
+  ];
 
-	return sections.filter(Boolean).join("\n\n");
+  return sections.filter(Boolean).join("\n\n");
 }

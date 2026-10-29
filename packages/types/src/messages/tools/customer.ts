@@ -12,8 +12,8 @@ import type { MakeResult } from "./registry.ts";
 export type CustomerKind = "question" | "form" | "action_required";
 
 export interface CustomerCompleted extends MakeResult<"post", "completed"> {
-	scheme: "customer";
-	kind: CustomerKind;
-	/** uri 中可选的 slug 段（URL 解码后）；无 slug 时为 null */
-	slug: string | null;
+  scheme: "customer";
+  kind: CustomerKind;
+  /** uri 中可选的 slug 段（URL 解码后）；无 slug 时为 null */
+  slug: string | null;
 }

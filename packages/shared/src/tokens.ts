@@ -20,45 +20,45 @@ import { estimateTokenCount } from "tokenx";
 
 /** 预估字符串的 token 数 */
 export function estimateTokens(text: string): number {
-	return estimateTokenCount(text);
+  return estimateTokenCount(text);
 }
 
 /** 从字符串末尾截取约 maxTokens 个 token 的内容（二分法定位） */
 export function tailByTokens(text: string, maxTokens: number): string {
-	if (estimateTokens(text) <= maxTokens) return text;
-	let lo = 0;
-	let hi = text.length;
-	while (lo < hi) {
-		const mid = (lo + hi) >>> 1;
-		if (estimateTokens(text.slice(mid)) > maxTokens) lo = mid + 1;
-		else hi = mid;
-	}
-	return text.slice(lo);
+  if (estimateTokens(text) <= maxTokens) return text;
+  let lo = 0;
+  let hi = text.length;
+  while (lo < hi) {
+    const mid = (lo + hi) >>> 1;
+    if (estimateTokens(text.slice(mid)) > maxTokens) lo = mid + 1;
+    else hi = mid;
+  }
+  return text.slice(lo);
 }
 
 /** 从字符串开头截取约 maxTokens 个 token 的内容（二分法定位） */
 export function headByTokens(text: string, maxTokens: number): string {
-	if (estimateTokens(text) <= maxTokens) return text;
-	let lo = 0;
-	let hi = text.length;
-	while (lo < hi) {
-		const mid = (lo + hi + 1) >>> 1;
-		if (estimateTokens(text.slice(0, mid)) > maxTokens) hi = mid - 1;
-		else lo = mid;
-	}
-	return text.slice(0, lo);
+  if (estimateTokens(text) <= maxTokens) return text;
+  let lo = 0;
+  let hi = text.length;
+  while (lo < hi) {
+    const mid = (lo + hi + 1) >>> 1;
+    if (estimateTokens(text.slice(0, mid)) > maxTokens) hi = mid - 1;
+    else lo = mid;
+  }
+  return text.slice(0, lo);
 }
 
 /** 在总预算内同时保留文本开头和结尾。 */
 export function headTailByTokens(text: string, maxTokens: number): string {
-	if (estimateTokens(text) <= maxTokens) return text;
-	const separator = "\n... (output omitted) ...\n";
-	const separatorTokens = estimateTokens(separator);
-	if (maxTokens <= separatorTokens) return headByTokens(text, maxTokens);
-	const contentBudget = maxTokens - separatorTokens;
-	const headBudget = Math.ceil(contentBudget / 2);
-	const tailBudget = Math.floor(contentBudget / 2);
-	const head = headByTokens(text, headBudget);
-	const tail = tailByTokens(text.slice(head.length), tailBudget);
-	return `${head}${separator}${tail}`;
+  if (estimateTokens(text) <= maxTokens) return text;
+  const separator = "\n... (output omitted) ...\n";
+  const separatorTokens = estimateTokens(separator);
+  if (maxTokens <= separatorTokens) return headByTokens(text, maxTokens);
+  const contentBudget = maxTokens - separatorTokens;
+  const headBudget = Math.ceil(contentBudget / 2);
+  const tailBudget = Math.floor(contentBudget / 2);
+  const head = headByTokens(text, headBudget);
+  const tail = tailByTokens(text.slice(head.length), tailBudget);
+  return `${head}${separator}${tail}`;
 }

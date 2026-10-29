@@ -10,21 +10,22 @@
 
 import { estimateTokens } from "@n0n/shared";
 import type {
-	Renderer,
-	RoundTokenUsage,
-	ToolCallRecord,
-	ToolExecOutcome,
-	ToolResult,
+  Renderer,
+  RoundTokenUsage,
+  ToolCallRecord,
+  ToolExecOutcome,
+  ToolResult,
 } from "@n0n/types";
 import { parse as parsePartialJSON } from "partial-json";
+
 import {
-	beginSyncUpdate,
-	endSyncUpdate,
-	isTTY,
-	label,
-	style,
-	write,
-	writeln,
+  beginSyncUpdate,
+  endSyncUpdate,
+  isTTY,
+  label,
+  style,
+  write,
+  writeln,
 } from "./ansi.ts";
 import { LiveRegion } from "./live-region.ts";
 import { RenderBuffer } from "./render-buffer.ts";
@@ -33,490 +34,490 @@ import { RenderBuffer } from "./render-buffer.ts";
 
 /** 将 token 数量格式化为紧凑的人类可读字符串（如 1.2k, 15.3k） */
 function fmtTokens(n: number): string {
-	if (n >= 1000) return `${(n / 1000).toFixed(1)}k`;
-	return String(n);
+  if (n >= 1000) return `${(n / 1000).toFixed(1)}k`;
+  return String(n);
 }
 
 /** 格式化上一轮 token 用量为紧凑摘要（用于 roundStart 行尾） */
 function formatUsageSummary(usage: RoundTokenUsage): string {
-	const parts: string[] = [];
-	parts.push(`${fmtTokens(usage.totalTokens)} tok`);
+  const parts: string[] = [];
+  parts.push(`${fmtTokens(usage.totalTokens)} tok`);
 
-	if (usage.cacheReadTokens > 0 || usage.cacheWriteTokens > 0) {
-		const cacheParts: string[] = [];
-		if (usage.cacheReadTokens > 0) {
-			const totalInput =
-				usage.inputTokens + usage.cacheReadTokens + usage.cacheWriteTokens;
-			const hitPct =
-				totalInput > 0
-					? Math.round((usage.cacheReadTokens / totalInput) * 100)
-					: 0;
-			cacheParts.push(
-				style.green(`⚡${fmtTokens(usage.cacheReadTokens)} hit ${hitPct}%`),
-			);
-		}
-		if (usage.cacheWriteTokens > 0) {
-			cacheParts.push(
-				style.yellow(`✎${fmtTokens(usage.cacheWriteTokens)} write`),
-			);
-		}
-		parts.push(cacheParts.join(" "));
-	} else if (usage.inputTokens > 0) {
-		parts.push(style.dim("no cache"));
-	}
+  if (usage.cacheReadTokens > 0 || usage.cacheWriteTokens > 0) {
+    const cacheParts: string[] = [];
+    if (usage.cacheReadTokens > 0) {
+      const totalInput =
+        usage.inputTokens + usage.cacheReadTokens + usage.cacheWriteTokens;
+      const hitPct =
+        totalInput > 0
+          ? Math.round((usage.cacheReadTokens / totalInput) * 100)
+          : 0;
+      cacheParts.push(
+        style.green(`⚡${fmtTokens(usage.cacheReadTokens)} hit ${hitPct}%`),
+      );
+    }
+    if (usage.cacheWriteTokens > 0) {
+      cacheParts.push(
+        style.yellow(`✎${fmtTokens(usage.cacheWriteTokens)} write`),
+      );
+    }
+    parts.push(cacheParts.join(" "));
+  } else if (usage.inputTokens > 0) {
+    parts.push(style.dim("no cache"));
+  }
 
-	return parts.join(" · ");
+  return parts.join(" · ");
 }
 
 // ── 工具参数结构化渲染 ──
 
 /** 将工具参数渲染为结构化字段格式（最终形式） */
 function renderToolArgs(
-	toolName: string,
-	args: Record<string, unknown>,
+  toolName: string,
+  args: Record<string, unknown>,
 ): string[] {
-	const lines: string[] = [];
-	lines.push(`${style.dim("▸")} ${style.cyan(toolName)}`);
+  const lines: string[] = [];
+  lines.push(`${style.dim("▸")} ${style.cyan(toolName)}`);
 
-	const maxLines = 12;
-	for (const [key, value] of Object.entries(args)) {
-		const strValue = typeof value === "string" ? value : JSON.stringify(value);
-		lines.push(`  ${style.dim("├")} ${style.gray(key)}`);
-		const valueLines = strValue.split("\n");
-		if (valueLines.length <= maxLines) {
-			for (const vl of valueLines) {
-				lines.push(`  ${style.dim("│")} ${vl}`);
-			}
-		} else {
-			const headCount = Math.ceil(maxLines / 2);
-			const tailCount = maxLines - headCount;
-			for (const vl of valueLines.slice(0, headCount)) {
-				lines.push(`  ${style.dim("│")} ${vl}`);
-			}
-			lines.push(
-				`  ${style.dim(":")} ${style.gray(`(${valueLines.length - maxLines} more lines)`)}`,
-			);
-			for (const vl of valueLines.slice(-tailCount)) {
-				lines.push(`  ${style.dim("│")} ${vl}`);
-			}
-		}
-	}
-	lines.push(`  ${style.dim("├")}${style.dim("─".repeat(30))}`);
-	return lines;
+  const maxLines = 12;
+  for (const [key, value] of Object.entries(args)) {
+    const strValue = typeof value === "string" ? value : JSON.stringify(value);
+    lines.push(`  ${style.dim("├")} ${style.gray(key)}`);
+    const valueLines = strValue.split("\n");
+    if (valueLines.length <= maxLines) {
+      for (const vl of valueLines) {
+        lines.push(`  ${style.dim("│")} ${vl}`);
+      }
+    } else {
+      const headCount = Math.ceil(maxLines / 2);
+      const tailCount = maxLines - headCount;
+      for (const vl of valueLines.slice(0, headCount)) {
+        lines.push(`  ${style.dim("│")} ${vl}`);
+      }
+      lines.push(
+        `  ${style.dim(":")} ${style.gray(`(${valueLines.length - maxLines} more lines)`)}`,
+      );
+      for (const vl of valueLines.slice(-tailCount)) {
+        lines.push(`  ${style.dim("│")} ${vl}`);
+      }
+    }
+  }
+  lines.push(`  ${style.dim("├")}${style.dim("─".repeat(30))}`);
+  return lines;
 }
 
 /** 流式阶段：尾部滚动窗口渲染 */
 function renderToolArgsStreaming(
-	toolName: string,
-	args: Record<string, unknown>,
+  toolName: string,
+  args: Record<string, unknown>,
 ): string[] {
-	const lines: string[] = [];
-	lines.push(
-		`${style.dim("▸")} ${style.cyan(toolName)} ${style.gray("(streaming…)")}`,
-	);
+  const lines: string[] = [];
+  lines.push(
+    `${style.dim("▸")} ${style.cyan(toolName)} ${style.gray("(streaming…)")}`,
+  );
 
-	const maxTailLines = 6;
-	for (const [key, value] of Object.entries(args)) {
-		const strValue = typeof value === "string" ? value : JSON.stringify(value);
-		lines.push(`  ${style.dim("├")} ${style.gray(key)}`);
-		const valueLines = strValue.split("\n");
-		if (valueLines.length <= maxTailLines) {
-			for (const vl of valueLines) {
-				lines.push(`  ${style.dim("│")} ${vl}`);
-			}
-		} else {
-			lines.push(
-				`  ${style.dim(":")} ${style.gray(`(${valueLines.length - maxTailLines} lines above)`)}`,
-			);
-			for (const vl of valueLines.slice(-maxTailLines)) {
-				lines.push(`  ${style.dim("│")} ${vl}`);
-			}
-		}
-	}
-	return lines;
+  const maxTailLines = 6;
+  for (const [key, value] of Object.entries(args)) {
+    const strValue = typeof value === "string" ? value : JSON.stringify(value);
+    lines.push(`  ${style.dim("├")} ${style.gray(key)}`);
+    const valueLines = strValue.split("\n");
+    if (valueLines.length <= maxTailLines) {
+      for (const vl of valueLines) {
+        lines.push(`  ${style.dim("│")} ${vl}`);
+      }
+    } else {
+      lines.push(
+        `  ${style.dim(":")} ${style.gray(`(${valueLines.length - maxTailLines} lines above)`)}`,
+      );
+      for (const vl of valueLines.slice(-maxTailLines)) {
+        lines.push(`  ${style.dim("│")} ${vl}`);
+      }
+    }
+  }
+  return lines;
 }
 
 /** 尝试解析可能不完整的 JSON */
 function tryParseArgs(s: string): Record<string, unknown> | null {
-	try {
-		const parsed = parsePartialJSON(s);
-		if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
-			return parsed as Record<string, unknown>;
-		}
-	} catch {}
-	return null;
+  try {
+    const parsed = parsePartialJSON(s);
+    if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+      return parsed as Record<string, unknown>;
+    }
+  } catch {}
+  return null;
 }
 
 export interface RichRendererOptions {
-	/** 是否展开 exec 工具输出：流式阶段展示尾部滚动窗口，结束后折叠为头尾摘要 */
-	expandExec?: boolean;
+  /** 是否展开 exec 工具输出：流式阶段展示尾部滚动窗口，结束后折叠为头尾摘要 */
+  expandExec?: boolean;
 }
 
 const MAX_EXEC_PREVIEW_CHARS = 4_096;
 
 export function boundExecPreviewLine(line: string): string {
-	return line.length <= MAX_EXEC_PREVIEW_CHARS
-		? line
-		: `${line.slice(0, MAX_EXEC_PREVIEW_CHARS)}… (${line.length - MAX_EXEC_PREVIEW_CHARS} chars omitted)`;
+  return line.length <= MAX_EXEC_PREVIEW_CHARS
+    ? line
+    : `${line.slice(0, MAX_EXEC_PREVIEW_CHARS)}… (${line.length - MAX_EXEC_PREVIEW_CHARS} chars omitted)`;
 }
 
 export class RichRenderer implements Renderer {
-	/** 工具执行阶段的 LiveRegion（实时输出） */
-	private toolRegion = new LiveRegion();
-	/** 流式工具参数的 LiveRegion（TTY 模式下实时刷新） */
-	private streamRegion = new LiveRegion();
+  /** 工具执行阶段的 LiveRegion（实时输出） */
+  private toolRegion = new LiveRegion();
+  /** 流式工具参数的 LiveRegion（TTY 模式下实时刷新） */
+  private streamRegion = new LiveRegion();
 
-	/**
-	 * 流式工具调用参数累积（index → { name, args }）
-	 *
-	 * 由 toolCallArgStart 创建，toolCallArgEnd 移除，streamEnd 清理残留。
-	 * Renderer 不做 JSON 完整性检测——生命周期完全由上游指令驱动。
-	 */
-	private streamingToolCalls = new Map<
-		number,
-		{ name: string; args: string }
-	>();
+  /**
+   * 流式工具调用参数累积（index → { name, args }）
+   *
+   * 由 toolCallArgStart 创建，toolCallArgEnd 移除，streamEnd 清理残留。
+   * Renderer 不做 JSON 完整性检测——生命周期完全由上游指令驱动。
+   */
+  private streamingToolCalls = new Map<
+    number,
+    { name: string; args: string }
+  >();
 
-	/** 本轮是否有流式工具参数（有则 toolExecStart 不重复渲染） */
-	private hadStreamingArgs = false;
+  /** 本轮是否有流式工具参数（有则 toolExecStart 不重复渲染） */
+  private hadStreamingArgs = false;
 
-	/** 折叠模式仅保留固定大小的头尾行，避免大输出常驻内存。 */
-	private execHeadLines: string[] = [];
-	private execTailLines: string[] = [];
-	private execLineCount = 0;
+  /** 折叠模式仅保留固定大小的头尾行，避免大输出常驻内存。 */
+  private execHeadLines: string[] = [];
+  private execTailLines: string[] = [];
+  private execLineCount = 0;
 
-	protected readonly expandExec: boolean;
+  protected readonly expandExec: boolean;
 
-	constructor(options?: RichRendererOptions) {
-		this.expandExec = options?.expandExec ?? false;
-	}
+  constructor(options?: RichRendererOptions) {
+    this.expandExec = options?.expandExec ?? false;
+  }
 
-	// ── FIFO 工具执行缓冲（CLI 终端是线性的，需要按序输出） ──
-	private renderBuffer = new RenderBuffer({
-		onStart: (tc) => this.renderExecStart(tc),
-		onChunk: (_tool, chunk) => this.renderExecChunk(chunk),
-		onEnd: (result) => this.renderExecEnd(result),
-	});
+  // ── FIFO 工具执行缓冲（CLI 终端是线性的，需要按序输出） ──
+  private renderBuffer = new RenderBuffer({
+    onStart: (tc) => this.renderExecStart(tc),
+    onChunk: (_tool, chunk) => this.renderExecChunk(chunk),
+    onEnd: (result) => this.renderExecEnd(result),
+  });
 
-	userMessage(content: string): void {
-		writeln();
-		writeln(label.user());
-		writeln(content);
-	}
+  userMessage(content: string): void {
+    writeln();
+    writeln(label.user());
+    writeln(content);
+  }
 
-	roundStart(round: number, maxRounds: number, msgCount: number): void {
-		this.hadStreamingArgs = false;
-		this.renderBuffer.reset();
-		writeln();
-		write(label.agent());
+  roundStart(round: number, maxRounds: number, msgCount: number): void {
+    this.hadStreamingArgs = false;
+    this.renderBuffer.reset();
+    writeln();
+    write(label.agent());
 
-		const roundInfo = `round ${round}/${maxRounds} (${msgCount} msgs)`;
-		writeln(style.gray(`  ${roundInfo}`));
-	}
+    const roundInfo = `round ${round}/${maxRounds} (${msgCount} msgs)`;
+    writeln(style.gray(`  ${roundInfo}`));
+  }
 
-	roundEnd(usage?: RoundTokenUsage | null): void {
-		if (!usage) return;
-		writeln(style.gray(`  usage · ${formatUsageSummary(usage)}`));
-	}
+  roundEnd(usage?: RoundTokenUsage | null): void {
+    if (!usage) return;
+    writeln(style.gray(`  usage · ${formatUsageSummary(usage)}`));
+  }
 
-	// ── LLM 流式输出（指令式：无推断状态）──
+  // ── LLM 流式输出（指令式：无推断状态）──
 
-	thinkingStart(): void {}
+  thinkingStart(): void {}
 
-	thinkingChunk(token: string): void {
-		write(style.gray(token));
-	}
+  thinkingChunk(token: string): void {
+    write(style.gray(token));
+  }
 
-	thinkingEnd(): void {
-		writeln();
-	}
+  thinkingEnd(): void {
+    writeln();
+  }
 
-	contentStart(): void {}
+  contentStart(): void {}
 
-	contentChunk(token: string): void {
-		write(token);
-	}
+  contentChunk(token: string): void {
+    write(token);
+  }
 
-	contentEnd(): void {
-		writeln();
-	}
+  contentEnd(): void {
+    writeln();
+  }
 
-	toolCallArgStart(index: number, name: string): void {
-		this.hadStreamingArgs = true;
-		this.streamingToolCalls.set(index, { name, args: "" });
-	}
+  toolCallArgStart(index: number, name: string): void {
+    this.hadStreamingArgs = true;
+    this.streamingToolCalls.set(index, { name, args: "" });
+  }
 
-	toolCallArgChunk(index: number, chunk: string): void {
-		const entry = this.streamingToolCalls.get(index);
-		if (!entry) return;
-		entry.args += chunk;
+  toolCallArgChunk(index: number, chunk: string): void {
+    const entry = this.streamingToolCalls.get(index);
+    if (!entry) return;
+    entry.args += chunk;
 
-		// 非 TTY：只静默累积（等 toolCallArgEnd 或 streamEnd 输出最终形式）
-		if (!isTTY) return;
+    // 非 TTY：只静默累积（等 toolCallArgEnd 或 streamEnd 输出最终形式）
+    if (!isTTY) return;
 
-		// TTY：重绘整个流式区域（LiveRegion clear+rewrite 实现原地刷新）
-		beginSyncUpdate();
-		this.streamRegion.clear();
-		this.redrawStreamingRegion();
-		endSyncUpdate();
-	}
+    // TTY：重绘整个流式区域（LiveRegion clear+rewrite 实现原地刷新）
+    beginSyncUpdate();
+    this.streamRegion.clear();
+    this.redrawStreamingRegion();
+    endSyncUpdate();
+  }
 
-	toolCallArgEnd(index: number, tc: ToolCallRecord): void {
-		// 从 streaming 区域毕业 → 输出最终结构化渲染
-		this.streamingToolCalls.delete(index);
+  toolCallArgEnd(index: number, tc: ToolCallRecord): void {
+    // 从 streaming 区域毕业 → 输出最终结构化渲染
+    this.streamingToolCalls.delete(index);
 
-		if (isTTY) {
-			beginSyncUpdate();
-			this.streamRegion.clear();
-		}
-		// 渲染该工具的最终形式
-		for (const line of renderToolArgs(tc.tool, tc.args)) {
-			writeln(line);
-		}
-		// 重绘剩余 streaming 的工具
-		if (isTTY && this.streamingToolCalls.size > 0) {
-			this.streamRegion.reset();
-			this.redrawStreamingRegion();
-			endSyncUpdate();
-		} else {
-			this.streamRegion.reset();
-			if (isTTY) endSyncUpdate();
-		}
-	}
+    if (isTTY) {
+      beginSyncUpdate();
+      this.streamRegion.clear();
+    }
+    // 渲染该工具的最终形式
+    for (const line of renderToolArgs(tc.tool, tc.args)) {
+      writeln(line);
+    }
+    // 重绘剩余 streaming 的工具
+    if (isTTY && this.streamingToolCalls.size > 0) {
+      this.streamRegion.reset();
+      this.redrawStreamingRegion();
+      endSyncUpdate();
+    } else {
+      this.streamRegion.reset();
+      if (isTTY) endSyncUpdate();
+    }
+  }
 
-	streamEnd(): void {
-		// 安全网：处理因截断而未触发 argEnd 的残留工具
-		if (this.streamingToolCalls.size > 0) {
-			if (isTTY) {
-				beginSyncUpdate();
-				this.streamRegion.clear();
-			}
-			for (const [, tc] of [...this.streamingToolCalls.entries()].sort(
-				(a, b) => a[0] - b[0],
-			)) {
-				const parsed = tryParseArgs(tc.args);
-				if (parsed) {
-					for (const line of renderToolArgs(tc.name, parsed)) {
-						writeln(line);
-					}
-				} else {
-					writeln(
-						`${style.dim("▸")} ${style.cyan(tc.name)} ${style.gray(tc.args.slice(0, 80))}`,
-					);
-				}
-			}
-			this.streamingToolCalls.clear();
-			if (isTTY) endSyncUpdate();
-		}
-		this.streamRegion.reset();
-		this.renderBuffer.resume();
-	}
+  streamEnd(): void {
+    // 安全网：处理因截断而未触发 argEnd 的残留工具
+    if (this.streamingToolCalls.size > 0) {
+      if (isTTY) {
+        beginSyncUpdate();
+        this.streamRegion.clear();
+      }
+      for (const [, tc] of [...this.streamingToolCalls.entries()].sort(
+        (a, b) => a[0] - b[0],
+      )) {
+        const parsed = tryParseArgs(tc.args);
+        if (parsed) {
+          for (const line of renderToolArgs(tc.name, parsed)) {
+            writeln(line);
+          }
+        } else {
+          writeln(
+            `${style.dim("▸")} ${style.cyan(tc.name)} ${style.gray(tc.args.slice(0, 80))}`,
+          );
+        }
+      }
+      this.streamingToolCalls.clear();
+      if (isTTY) endSyncUpdate();
+    }
+    this.streamRegion.reset();
+    this.renderBuffer.resume();
+  }
 
-	// ── 工具执行（FIFO 有序渲染，事件无序到达）──
+  // ── 工具执行（FIFO 有序渲染，事件无序到达）──
 
-	toolExecStart(_tcId: string, tc: ToolCallRecord): void {
-		this.renderBuffer.register(tc);
-	}
+  toolExecStart(_tcId: string, tc: ToolCallRecord): void {
+    this.renderBuffer.register(tc);
+  }
 
-	toolExecChunk(tcId: string, _tool: string, chunk: string): void {
-		this.renderBuffer.pushChunk(tcId, _tool, chunk);
-	}
+  toolExecChunk(tcId: string, _tool: string, chunk: string): void {
+    this.renderBuffer.pushChunk(tcId, _tool, chunk);
+  }
 
-	toolExecEnd(tcId: string, outcome: ToolExecOutcome): void {
-		this.renderBuffer.pushEnd(tcId, outcome);
-	}
+  toolExecEnd(tcId: string, outcome: ToolExecOutcome): void {
+    this.renderBuffer.pushEnd(tcId, outcome);
+  }
 
-	// ── 特殊事件 ──
+  // ── 特殊事件 ──
 
-	textResponse(content: string, idleCount: number): void {
-		if (content) {
-			writeln(content);
-		}
-		writeln(
-			style.gray(
-				`(text response, ${content.length} chars ~${estimateTokens(content)} tok, idle=${idleCount})`,
-			),
-		);
-	}
+  textResponse(content: string, idleCount: number): void {
+    if (content) {
+      writeln(content);
+    }
+    writeln(
+      style.gray(
+        `(text response, ${content.length} chars ~${estimateTokens(content)} tok, idle=${idleCount})`,
+      ),
+    );
+  }
 
-	customerAccepted(): void {
-		writeln();
-		writeln(
-			`${style.bgGreen(style.bold(" ✔ DONE "))} ${style.green("customer request accepted")}`,
-		);
-	}
+  customerAccepted(): void {
+    writeln();
+    writeln(
+      `${style.bgGreen(style.bold(" ✔ DONE "))} ${style.green("customer request accepted")}`,
+    );
+  }
 
-	agentTerminated(reason: string): void {
-		writeln();
-		writeln(`${style.yellow("⚠")} ${style.gray(reason)}`);
-	}
+  agentTerminated(reason: string): void {
+    writeln();
+    writeln(`${style.yellow("⚠")} ${style.gray(reason)}`);
+  }
 
-	aborted(): void {
-		this.hadStreamingArgs = false;
-		this.streamingToolCalls.clear();
-		this.streamRegion.reset();
-		this.toolRegion.reset();
-		this.renderBuffer.reset();
-		this.resetExecPreview();
-		writeln();
-		writeln(`${style.yellow("⚡")} ${style.gray("已中断输出")}`);
-	}
+  aborted(): void {
+    this.hadStreamingArgs = false;
+    this.streamingToolCalls.clear();
+    this.streamRegion.reset();
+    this.toolRegion.reset();
+    this.renderBuffer.reset();
+    this.resetExecPreview();
+    writeln();
+    writeln(`${style.yellow("⚡")} ${style.gray("已中断输出")}`);
+  }
 
-	// ── FIFO 内部渲染方法（由 RenderBuffer 按序调用）──
+  // ── FIFO 内部渲染方法（由 RenderBuffer 按序调用）──
 
-	/** 渲染单个工具的 execStart */
-	private renderExecStart(tc: ToolCallRecord): void {
-		this.toolRegion.reset();
-		if (!this.expandExec) {
-			this.resetExecPreview();
-		}
-		// 流式模式下参数已由 toolCallArgEnd/streamEnd 渲染，不重复
-		if (this.hadStreamingArgs) return;
-		// 非流式回退：渲染结构化参数
-		for (const line of renderToolArgs(tc.tool, tc.args)) {
-			this.toolRegion.writeln(line);
-		}
-	}
+  /** 渲染单个工具的 execStart */
+  private renderExecStart(tc: ToolCallRecord): void {
+    this.toolRegion.reset();
+    if (!this.expandExec) {
+      this.resetExecPreview();
+    }
+    // 流式模式下参数已由 toolCallArgEnd/streamEnd 渲染，不重复
+    if (this.hadStreamingArgs) return;
+    // 非流式回退：渲染结构化参数
+    for (const line of renderToolArgs(tc.tool, tc.args)) {
+      this.toolRegion.writeln(line);
+    }
+  }
 
-	/** 渲染工具执行的 chunk 输出 */
-	private renderExecChunk(chunk: string): void {
-		if (!this.expandExec && isTTY) {
-			// 折叠模式：只保留固定头尾窗口，且每行显示长度有界。
-			for (const line of chunk.split("\n")) {
-				if (line) this.pushExecPreviewLine(line);
-			}
-			const TAIL_WINDOW = 6;
-			beginSyncUpdate();
-			this.toolRegion.clear();
-			const total = this.execLineCount;
-			if (total > TAIL_WINDOW) {
-				this.toolRegion.writeln(
-					`  ${style.dim(":")} ${style.gray(`(${total - TAIL_WINDOW} lines above)`)}`,
-				);
-			}
-			const visible = this.execTailLines.slice(-TAIL_WINDOW);
-			for (const line of visible) {
-				this.toolRegion.writeln(`  ${style.dim("│")} ${style.dim(line)}`);
-			}
-			endSyncUpdate();
-		} else {
-			for (const line of chunk.split("\n")) {
-				if (line) {
-					this.toolRegion.writeln(`  ${style.dim("│")} ${style.dim(line)}`);
-				}
-			}
-		}
-	}
+  /** 渲染工具执行的 chunk 输出 */
+  private renderExecChunk(chunk: string): void {
+    if (!this.expandExec && isTTY) {
+      // 折叠模式：只保留固定头尾窗口，且每行显示长度有界。
+      for (const line of chunk.split("\n")) {
+        if (line) this.pushExecPreviewLine(line);
+      }
+      const TAIL_WINDOW = 6;
+      beginSyncUpdate();
+      this.toolRegion.clear();
+      const total = this.execLineCount;
+      if (total > TAIL_WINDOW) {
+        this.toolRegion.writeln(
+          `  ${style.dim(":")} ${style.gray(`(${total - TAIL_WINDOW} lines above)`)}`,
+        );
+      }
+      const visible = this.execTailLines.slice(-TAIL_WINDOW);
+      for (const line of visible) {
+        this.toolRegion.writeln(`  ${style.dim("│")} ${style.dim(line)}`);
+      }
+      endSyncUpdate();
+    } else {
+      for (const line of chunk.split("\n")) {
+        if (line) {
+          this.toolRegion.writeln(`  ${style.dim("│")} ${style.dim(line)}`);
+        }
+      }
+    }
+  }
 
-	/** 渲染工具执行结束 */
-	private renderExecEnd(result: ToolResult): void {
-		if (!this.expandExec && isTTY) {
-			// 折叠模式：清除滚动窗口，展示头尾摘要
-			beginSyncUpdate();
-			this.toolRegion.clear();
-			const HEAD_LINES = 10;
-			const TAIL_LINES = 10;
-			if (this.execLineCount <= HEAD_LINES + TAIL_LINES) {
-				for (const line of this.execTailLines) {
-					writeln(`  ${style.dim("│")} ${style.dim(line)}`);
-				}
-			} else {
-				for (const line of this.execHeadLines.slice(0, HEAD_LINES)) {
-					writeln(`  ${style.dim("│")} ${style.dim(line)}`);
-				}
-				writeln(
-					`  ${style.dim(":")} ${style.gray(`(${this.execLineCount - HEAD_LINES - TAIL_LINES} lines folded)`)}`,
-				);
-				for (const line of this.execTailLines.slice(-TAIL_LINES)) {
-					writeln(`  ${style.dim("│")} ${style.dim(line)}`);
-				}
-			}
-			this.resetExecPreview();
-			endSyncUpdate();
-		}
-		const summary = this.formatToolResult(result);
-		writeln(summary);
-	}
+  /** 渲染工具执行结束 */
+  private renderExecEnd(result: ToolResult): void {
+    if (!this.expandExec && isTTY) {
+      // 折叠模式：清除滚动窗口，展示头尾摘要
+      beginSyncUpdate();
+      this.toolRegion.clear();
+      const HEAD_LINES = 10;
+      const TAIL_LINES = 10;
+      if (this.execLineCount <= HEAD_LINES + TAIL_LINES) {
+        for (const line of this.execTailLines) {
+          writeln(`  ${style.dim("│")} ${style.dim(line)}`);
+        }
+      } else {
+        for (const line of this.execHeadLines.slice(0, HEAD_LINES)) {
+          writeln(`  ${style.dim("│")} ${style.dim(line)}`);
+        }
+        writeln(
+          `  ${style.dim(":")} ${style.gray(`(${this.execLineCount - HEAD_LINES - TAIL_LINES} lines folded)`)}`,
+        );
+        for (const line of this.execTailLines.slice(-TAIL_LINES)) {
+          writeln(`  ${style.dim("│")} ${style.dim(line)}`);
+        }
+      }
+      this.resetExecPreview();
+      endSyncUpdate();
+    }
+    const summary = this.formatToolResult(result);
+    writeln(summary);
+  }
 
-	private pushExecPreviewLine(line: string): void {
-		const bounded = boundExecPreviewLine(line);
-		this.execLineCount++;
-		if (this.execHeadLines.length < 10) this.execHeadLines.push(bounded);
-		this.execTailLines.push(bounded);
-		if (this.execTailLines.length > 20) this.execTailLines.shift();
-	}
+  private pushExecPreviewLine(line: string): void {
+    const bounded = boundExecPreviewLine(line);
+    this.execLineCount++;
+    if (this.execHeadLines.length < 10) this.execHeadLines.push(bounded);
+    this.execTailLines.push(bounded);
+    if (this.execTailLines.length > 20) this.execTailLines.shift();
+  }
 
-	private resetExecPreview(): void {
-		this.execHeadLines = [];
-		this.execTailLines = [];
-		this.execLineCount = 0;
-	}
+  private resetExecPreview(): void {
+    this.execHeadLines = [];
+    this.execTailLines = [];
+    this.execLineCount = 0;
+  }
 
-	// ── 工具结果格式化（紧凑摘要行） ──
+  // ── 工具结果格式化（紧凑摘要行） ──
 
-	private formatToolResult(result: ToolResult): string {
-		switch (result.scheme) {
-			case "exec": {
-				const duration = style.gray(
-					`${(result.durationMs / 1000).toFixed(1)}s`,
-				);
-				switch (result.status) {
-					case "backgrounded":
-						return `${style.dim("◂")} ${style.cyan(result.claim)} ${duration} ${style.yellow(`waitfor exceeded → bg PID=${result.pid}`)}`;
-					case "truncated": {
-						const exit =
-							result.exitCode === 0
-								? style.green(`exit=${result.exitCode}`)
-								: style.red(`exit=${result.exitCode}`);
-						return `${style.dim("◂")} ${style.cyan(result.claim)} ${duration} ${exit} ${style.yellow(`truncated → ${result.artifact.runDir}`)}`;
-					}
-					case "completed": {
-						const exit =
-							result.exitCode === 0
-								? style.green(`exit=${result.exitCode}`)
-								: style.red(`exit=${result.exitCode}`);
-						const outLen = result.stdout.length + result.stderr.length;
-						const estTk = estimateTokens(result.stdout + result.stderr);
-						return `${style.dim("◂")} ${style.cyan(result.claim)} ${duration} ${exit} ${style.gray(`${outLen} chars`)} ${style.dim(`~${estTk} tok`)}`;
-					}
-					default:
-						return `${style.dim("◂")} ${style.yellow("unknown exec status:")}`;
-				}
-			}
-			case "write": {
-				if (result.status === "failed" || result.status === "recover_failed") {
-					return `${style.dim("◂")} ${style.cyan("write")} ${result.path}: ${style.red(result.error ?? "failed")}`;
-				}
-				return `${style.dim("◂")} ${style.cyan("write")} ${result.path}`;
-			}
-			case "customer": {
-				return `${style.dim("◂")} ${style.cyan("customer")} ${style.gray(result.kind)}`;
-			}
-			case "todo": {
-				return `${style.dim("◂")} ${style.cyan("todo")} ${style.gray(result.goal)}`;
-			}
-			default: {
-				console.warn("[RichRenderer] unknown tool result:", result);
-				return `${style.dim("◂")} ${style.yellow("unknown")}`;
-			}
-		}
-	}
+  private formatToolResult(result: ToolResult): string {
+    switch (result.scheme) {
+      case "exec": {
+        const duration = style.gray(
+          `${(result.durationMs / 1000).toFixed(1)}s`,
+        );
+        switch (result.status) {
+          case "backgrounded":
+            return `${style.dim("◂")} ${style.cyan(result.claim)} ${duration} ${style.yellow(`waitfor exceeded → bg PID=${result.pid}`)}`;
+          case "truncated": {
+            const exit =
+              result.exitCode === 0
+                ? style.green(`exit=${result.exitCode}`)
+                : style.red(`exit=${result.exitCode}`);
+            return `${style.dim("◂")} ${style.cyan(result.claim)} ${duration} ${exit} ${style.yellow(`truncated → ${result.artifact.runDir}`)}`;
+          }
+          case "completed": {
+            const exit =
+              result.exitCode === 0
+                ? style.green(`exit=${result.exitCode}`)
+                : style.red(`exit=${result.exitCode}`);
+            const outLen = result.stdout.length + result.stderr.length;
+            const estTk = estimateTokens(result.stdout + result.stderr);
+            return `${style.dim("◂")} ${style.cyan(result.claim)} ${duration} ${exit} ${style.gray(`${outLen} chars`)} ${style.dim(`~${estTk} tok`)}`;
+          }
+          default:
+            return `${style.dim("◂")} ${style.yellow("unknown exec status:")}`;
+        }
+      }
+      case "write": {
+        if (result.status === "failed" || result.status === "recover_failed") {
+          return `${style.dim("◂")} ${style.cyan("write")} ${result.path}: ${style.red(result.error ?? "failed")}`;
+        }
+        return `${style.dim("◂")} ${style.cyan("write")} ${result.path}`;
+      }
+      case "customer": {
+        return `${style.dim("◂")} ${style.cyan("customer")} ${style.gray(result.kind)}`;
+      }
+      case "todo": {
+        return `${style.dim("◂")} ${style.cyan("todo")} ${style.gray(result.goal)}`;
+      }
+      default: {
+        console.warn("[RichRenderer] unknown tool result:", result);
+        return `${style.dim("◂")} ${style.yellow("unknown")}`;
+      }
+    }
+  }
 
-	/** 将当前所有 streaming 工具调用重绘到 streamRegion */
-	private redrawStreamingRegion(): void {
-		for (const [, tc] of [...this.streamingToolCalls.entries()].sort(
-			(a, b) => a[0] - b[0],
-		)) {
-			const parsed = tryParseArgs(tc.args);
-			if (parsed && Object.keys(parsed).length > 0) {
-				for (const line of renderToolArgsStreaming(tc.name, parsed)) {
-					this.streamRegion.writeln(line);
-				}
-			} else {
-				this.streamRegion.writeln(
-					`${style.dim("▸")} ${style.cyan(tc.name)} ${style.gray("(streaming…)")}`,
-				);
-			}
-		}
-	}
+  /** 将当前所有 streaming 工具调用重绘到 streamRegion */
+  private redrawStreamingRegion(): void {
+    for (const [, tc] of [...this.streamingToolCalls.entries()].sort(
+      (a, b) => a[0] - b[0],
+    )) {
+      const parsed = tryParseArgs(tc.args);
+      if (parsed && Object.keys(parsed).length > 0) {
+        for (const line of renderToolArgsStreaming(tc.name, parsed)) {
+          this.streamRegion.writeln(line);
+        }
+      } else {
+        this.streamRegion.writeln(
+          `${style.dim("▸")} ${style.cyan(tc.name)} ${style.gray("(streaming…)")}`,
+        );
+      }
+    }
+  }
 }

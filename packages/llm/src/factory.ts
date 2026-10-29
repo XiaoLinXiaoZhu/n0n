@@ -10,6 +10,7 @@
 import { formatPrompt } from "@n0n/format-prompt";
 import { createTagAdapter } from "@n0n/shared";
 import type { DomainMessage, LLMClient, PromptMessage } from "@n0n/types";
+
 import { AnthropicClient } from "./anthropic-client";
 import type { LLMConfig } from "./config.ts";
 import { DeepSeekClient } from "./deepseek-client";
@@ -28,30 +29,30 @@ export type FormatFn = (messages: DomainMessage[]) => PromptMessage[];
  * @returns LLMClient 实例，闭包所有配置
  */
 export function createLLMClient(config: LLMConfig): LLMClient {
-	const pc = config.providerConfig;
-	const tagStyle = pc.tag_style;
-	const tags = createTagAdapter(tagStyle);
-	const format: FormatFn = (msgs) => formatPrompt(msgs, tags);
+  const pc = config.providerConfig;
+  const tagStyle = pc.tag_style;
+  const tags = createTagAdapter(tagStyle);
+  const format: FormatFn = (msgs) => formatPrompt(msgs, tags);
 
-	switch (pc.provider) {
-		case "openai":
-			return new OpenAIClient(pc, format);
-		case "openai-response":
-			return new OpenAIResponseClient(pc, format);
-		case "openai-compatible":
-			return new OpenAICompatibleClient(pc, format);
-		case "anthropic":
-			return new AnthropicClient(pc, format);
-		case "google":
-			return new GeminiClient(pc, format);
-		case "deepseek": {
-			return new DeepSeekClient(pc, format);
-		}
-		default: {
-			const _exhaustive: never = pc;
-			throw new Error(
-				`Unknown provider: ${(_exhaustive as { provider: string }).provider}`,
-			);
-		}
-	}
+  switch (pc.provider) {
+    case "openai":
+      return new OpenAIClient(pc, format);
+    case "openai-response":
+      return new OpenAIResponseClient(pc, format);
+    case "openai-compatible":
+      return new OpenAICompatibleClient(pc, format);
+    case "anthropic":
+      return new AnthropicClient(pc, format);
+    case "google":
+      return new GeminiClient(pc, format);
+    case "deepseek": {
+      return new DeepSeekClient(pc, format);
+    }
+    default: {
+      const _exhaustive: never = pc;
+      throw new Error(
+        `Unknown provider: ${(_exhaustive as { provider: string }).provider}`,
+      );
+    }
+  }
 }

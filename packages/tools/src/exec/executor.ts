@@ -6,63 +6,65 @@
  */
 
 import {
-	existsSync,
-	mkdirSync,
-	readdirSync,
-	renameSync,
-	rmSync,
-	unlinkSync,
-	writeFileSync,
+  existsSync,
+  mkdirSync,
+  readdirSync,
+  renameSync,
+  rmSync,
+  unlinkSync,
+  writeFileSync,
 } from "node:fs";
 import { isAbsolute, join, resolve } from "node:path";
+
 import { headTailByTokens } from "@n0n/shared";
 import type {
-	ExecToolResult,
-	ExecutionArtifactRef,
-	PostArgs,
-	ToolStreamEvent,
+  ExecToolResult,
+  ExecutionArtifactRef,
+  PostArgs,
+  ToolStreamEvent,
 } from "@n0n/types";
+
 import type { ParsedExec } from "../schemes/exec.ts";
 import {
-	buildSpawnCmd,
-	RUNTIME_EXT,
-	type RunProcessBackgrounded,
-	runProcess,
-	type StreamCapture,
+  buildSpawnCmd,
+  runProcess,
+  type RunProcessBackgrounded,
+  RUNTIME_EXT,
+  type StreamCapture,
 } from "./process-runner.ts";
 import { findBlockedCommand, handleBlockedCommand } from "./security.ts";
 
 export interface ExecCall {
-	id: string;
-	tool: "post";
-	args: PostArgs;
+  id: string;
+  tool: "post";
+  args: PostArgs;
 }
 
 const DEFAULT_OUTPUT_TOKENS = 5_000;
 
 interface ArtifactResult {
-	version: 1;
-	runId: string;
-	status: "running" | "completed" | "backgrounded" | "exited";
-	pid: number;
-	startedAt: string;
-	updatedAt: string;
-	endedAt: string | null;
-	exitCode: number | null;
-	durationMs: number;
-	stdoutFile: "stdout.txt";
-	stderrFile: "stderr.txt";
-	stdoutBytes: number;
-	stderrBytes: number;
-	stdoutLines: number;
-	stderrLines: number;
-	stdoutEstimatedTokens: number;
-	stderrEstimatedTokens: number;
+  version: 1;
+  runId: string;
+  status: "running" | "completed" | "backgrounded" | "exited";
+  pid: number;
+  startedAt: string;
+  updatedAt: string;
+  endedAt: string | null;
+  exitCode: number | null;
+  durationMs: number;
+  stdoutFile: "stdout.txt";
+  stderrFile: "stderr.txt";
+  stdoutBytes: number;
+  stderrBytes: number;
+  stdoutLines: number;
+  stderrLines: number;
+  stdoutEstimatedTokens: number;
+  stderrEstimatedTokens: number;
 }
 
 interface ArtifactContext {
-	ref: ExecutionArtifactRef;
-	result: ArtifactResult;
+  ref: ExecutionArtifactRef;
+  result: ArtifactResult;
 }
 
 /**
@@ -73,367 +75,367 @@ interface ArtifactContext {
  * 完成并发占用：mkdir 成功即占用该序号，遇 EEXIST 则递增重试。
  */
 function allocateRunDir(runsDir: string): { runId: string; runDir: string } {
-	mkdirSync(runsDir, { recursive: true });
-	let next = 1;
-	for (const name of readdirSync(runsDir)) {
-		if (!/^\d+$/.test(name)) continue;
-		const n = Number.parseInt(name, 10);
-		if (n >= next) next = n + 1;
-	}
-	for (;;) {
-		const runId = String(next).padStart(4, "0");
-		const runDir = join(runsDir, runId);
-		try {
-			mkdirSync(runDir);
-			return { runId, runDir };
-		} catch (err) {
-			if ((err as NodeJS.ErrnoException).code !== "EEXIST") throw err;
-			next++;
-		}
-	}
+  mkdirSync(runsDir, { recursive: true });
+  let next = 1;
+  for (const name of readdirSync(runsDir)) {
+    if (!/^\d+$/.test(name)) continue;
+    const n = Number.parseInt(name, 10);
+    if (n >= next) next = n + 1;
+  }
+  for (;;) {
+    const runId = String(next).padStart(4, "0");
+    const runDir = join(runsDir, runId);
+    try {
+      mkdirSync(runDir);
+      return { runId, runDir };
+    } catch (err) {
+      if ((err as NodeJS.ErrnoException).code !== "EEXIST") throw err;
+      next++;
+    }
+  }
 }
 
 function createArtifact(sessionDir: string): ArtifactContext {
-	const runsDir = join(sessionDir, "exec", "runs");
-	const { runId, runDir } = allocateRunDir(runsDir);
-	const stdoutFile = join(runDir, "stdout.txt");
-	const stderrFile = join(runDir, "stderr.txt");
-	const resultFile = join(runDir, "result.json");
-	writeFileSync(stdoutFile, "");
-	writeFileSync(stderrFile, "");
-	const now = new Date().toISOString();
-	const ref: ExecutionArtifactRef = {
-		kind: "execution",
-		version: 1,
-		runId,
-		runDir,
-		stdoutFile,
-		stderrFile,
-		resultFile,
-	};
-	return {
-		ref,
-		result: {
-			version: 1,
-			runId,
-			status: "running",
-			pid: 0,
-			startedAt: now,
-			updatedAt: now,
-			endedAt: null,
-			exitCode: null,
-			durationMs: 0,
-			stdoutFile: "stdout.txt",
-			stderrFile: "stderr.txt",
-			stdoutBytes: 0,
-			stderrBytes: 0,
-			stdoutLines: 0,
-			stderrLines: 0,
-			stdoutEstimatedTokens: 0,
-			stderrEstimatedTokens: 0,
-		},
-	};
+  const runsDir = join(sessionDir, "exec", "runs");
+  const { runId, runDir } = allocateRunDir(runsDir);
+  const stdoutFile = join(runDir, "stdout.txt");
+  const stderrFile = join(runDir, "stderr.txt");
+  const resultFile = join(runDir, "result.json");
+  writeFileSync(stdoutFile, "");
+  writeFileSync(stderrFile, "");
+  const now = new Date().toISOString();
+  const ref: ExecutionArtifactRef = {
+    kind: "execution",
+    version: 1,
+    runId,
+    runDir,
+    stdoutFile,
+    stderrFile,
+    resultFile,
+  };
+  return {
+    ref,
+    result: {
+      version: 1,
+      runId,
+      status: "running",
+      pid: 0,
+      startedAt: now,
+      updatedAt: now,
+      endedAt: null,
+      exitCode: null,
+      durationMs: 0,
+      stdoutFile: "stdout.txt",
+      stderrFile: "stderr.txt",
+      stdoutBytes: 0,
+      stderrBytes: 0,
+      stdoutLines: 0,
+      stderrLines: 0,
+      stdoutEstimatedTokens: 0,
+      stderrEstimatedTokens: 0,
+    },
+  };
 }
 
 function writeArtifactResult(context: ArtifactContext): void {
-	context.result.updatedAt = new Date().toISOString();
-	const temp = `${context.ref.resultFile}.tmp`;
-	writeFileSync(temp, `${JSON.stringify(context.result, null, 2)}\n`, "utf8");
-	renameSync(temp, context.ref.resultFile);
+  context.result.updatedAt = new Date().toISOString();
+  const temp = `${context.ref.resultFile}.tmp`;
+  writeFileSync(temp, `${JSON.stringify(context.result, null, 2)}\n`, "utf8");
+  renameSync(temp, context.ref.resultFile);
 }
 
 function updateCaptureStats(
-	context: ArtifactContext,
-	stdout: StreamCapture,
-	stderr: StreamCapture,
+  context: ArtifactContext,
+  stdout: StreamCapture,
+  stderr: StreamCapture,
 ): void {
-	context.result.stdoutBytes = stdout.byteLength;
-	context.result.stderrBytes = stderr.byteLength;
-	context.result.stdoutLines = stdout.charLength === 0 ? 0 : stdout.lines;
-	context.result.stderrLines = stderr.charLength === 0 ? 0 : stderr.lines;
-	context.result.stdoutEstimatedTokens = stdout.estimatedTokens;
-	context.result.stderrEstimatedTokens = stderr.estimatedTokens;
+  context.result.stdoutBytes = stdout.byteLength;
+  context.result.stderrBytes = stderr.byteLength;
+  context.result.stdoutLines = stdout.charLength === 0 ? 0 : stdout.lines;
+  context.result.stderrLines = stderr.charLength === 0 ? 0 : stderr.lines;
+  context.result.stdoutEstimatedTokens = stdout.estimatedTokens;
+  context.result.stderrEstimatedTokens = stderr.estimatedTokens;
 }
 
 function allocateBudgets(
-	totalBudget: number,
-	stdoutTokens: number,
-	stderrTokens: number,
+  totalBudget: number,
+  stdoutTokens: number,
+  stderrTokens: number,
 ): { stdout: number; stderr: number } {
-	if (stderrTokens === 0) return { stdout: totalBudget, stderr: 0 };
-	if (stdoutTokens === 0) return { stdout: 0, stderr: totalBudget };
-	const totalTokens = stdoutTokens + stderrTokens;
-	const stdout = Math.max(
-		1,
-		Math.min(
-			totalBudget - 1,
-			Math.round(totalBudget * (stdoutTokens / totalTokens)),
-		),
-	);
-	return { stdout, stderr: totalBudget - stdout };
+  if (stderrTokens === 0) return { stdout: totalBudget, stderr: 0 };
+  if (stdoutTokens === 0) return { stdout: 0, stderr: totalBudget };
+  const totalTokens = stdoutTokens + stderrTokens;
+  const stdout = Math.max(
+    1,
+    Math.min(
+      totalBudget - 1,
+      Math.round(totalBudget * (stdoutTokens / totalTokens)),
+    ),
+  );
+  return { stdout, stderr: totalBudget - stdout };
 }
 
 function capturePreview(capture: StreamCapture, budget: number): string {
-	if (budget <= 0 || capture.charLength === 0) return "";
-	if (capture.complete) return headTailByTokens(capture.content, budget);
-	const overlap = Math.max(
-		0,
-		capture.head.length + capture.tail.length - capture.charLength,
-	);
-	const nonOverlappingTail = capture.tail.slice(overlap);
-	return headTailByTokens(`${capture.head}${nonOverlappingTail}`, budget);
+  if (budget <= 0 || capture.charLength === 0) return "";
+  if (capture.complete) return headTailByTokens(capture.content, budget);
+  const overlap = Math.max(
+    0,
+    capture.head.length + capture.tail.length - capture.charLength,
+  );
+  const nonOverlappingTail = capture.tail.slice(overlap);
+  return headTailByTokens(`${capture.head}${nonOverlappingTail}`, budget);
 }
 
 function removeArtifact(context: ArtifactContext): void {
-	rmSync(context.ref.runDir, { recursive: true, force: true });
+  rmSync(context.ref.runDir, { recursive: true, force: true });
 }
 
 function startBackgroundTracking(
-	processResult: RunProcessBackgrounded,
-	context: ArtifactContext,
-	startTime: number,
-	tmpFile: string,
-	intervalMs?: number,
+  processResult: RunProcessBackgrounded,
+  context: ArtifactContext,
+  startTime: number,
+  tmpFile: string,
+  intervalMs?: number,
 ): void {
-	context.result.status = "backgrounded";
-	context.result.pid = processResult.pid;
-	context.result.durationMs = processResult.durationMs;
-	updateCaptureStats(context, processResult.stdout, processResult.stderr);
-	writeArtifactResult(context);
+  context.result.status = "backgrounded";
+  context.result.pid = processResult.pid;
+  context.result.durationMs = processResult.durationMs;
+  updateCaptureStats(context, processResult.stdout, processResult.stderr);
+  writeArtifactResult(context);
 
-	void (async () => {
-		const timer = setInterval(() => {
-			const captures = processResult.captures();
-			updateCaptureStats(context, captures.stdout, captures.stderr);
-			writeArtifactResult(context);
-		}, intervalMs ?? 3_000);
-		try {
-			await processResult.streamsDone;
-			const exitCode = await processResult.proc.exited;
-			context.result.status = "exited";
-			context.result.exitCode = exitCode;
-			context.result.endedAt = new Date().toISOString();
-			context.result.durationMs = Date.now() - startTime;
-			const captures = processResult.captures();
-			updateCaptureStats(context, captures.stdout, captures.stderr);
-			writeArtifactResult(context);
-		} catch {
-			// 后台状态写入失败不影响主流程。
-		} finally {
-			clearInterval(timer);
-			try {
-				unlinkSync(tmpFile);
-			} catch {}
-		}
-	})();
+  void (async () => {
+    const timer = setInterval(() => {
+      const captures = processResult.captures();
+      updateCaptureStats(context, captures.stdout, captures.stderr);
+      writeArtifactResult(context);
+    }, intervalMs ?? 3_000);
+    try {
+      await processResult.streamsDone;
+      const exitCode = await processResult.proc.exited;
+      context.result.status = "exited";
+      context.result.exitCode = exitCode;
+      context.result.endedAt = new Date().toISOString();
+      context.result.durationMs = Date.now() - startTime;
+      const captures = processResult.captures();
+      updateCaptureStats(context, captures.stdout, captures.stderr);
+      writeArtifactResult(context);
+    } catch {
+      // 后台状态写入失败不影响主流程。
+    } finally {
+      clearInterval(timer);
+      try {
+        unlinkSync(tmpFile);
+      } catch {}
+    }
+  })();
 }
 
 export async function* execToolStream(
-	call: ExecCall,
-	/** 边界已解析的 exec uri — 本函数不再解析 call.args.uri */
-	parsed: ParsedExec,
-	confirmFn: ((question: string) => Promise<string>) | undefined,
-	toolsConfig: {
-		workspace: string;
-		sessionDir: string;
-		blocked_commands: string[];
-		default_exec_waitfor: number;
-		max_exec_output_tokens: number;
-		platform: "win32" | "darwin" | "linux";
-		bgSyncIntervalMs?: number;
-	},
+  call: ExecCall,
+  /** 边界已解析的 exec uri — 本函数不再解析 call.args.uri */
+  parsed: ParsedExec,
+  confirmFn: ((question: string) => Promise<string>) | undefined,
+  toolsConfig: {
+    workspace: string;
+    sessionDir: string;
+    blocked_commands: string[];
+    default_exec_waitfor: number;
+    max_exec_output_tokens: number;
+    platform: "win32" | "darwin" | "linux";
+    bgSyncIntervalMs?: number;
+  },
 ): AsyncGenerator<ToolStreamEvent> {
-	const workspace = toolsConfig.workspace;
+  const workspace = toolsConfig.workspace;
 
-	const { runtime, claim } = parsed;
-	const cwd = parsed.cwd
-		? isAbsolute(parsed.cwd)
-			? parsed.cwd
-			: resolve(workspace, parsed.cwd)
-		: workspace;
-	const waitforS = Math.min(
-		parsed.waitfor ?? toolsConfig.default_exec_waitfor,
-		240,
-	);
-	const outputTokenBudget = Math.min(
-		parsed.maxOutputTokens ?? DEFAULT_OUTPUT_TOKENS,
-		toolsConfig.max_exec_output_tokens,
-	);
-	const script = call.args.body;
-	const start = Date.now();
+  const { runtime, claim } = parsed;
+  const cwd = parsed.cwd
+    ? isAbsolute(parsed.cwd)
+      ? parsed.cwd
+      : resolve(workspace, parsed.cwd)
+    : workspace;
+  const waitforS = Math.min(
+    parsed.waitfor ?? toolsConfig.default_exec_waitfor,
+    240,
+  );
+  const outputTokenBudget = Math.min(
+    parsed.maxOutputTokens ?? DEFAULT_OUTPUT_TOKENS,
+    toolsConfig.max_exec_output_tokens,
+  );
+  const script = call.args.body;
+  const start = Date.now();
 
-	const blockedCmd = findBlockedCommand(
-		script,
-		toolsConfig.blocked_commands,
-		toolsConfig.platform,
-	);
-	if (blockedCmd !== null) {
-		const blocked = await handleBlockedCommand(
-			call,
-			runtime,
-			claim,
-			cwd,
-			blockedCmd,
-			confirmFn,
-		);
-		if (blocked) {
-			yield blocked;
-			return;
-		}
-	}
+  const blockedCmd = findBlockedCommand(
+    script,
+    toolsConfig.blocked_commands,
+    toolsConfig.platform,
+  );
+  if (blockedCmd !== null) {
+    const blocked = await handleBlockedCommand(
+      call,
+      runtime,
+      claim,
+      cwd,
+      blockedCmd,
+      confirmFn,
+    );
+    if (blocked) {
+      yield blocked;
+      return;
+    }
+  }
 
-	const scriptDir = resolve(cwd);
-	if (!existsSync(scriptDir)) mkdirSync(scriptDir, { recursive: true });
-	const ext = RUNTIME_EXT[runtime] ?? "";
-	const tmpFile = join(
-		scriptDir,
-		`_n0n_exec_${Date.now()}_${Math.random().toString(36).slice(2, 8)}${ext}`,
-	);
-	const artifact = createArtifact(toolsConfig.sessionDir);
-	writeArtifactResult(artifact);
-	let cleanupTempFile = true;
-	let keepArtifact = false;
+  const scriptDir = resolve(cwd);
+  if (!existsSync(scriptDir)) mkdirSync(scriptDir, { recursive: true });
+  const ext = RUNTIME_EXT[runtime] ?? "";
+  const tmpFile = join(
+    scriptDir,
+    `_n0n_exec_${Date.now()}_${Math.random().toString(36).slice(2, 8)}${ext}`,
+  );
+  const artifact = createArtifact(toolsConfig.sessionDir);
+  writeArtifactResult(artifact);
+  let cleanupTempFile = true;
+  let keepArtifact = false;
 
-	try {
-		await Bun.write(tmpFile, runtime === "cmd" ? `@${script}\n` : script);
-		const result = yield* runProcess({
-			spawnCmd: buildSpawnCmd(runtime, tmpFile),
-			cwd,
-			waitforMs: waitforS * 1_000,
-			callId: call.id,
-			tool: call.tool,
-			stdoutFile: artifact.ref.stdoutFile,
-			stderrFile: artifact.ref.stderrFile,
-			maxCaptureTokens: toolsConfig.max_exec_output_tokens,
-		});
+  try {
+    await Bun.write(tmpFile, runtime === "cmd" ? `@${script}\n` : script);
+    const result = yield* runProcess({
+      spawnCmd: buildSpawnCmd(runtime, tmpFile),
+      cwd,
+      waitforMs: waitforS * 1_000,
+      callId: call.id,
+      tool: call.tool,
+      stdoutFile: artifact.ref.stdoutFile,
+      stderrFile: artifact.ref.stderrFile,
+      maxCaptureTokens: toolsConfig.max_exec_output_tokens,
+    });
 
-		// 所有 exec 结果共享的判别与溯源字段。
-		const execBase = {
-			type: "tool_result",
-			tool: call.tool,
-			call,
-			scheme: "exec",
-			claim,
-			runtime,
-			cwd,
-		} as const;
+    // 所有 exec 结果共享的判别与溯源字段。
+    const execBase = {
+      type: "tool_result",
+      tool: call.tool,
+      call,
+      scheme: "exec",
+      claim,
+      runtime,
+      cwd,
+    } as const;
 
-		switch (result.outcome) {
-			case "backgrounded": {
-				keepArtifact = true;
-				cleanupTempFile = false;
-				startBackgroundTracking(
-					result,
-					artifact,
-					start,
-					tmpFile,
-					toolsConfig.bgSyncIntervalMs,
-				);
-				const budgets = allocateBudgets(
-					outputTokenBudget,
-					result.stdout.estimatedTokens,
-					result.stderr.estimatedTokens,
-				);
-				yield {
-					...execBase,
-					status: "backgrounded",
-					pid: result.pid,
-					artifact: artifact.ref,
-					stdoutSoFar: capturePreview(result.stdout, budgets.stdout),
-					stderrSoFar: capturePreview(result.stderr, budgets.stderr),
-					durationMs: result.durationMs,
-				} satisfies ExecToolResult;
-				return;
-			}
-			case "error": {
-				yield {
-					...execBase,
-					status: "completed",
-					exitCode: 1,
-					stdout: "",
-					stderr: result.error,
-					durationMs: result.durationMs,
-				} satisfies ExecToolResult;
-				return;
-			}
-			case "completed": {
-				const { stdout, stderr, exitCode, durationMs } = result;
-				const totalEstimatedTokens =
-					stdout.estimatedTokens + stderr.estimatedTokens;
-				const isTruncated =
-					!stdout.complete ||
-					!stderr.complete ||
-					totalEstimatedTokens > outputTokenBudget;
-				if (!isTruncated) {
-					yield {
-						...execBase,
-						status: "completed",
-						exitCode,
-						stdout:
-							stdout.content ||
-							(stderr.content || exitCode !== 0
-								? ""
-								: "(no output — script may not have top-level executable code, or async operations may not have been awaited.)"),
-						stderr: stderr.content,
-						durationMs,
-					} satisfies ExecToolResult;
-					return;
-				}
+    switch (result.outcome) {
+      case "backgrounded": {
+        keepArtifact = true;
+        cleanupTempFile = false;
+        startBackgroundTracking(
+          result,
+          artifact,
+          start,
+          tmpFile,
+          toolsConfig.bgSyncIntervalMs,
+        );
+        const budgets = allocateBudgets(
+          outputTokenBudget,
+          result.stdout.estimatedTokens,
+          result.stderr.estimatedTokens,
+        );
+        yield {
+          ...execBase,
+          status: "backgrounded",
+          pid: result.pid,
+          artifact: artifact.ref,
+          stdoutSoFar: capturePreview(result.stdout, budgets.stdout),
+          stderrSoFar: capturePreview(result.stderr, budgets.stderr),
+          durationMs: result.durationMs,
+        } satisfies ExecToolResult;
+        return;
+      }
+      case "error": {
+        yield {
+          ...execBase,
+          status: "completed",
+          exitCode: 1,
+          stdout: "",
+          stderr: result.error,
+          durationMs: result.durationMs,
+        } satisfies ExecToolResult;
+        return;
+      }
+      case "completed": {
+        const { stdout, stderr, exitCode, durationMs } = result;
+        const totalEstimatedTokens =
+          stdout.estimatedTokens + stderr.estimatedTokens;
+        const isTruncated =
+          !stdout.complete ||
+          !stderr.complete ||
+          totalEstimatedTokens > outputTokenBudget;
+        if (!isTruncated) {
+          yield {
+            ...execBase,
+            status: "completed",
+            exitCode,
+            stdout:
+              stdout.content ||
+              (stderr.content || exitCode !== 0
+                ? ""
+                : "(no output — script may not have top-level executable code, or async operations may not have been awaited.)"),
+            stderr: stderr.content,
+            durationMs,
+          } satisfies ExecToolResult;
+          return;
+        }
 
-				keepArtifact = true;
-				artifact.result.status = "completed";
-				artifact.result.exitCode = exitCode;
-				artifact.result.endedAt = new Date().toISOString();
-				artifact.result.durationMs = durationMs;
-				updateCaptureStats(artifact, stdout, stderr);
-				writeArtifactResult(artifact);
+        keepArtifact = true;
+        artifact.result.status = "completed";
+        artifact.result.exitCode = exitCode;
+        artifact.result.endedAt = new Date().toISOString();
+        artifact.result.durationMs = durationMs;
+        updateCaptureStats(artifact, stdout, stderr);
+        writeArtifactResult(artifact);
 
-				const budgets = allocateBudgets(
-					outputTokenBudget,
-					stdout.estimatedTokens,
-					stderr.estimatedTokens,
-				);
-				yield {
-					...execBase,
-					status: "truncated",
-					exitCode,
-					stdoutPreview: capturePreview(stdout, budgets.stdout),
-					stderrPreview: capturePreview(stderr, budgets.stderr),
-					artifact: artifact.ref,
-					stdoutLength: stdout.charLength,
-					stderrLength: stderr.charLength,
-					stdoutLines: stdout.charLength === 0 ? 0 : stdout.lines,
-					stderrLines: stderr.charLength === 0 ? 0 : stderr.lines,
-					outputTokenBudget,
-					stdoutEstimatedTokens: stdout.estimatedTokens,
-					stderrEstimatedTokens: stderr.estimatedTokens,
-					totalEstimatedTokens,
-					durationMs,
-				} satisfies ExecToolResult;
-				return;
-			}
-		}
-	} catch (error) {
-		yield {
-			type: "tool_result",
-			tool: call.tool,
-			call,
-			scheme: "exec",
-			claim,
-			runtime,
-			cwd,
-			status: "completed",
-			exitCode: 1,
-			stdout: "",
-			stderr: error instanceof Error ? error.message : String(error),
-			durationMs: Date.now() - start,
-		} satisfies ExecToolResult;
-	} finally {
-		if (cleanupTempFile) {
-			try {
-				unlinkSync(tmpFile);
-			} catch {}
-		}
-		if (!keepArtifact) removeArtifact(artifact);
-	}
+        const budgets = allocateBudgets(
+          outputTokenBudget,
+          stdout.estimatedTokens,
+          stderr.estimatedTokens,
+        );
+        yield {
+          ...execBase,
+          status: "truncated",
+          exitCode,
+          stdoutPreview: capturePreview(stdout, budgets.stdout),
+          stderrPreview: capturePreview(stderr, budgets.stderr),
+          artifact: artifact.ref,
+          stdoutLength: stdout.charLength,
+          stderrLength: stderr.charLength,
+          stdoutLines: stdout.charLength === 0 ? 0 : stdout.lines,
+          stderrLines: stderr.charLength === 0 ? 0 : stderr.lines,
+          outputTokenBudget,
+          stdoutEstimatedTokens: stdout.estimatedTokens,
+          stderrEstimatedTokens: stderr.estimatedTokens,
+          totalEstimatedTokens,
+          durationMs,
+        } satisfies ExecToolResult;
+        return;
+      }
+    }
+  } catch (error) {
+    yield {
+      type: "tool_result",
+      tool: call.tool,
+      call,
+      scheme: "exec",
+      claim,
+      runtime,
+      cwd,
+      status: "completed",
+      exitCode: 1,
+      stdout: "",
+      stderr: error instanceof Error ? error.message : String(error),
+      durationMs: Date.now() - start,
+    } satisfies ExecToolResult;
+  } finally {
+    if (cleanupTempFile) {
+      try {
+        unlinkSync(tmpFile);
+      } catch {}
+    }
+    if (!keepArtifact) removeArtifact(artifact);
+  }
 }

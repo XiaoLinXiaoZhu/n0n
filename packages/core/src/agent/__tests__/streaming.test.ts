@@ -10,378 +10,380 @@
  */
 
 import { describe, expect, it } from "bun:test";
+
 import type { StreamEvent } from "@n0n/types";
+
 import { type ParsedStreamEvent, parseStream } from "../streaming.ts";
 
 // ── 辅助 ──
 
 /** 将 StreamEvent[] 包装为 AsyncGenerator */
 async function* fakeStream(events: StreamEvent[]): AsyncGenerator<StreamEvent> {
-	for (const e of events) yield e;
+  for (const e of events) yield e;
 }
 
 /** 收集 parseStream 的所有输出事件 */
 async function collect(
-	events: StreamEvent[],
-	signal?: AbortSignal,
+  events: StreamEvent[],
+  signal?: AbortSignal,
 ): Promise<ParsedStreamEvent[]> {
-	const result: ParsedStreamEvent[] = [];
-	for await (const e of parseStream(fakeStream(events), signal)) {
-		result.push(e);
-	}
-	return result;
+  const result: ParsedStreamEvent[] = [];
+  for await (const e of parseStream(fakeStream(events), signal)) {
+    result.push(e);
+  }
+  return result;
 }
 
 /** 提取特定类型的事件 */
 function ofType<T extends ParsedStreamEvent["type"]>(
-	events: ParsedStreamEvent[],
-	type: T,
+  events: ParsedStreamEvent[],
+  type: T,
 ): Extract<ParsedStreamEvent, { type: T }>[] {
-	return events.filter(
-		(e): e is Extract<ParsedStreamEvent, { type: T }> => e.type === type,
-	);
+  return events.filter(
+    (e): e is Extract<ParsedStreamEvent, { type: T }> => e.type === type,
+  );
 }
 
 // ── 测试 ──
 
 describe("parseStream", () => {
-	describe("基本 phase 转换", () => {
-		it("纯 content 流：content_chunk → content_end → done", async () => {
-			const events = await collect([
-				{ type: "content", text: "Hello" },
-				{ type: "content", text: " world" },
-				{ type: "done", finishReason: "stop", usage: null },
-			]);
+  describe("基本 phase 转换", () => {
+    it("纯 content 流：content_chunk → content_end → done", async () => {
+      const events = await collect([
+        { type: "content", text: "Hello" },
+        { type: "content", text: " world" },
+        { type: "done", finishReason: "stop", usage: null },
+      ]);
 
-			expect(ofType(events, "content_start")).toHaveLength(1);
-			expect(ofType(events, "content_chunk")).toHaveLength(2);
-			expect(ofType(events, "content_chunk")[0]!.text).toBe("Hello");
-			expect(ofType(events, "content_chunk")[1]!.text).toBe(" world");
-			expect(ofType(events, "content_end")).toHaveLength(1);
+      expect(ofType(events, "content_start")).toHaveLength(1);
+      expect(ofType(events, "content_chunk")).toHaveLength(2);
+      expect(ofType(events, "content_chunk")[0]!.text).toBe("Hello");
+      expect(ofType(events, "content_chunk")[1]!.text).toBe(" world");
+      expect(ofType(events, "content_end")).toHaveLength(1);
 
-			const done = ofType(events, "done")[0]!;
-			expect(done.result.interrupt).toBeNull();
-			expect(done.result.accumulator.content).toBe("Hello world");
-		});
+      const done = ofType(events, "done")[0]!;
+      expect(done.result.interrupt).toBeNull();
+      expect(done.result.accumulator.content).toBe("Hello world");
+    });
 
-		it("纯 thinking 流：thinking_chunk → thinking_end → done", async () => {
-			const events = await collect([
-				{ type: "thinking", text: "Let me think" },
-				{ type: "thinking", text: "..." },
-				{ type: "done", finishReason: "stop", usage: null },
-			]);
+    it("纯 thinking 流：thinking_chunk → thinking_end → done", async () => {
+      const events = await collect([
+        { type: "thinking", text: "Let me think" },
+        { type: "thinking", text: "..." },
+        { type: "done", finishReason: "stop", usage: null },
+      ]);
 
-			expect(ofType(events, "thinking_start")).toHaveLength(1);
-			expect(ofType(events, "thinking_chunk")).toHaveLength(2);
-			expect(ofType(events, "thinking_end")).toHaveLength(1);
-			expect(ofType(events, "content_chunk")).toHaveLength(0);
-			expect(ofType(events, "content_start")).toHaveLength(0);
-		});
+      expect(ofType(events, "thinking_start")).toHaveLength(1);
+      expect(ofType(events, "thinking_chunk")).toHaveLength(2);
+      expect(ofType(events, "thinking_end")).toHaveLength(1);
+      expect(ofType(events, "content_chunk")).toHaveLength(0);
+      expect(ofType(events, "content_start")).toHaveLength(0);
+    });
 
-		it("thinking → content 转换：自动插入 thinking_end", async () => {
-			const events = await collect([
-				{ type: "thinking", text: "hmm" },
-				{ type: "content", text: "answer" },
-				{ type: "done", finishReason: "stop", usage: null },
-			]);
+    it("thinking → content 转换：自动插入 thinking_end", async () => {
+      const events = await collect([
+        { type: "thinking", text: "hmm" },
+        { type: "content", text: "answer" },
+        { type: "done", finishReason: "stop", usage: null },
+      ]);
 
-			const types = events.map((e) => e.type);
-			const thinkingStartIdx = types.indexOf("thinking_start");
-			const thinkingEndIdx = types.indexOf("thinking_end");
-			const contentStartIdx = types.indexOf("content_start");
-			const contentChunkIdx = types.indexOf("content_chunk");
-			expect(thinkingStartIdx).toBeGreaterThan(-1);
-			expect(thinkingEndIdx).toBeGreaterThan(thinkingStartIdx);
-			expect(contentStartIdx).toBeGreaterThan(thinkingEndIdx);
-			expect(contentChunkIdx).toBeGreaterThan(contentStartIdx);
-		});
+      const types = events.map((e) => e.type);
+      const thinkingStartIdx = types.indexOf("thinking_start");
+      const thinkingEndIdx = types.indexOf("thinking_end");
+      const contentStartIdx = types.indexOf("content_start");
+      const contentChunkIdx = types.indexOf("content_chunk");
+      expect(thinkingStartIdx).toBeGreaterThan(-1);
+      expect(thinkingEndIdx).toBeGreaterThan(thinkingStartIdx);
+      expect(contentStartIdx).toBeGreaterThan(thinkingEndIdx);
+      expect(contentChunkIdx).toBeGreaterThan(contentStartIdx);
+    });
 
-		it("thinking → tool_args 转换：自动插入 thinking_end", async () => {
-			const events = await collect([
-				{ type: "thinking", text: "I need to run code" },
-				{
-					type: "tool_call_delta",
-					index: 0,
-					id: "tc_1",
-					name: "post",
-					arguments: '{"uri":"exec://sh/probe","body":"ls"}',
-				},
-				{ type: "done", finishReason: "tool_calls", usage: null },
-			]);
+    it("thinking → tool_args 转换：自动插入 thinking_end", async () => {
+      const events = await collect([
+        { type: "thinking", text: "I need to run code" },
+        {
+          type: "tool_call_delta",
+          index: 0,
+          id: "tc_1",
+          name: "post",
+          arguments: '{"uri":"exec://sh/probe","body":"ls"}',
+        },
+        { type: "done", finishReason: "tool_calls", usage: null },
+      ]);
 
-			const types = events.map((e) => e.type);
-			const thinkingStartIdx = types.indexOf("thinking_start");
-			expect(types).toContain("thinking_end");
-			const thinkingEndIdx = types.indexOf("thinking_end");
-			const toolArgStartIdx = types.indexOf("tool_arg_start");
-			expect(thinkingStartIdx).toBeGreaterThan(-1);
-			expect(thinkingEndIdx).toBeGreaterThan(thinkingStartIdx);
-			expect(toolArgStartIdx).toBeGreaterThan(thinkingEndIdx);
-		});
+      const types = events.map((e) => e.type);
+      const thinkingStartIdx = types.indexOf("thinking_start");
+      expect(types).toContain("thinking_end");
+      const thinkingEndIdx = types.indexOf("thinking_end");
+      const toolArgStartIdx = types.indexOf("tool_arg_start");
+      expect(thinkingStartIdx).toBeGreaterThan(-1);
+      expect(thinkingEndIdx).toBeGreaterThan(thinkingStartIdx);
+      expect(toolArgStartIdx).toBeGreaterThan(thinkingEndIdx);
+    });
 
-		it("content → tool_args 转换：自动插入 content_end", async () => {
-			const events = await collect([
-				{ type: "content", text: "Let me check" },
-				{
-					type: "tool_call_delta",
-					index: 0,
-					id: "tc_1",
-					name: "post",
-					arguments: '{"uri":"exec://sh/probe","body":"ls"}',
-				},
-				{ type: "done", finishReason: "tool_calls", usage: null },
-			]);
+    it("content → tool_args 转换：自动插入 content_end", async () => {
+      const events = await collect([
+        { type: "content", text: "Let me check" },
+        {
+          type: "tool_call_delta",
+          index: 0,
+          id: "tc_1",
+          name: "post",
+          arguments: '{"uri":"exec://sh/probe","body":"ls"}',
+        },
+        { type: "done", finishReason: "tool_calls", usage: null },
+      ]);
 
-			const types = events.map((e) => e.type);
-			const contentStartIdx = types.indexOf("content_start");
-			expect(types).toContain("content_end");
-			const contentEndIdx = types.indexOf("content_end");
-			const toolArgStartIdx = types.indexOf("tool_arg_start");
-			expect(contentStartIdx).toBeGreaterThan(-1);
-			expect(contentEndIdx).toBeGreaterThan(contentStartIdx);
-			expect(toolArgStartIdx).toBeGreaterThan(contentEndIdx);
-		});
-	});
+      const types = events.map((e) => e.type);
+      const contentStartIdx = types.indexOf("content_start");
+      expect(types).toContain("content_end");
+      const contentEndIdx = types.indexOf("content_end");
+      const toolArgStartIdx = types.indexOf("tool_arg_start");
+      expect(contentStartIdx).toBeGreaterThan(-1);
+      expect(contentEndIdx).toBeGreaterThan(contentStartIdx);
+      expect(toolArgStartIdx).toBeGreaterThan(contentEndIdx);
+    });
+  });
 
-	describe("工具调用解析", () => {
-		it("单个工具调用，参数一次性完整", async () => {
-			const events = await collect([
-				{
-					type: "tool_call_delta",
-					index: 0,
-					id: "tc_1",
-					name: "post",
-					arguments: '{"uri":"exec://sh/probe","body":"ls"}',
-				},
-				{ type: "done", finishReason: "tool_calls", usage: null },
-			]);
+  describe("工具调用解析", () => {
+    it("单个工具调用，参数一次性完整", async () => {
+      const events = await collect([
+        {
+          type: "tool_call_delta",
+          index: 0,
+          id: "tc_1",
+          name: "post",
+          arguments: '{"uri":"exec://sh/probe","body":"ls"}',
+        },
+        { type: "done", finishReason: "tool_calls", usage: null },
+      ]);
 
-			expect(ofType(events, "tool_arg_start")).toHaveLength(1);
-			expect(ofType(events, "tool_arg_start")[0]!.name).toBe("post");
-			expect(ofType(events, "tool_arg_chunk")).toHaveLength(1);
+      expect(ofType(events, "tool_arg_start")).toHaveLength(1);
+      expect(ofType(events, "tool_arg_start")[0]!.name).toBe("post");
+      expect(ofType(events, "tool_arg_chunk")).toHaveLength(1);
 
-			const ready = ofType(events, "tool_ready");
-			expect(ready).toHaveLength(1);
-			expect(ready[0]!.tc.tool).toBe("post");
-			expect(ready[0]!.tc.args).toEqual({
-				uri: "exec://sh/probe",
-				body: "ls",
-			});
+      const ready = ofType(events, "tool_ready");
+      expect(ready).toHaveLength(1);
+      expect(ready[0]!.tc.tool).toBe("post");
+      expect(ready[0]!.tc.args).toEqual({
+        uri: "exec://sh/probe",
+        body: "ls",
+      });
 
-			const done = ofType(events, "done")[0]!;
-			expect(done.result.readyTools.size).toBe(1);
-		});
+      const done = ofType(events, "done")[0]!;
+      expect(done.result.readyTools.size).toBe(1);
+    });
 
-		it("单个工具调用，参数分片到达", async () => {
-			const events = await collect([
-				{
-					type: "tool_call_delta",
-					index: 0,
-					id: "tc_1",
-					name: "post",
-					arguments: '{"uri":"exec://sh/l',
-				},
-				{ type: "tool_call_delta", index: 0, arguments: 's -la",' },
-				{ type: "tool_call_delta", index: 0, arguments: '"body":"ls -la"}' },
-				{ type: "done", finishReason: "tool_calls", usage: null },
-			]);
+    it("单个工具调用，参数分片到达", async () => {
+      const events = await collect([
+        {
+          type: "tool_call_delta",
+          index: 0,
+          id: "tc_1",
+          name: "post",
+          arguments: '{"uri":"exec://sh/l',
+        },
+        { type: "tool_call_delta", index: 0, arguments: 's -la",' },
+        { type: "tool_call_delta", index: 0, arguments: '"body":"ls -la"}' },
+        { type: "done", finishReason: "tool_calls", usage: null },
+      ]);
 
-			// tool_arg_start 只触发一次
-			expect(ofType(events, "tool_arg_start")).toHaveLength(1);
-			// 每个 delta 都产生 chunk
-			expect(ofType(events, "tool_arg_chunk")).toHaveLength(3);
-			// JSON 完整后触发 tool_ready
-			const ready = ofType(events, "tool_ready");
-			expect(ready).toHaveLength(1);
-			expect(ready[0]!.tc.args).toEqual({
-				uri: "exec://sh/ls -la",
-				body: "ls -la",
-			});
-		});
+      // tool_arg_start 只触发一次
+      expect(ofType(events, "tool_arg_start")).toHaveLength(1);
+      // 每个 delta 都产生 chunk
+      expect(ofType(events, "tool_arg_chunk")).toHaveLength(3);
+      // JSON 完整后触发 tool_ready
+      const ready = ofType(events, "tool_ready");
+      expect(ready).toHaveLength(1);
+      expect(ready[0]!.tc.args).toEqual({
+        uri: "exec://sh/ls -la",
+        body: "ls -la",
+      });
+    });
 
-		it("多个工具调用并行", async () => {
-			const events = await collect([
-				{
-					type: "tool_call_delta",
-					index: 0,
-					id: "tc_1",
-					name: "post",
-					arguments: '{"uri":"write://a.ts","body":"hello"}',
-				},
-				{
-					type: "tool_call_delta",
-					index: 1,
-					id: "tc_2",
-					name: "post",
-					arguments: '{"uri":"write://b.ts","body":"world"}',
-				},
-				{ type: "done", finishReason: "tool_calls", usage: null },
-			]);
+    it("多个工具调用并行", async () => {
+      const events = await collect([
+        {
+          type: "tool_call_delta",
+          index: 0,
+          id: "tc_1",
+          name: "post",
+          arguments: '{"uri":"write://a.ts","body":"hello"}',
+        },
+        {
+          type: "tool_call_delta",
+          index: 1,
+          id: "tc_2",
+          name: "post",
+          arguments: '{"uri":"write://b.ts","body":"world"}',
+        },
+        { type: "done", finishReason: "tool_calls", usage: null },
+      ]);
 
-			expect(ofType(events, "tool_arg_start")).toHaveLength(2);
-			expect(ofType(events, "tool_ready")).toHaveLength(2);
+      expect(ofType(events, "tool_arg_start")).toHaveLength(2);
+      expect(ofType(events, "tool_ready")).toHaveLength(2);
 
-			const done = ofType(events, "done")[0]!;
-			expect(done.result.readyTools.size).toBe(2);
-		});
+      const done = ofType(events, "done")[0]!;
+      expect(done.result.readyTools.size).toBe(2);
+    });
 
-		it("JSON 未完整时不触发 tool_ready", async () => {
-			const events = await collect([
-				{
-					type: "tool_call_delta",
-					index: 0,
-					id: "tc_1",
-					name: "post",
-					arguments: '{"uri":"write://a.ts","bo',
-				},
-				{ type: "done", finishReason: "length", usage: null },
-			]);
+    it("JSON 未完整时不触发 tool_ready", async () => {
+      const events = await collect([
+        {
+          type: "tool_call_delta",
+          index: 0,
+          id: "tc_1",
+          name: "post",
+          arguments: '{"uri":"write://a.ts","bo',
+        },
+        { type: "done", finishReason: "length", usage: null },
+      ]);
 
-			expect(ofType(events, "tool_ready")).toHaveLength(0);
-			const done = ofType(events, "done")[0]!;
-			expect(done.result.readyTools.size).toBe(0);
-			expect(done.result.interrupt).toBe("length");
-		});
+      expect(ofType(events, "tool_ready")).toHaveLength(0);
+      const done = ofType(events, "done")[0]!;
+      expect(done.result.readyTools.size).toBe(0);
+      expect(done.result.interrupt).toBe("length");
+    });
 
-		it("未知工具 + 完整 JSON → 仍触发 tool_ready", async () => {
-			const events = await collect([
-				{
-					type: "tool_call_delta",
-					index: 0,
-					id: "tc_unknown",
-					name: "read",
-					arguments: "{}",
-				},
-				{ type: "done", finishReason: "tool_calls", usage: null },
-			]);
+    it("未知工具 + 完整 JSON → 仍触发 tool_ready", async () => {
+      const events = await collect([
+        {
+          type: "tool_call_delta",
+          index: 0,
+          id: "tc_unknown",
+          name: "read",
+          arguments: "{}",
+        },
+        { type: "done", finishReason: "tool_calls", usage: null },
+      ]);
 
-			const ready = ofType(events, "tool_ready");
-			expect(ready).toHaveLength(1);
-			// 运行时未知工具名不受判别联合约束，放宽为 string 断言
-			const readyTool: string = ready[0]!.tc.tool;
-			expect(readyTool).toBe("read");
-			// @ts-expect-error — 运行时未知工具的 args 不受判别联合约束
-			expect(ready[0]!.tc.args).toEqual({});
-		});
+      const ready = ofType(events, "tool_ready");
+      expect(ready).toHaveLength(1);
+      // 运行时未知工具名不受判别联合约束，放宽为 string 断言
+      const readyTool: string = ready[0]!.tc.tool;
+      expect(readyTool).toBe("read");
+      // @ts-expect-error — 运行时未知工具的 args 不受判别联合约束
+      expect(ready[0]!.tc.args).toEqual({});
+    });
 
-		it("未知工具 + tool_ready → readyTools 中包含该工具", async () => {
-			const events = await collect([
-				{
-					type: "tool_call_delta",
-					index: 0,
-					id: "tc_unknown2",
-					name: "unknownTool",
-					arguments: "{}",
-				},
-				{ type: "done", finishReason: "tool_calls", usage: null },
-			]);
+    it("未知工具 + tool_ready → readyTools 中包含该工具", async () => {
+      const events = await collect([
+        {
+          type: "tool_call_delta",
+          index: 0,
+          id: "tc_unknown2",
+          name: "unknownTool",
+          arguments: "{}",
+        },
+        { type: "done", finishReason: "tool_calls", usage: null },
+      ]);
 
-			const done = ofType(events, "done")[0]!;
-			expect(done.result.readyTools.size).toBe(1);
-			const toolCall = done.result.readyTools.values().next().value!;
-			// 运行时未知工具名不受判别联合约束，放宽为 string 断言
-			const unknownTool: string = toolCall.tool;
-			expect(unknownTool).toBe("unknownTool");
-			// @ts-expect-error — 运行时未知工具的 args 不受判别联合约束
-			expect(toolCall.args).toEqual({});
-		});
-	});
+      const done = ofType(events, "done")[0]!;
+      expect(done.result.readyTools.size).toBe(1);
+      const toolCall = done.result.readyTools.values().next().value!;
+      // 运行时未知工具名不受判别联合约束，放宽为 string 断言
+      const unknownTool: string = toolCall.tool;
+      expect(unknownTool).toBe("unknownTool");
+      // @ts-expect-error — 运行时未知工具的 args 不受判别联合约束
+      expect(toolCall.args).toEqual({});
+    });
+  });
 
-	describe("中断处理", () => {
-		it("error 事件：interrupt = error", async () => {
-			const events = await collect([
-				{ type: "content", text: "partial" },
-				{ type: "error", error: "network failure" },
-				{ type: "done", finishReason: "stop", usage: null },
-			]);
+  describe("中断处理", () => {
+    it("error 事件：interrupt = error", async () => {
+      const events = await collect([
+        { type: "content", text: "partial" },
+        { type: "error", error: "network failure" },
+        { type: "done", finishReason: "stop", usage: null },
+      ]);
 
-			expect(ofType(events, "error")).toHaveLength(1);
-			expect(ofType(events, "error")[0]!.error).toBe("network failure");
+      expect(ofType(events, "error")).toHaveLength(1);
+      expect(ofType(events, "error")[0]!.error).toBe("network failure");
 
-			const done = ofType(events, "done")[0]!;
-			expect(done.result.interrupt).toBe("error");
-		});
+      const done = ofType(events, "done")[0]!;
+      expect(done.result.interrupt).toBe("error");
+    });
 
-		it("abort signal：interrupt = aborted", async () => {
-			const controller = new AbortController();
+    it("abort signal：interrupt = aborted", async () => {
+      const controller = new AbortController();
 
-			// 创建一个会挂起的 stream，让 abort 有机会生效
-			async function* slowStream(): AsyncGenerator<StreamEvent> {
-				yield { type: "content", text: "start" };
-				controller.abort();
-				yield { type: "content", text: "after abort" };
-			}
+      // 创建一个会挂起的 stream，让 abort 有机会生效
+      async function* slowStream(): AsyncGenerator<StreamEvent> {
+        yield { type: "content", text: "start" };
+        controller.abort();
+        yield { type: "content", text: "after abort" };
+      }
 
-			const result: ParsedStreamEvent[] = [];
-			for await (const e of parseStream(slowStream(), controller.signal)) {
-				result.push(e);
-			}
+      const result: ParsedStreamEvent[] = [];
+      for await (const e of parseStream(slowStream(), controller.signal)) {
+        result.push(e);
+      }
 
-			const done = ofType(result, "done")[0]!;
-			expect(done.result.interrupt).toBe("aborted");
-		});
+      const done = ofType(result, "done")[0]!;
+      expect(done.result.interrupt).toBe("aborted");
+    });
 
-		it("finishReason=length → interrupt=length", async () => {
-			const events = await collect([
-				{ type: "content", text: "truncated output" },
-				{ type: "done", finishReason: "length", usage: null },
-			]);
+    it("finishReason=length → interrupt=length", async () => {
+      const events = await collect([
+        { type: "content", text: "truncated output" },
+        { type: "done", finishReason: "length", usage: null },
+      ]);
 
-			const done = ofType(events, "done")[0]!;
-			expect(done.result.interrupt).toBe("length");
-		});
+      const done = ofType(events, "done")[0]!;
+      expect(done.result.interrupt).toBe("length");
+    });
 
-		it("error 在 thinking 阶段：自动插入 thinking_end", async () => {
-			const events = await collect([
-				{ type: "thinking", text: "thinking..." },
-				{ type: "error", error: "crash" },
-				{ type: "done", finishReason: "stop", usage: null },
-			]);
+    it("error 在 thinking 阶段：自动插入 thinking_end", async () => {
+      const events = await collect([
+        { type: "thinking", text: "thinking..." },
+        { type: "error", error: "crash" },
+        { type: "done", finishReason: "stop", usage: null },
+      ]);
 
-			const types = events.map((e) => e.type);
-			const thinkingStartIdx = types.indexOf("thinking_start");
-			const thinkingEndIdx = types.indexOf("thinking_end");
-			const errorIdx = types.indexOf("error");
-			expect(thinkingStartIdx).toBeGreaterThan(-1);
-			expect(thinkingEndIdx).toBeGreaterThan(thinkingStartIdx);
-			expect(thinkingEndIdx).toBeGreaterThan(-1);
-			expect(errorIdx).toBeGreaterThan(thinkingEndIdx);
-		});
-	});
+      const types = events.map((e) => e.type);
+      const thinkingStartIdx = types.indexOf("thinking_start");
+      const thinkingEndIdx = types.indexOf("thinking_end");
+      const errorIdx = types.indexOf("error");
+      expect(thinkingStartIdx).toBeGreaterThan(-1);
+      expect(thinkingEndIdx).toBeGreaterThan(thinkingStartIdx);
+      expect(thinkingEndIdx).toBeGreaterThan(-1);
+      expect(errorIdx).toBeGreaterThan(thinkingEndIdx);
+    });
+  });
 
-	describe("done 汇总", () => {
-		it("accumulator 包含完整累积内容", async () => {
-			const events = await collect([
-				{ type: "thinking", text: "reason" },
-				{ type: "content", text: "answer" },
-				{
-					type: "done",
-					finishReason: "stop",
-					usage: {
-						inputTokens: 100,
-						outputTokens: 50,
-						totalTokens: 150,
-						cacheReadTokens: 0,
-						cacheWriteTokens: 0,
-					},
-				},
-			]);
+  describe("done 汇总", () => {
+    it("accumulator 包含完整累积内容", async () => {
+      const events = await collect([
+        { type: "thinking", text: "reason" },
+        { type: "content", text: "answer" },
+        {
+          type: "done",
+          finishReason: "stop",
+          usage: {
+            inputTokens: 100,
+            outputTokens: 50,
+            totalTokens: 150,
+            cacheReadTokens: 0,
+            cacheWriteTokens: 0,
+          },
+        },
+      ]);
 
-			const done = ofType(events, "done")[0]!;
-			expect(done.result.accumulator.reasoning).toBe("reason");
-			expect(done.result.accumulator.content).toBe("answer");
-			expect(done.result.accumulator.usage?.inputTokens).toBe(100);
-		});
+      const done = ofType(events, "done")[0]!;
+      expect(done.result.accumulator.reasoning).toBe("reason");
+      expect(done.result.accumulator.content).toBe("answer");
+      expect(done.result.accumulator.usage?.inputTokens).toBe(100);
+    });
 
-		it("空流 → done 正常返回", async () => {
-			const events = await collect([
-				{ type: "done", finishReason: "stop", usage: null },
-			]);
+    it("空流 → done 正常返回", async () => {
+      const events = await collect([
+        { type: "done", finishReason: "stop", usage: null },
+      ]);
 
-			expect(events).toHaveLength(1);
-			const done = ofType(events, "done")[0]!;
-			expect(done.result.interrupt).toBeNull();
-			expect(done.result.readyTools.size).toBe(0);
-		});
-	});
+      expect(events).toHaveLength(1);
+      const done = ofType(events, "done")[0]!;
+      expect(done.result.interrupt).toBeNull();
+      expect(done.result.readyTools.size).toBe(0);
+    });
+  });
 });

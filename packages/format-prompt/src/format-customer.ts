@@ -5,21 +5,22 @@
  */
 
 import type { CustomerCompleted } from "@n0n/types";
+
 import type { FormattedToolResult, TagAdapter } from "./utils.ts";
 import { pick } from "./utils.ts";
 
 const successTemplates = [
-	"Submitted successfully.",
-	"Progress received.",
-	"Result submitted.",
+  "Submitted successfully.",
+  "Progress received.",
+  "Result submitted.",
 ];
 
 export function formatCustomerResult(
-	_msg: CustomerCompleted,
-	tags: TagAdapter,
-	msgIndex: number,
+  _msg: CustomerCompleted,
+  tags: TagAdapter,
+  msgIndex: number,
 ): FormattedToolResult {
-	const text = pick(successTemplates, msgIndex);
-	const textWithTag = tags.wrapTag("result", text);
-	return { fact: textWithTag, hint: null };
+  const text = pick(successTemplates, msgIndex);
+  const textWithTag = tags.wrapTag("result", text);
+  return { fact: textWithTag, hint: null };
 }

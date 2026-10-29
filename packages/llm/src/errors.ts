@@ -7,17 +7,17 @@
 
 /** LLM API 调用错误（HTTP 非 2xx 响应） */
 export class LLMError extends Error {
-	constructor(
-		message: string,
-		public status: number,
-		public body: unknown,
-	) {
-		super(message);
-		this.name = "LLMError";
-	}
+  constructor(
+    message: string,
+    public status: number,
+    public body: unknown,
+  ) {
+    super(message);
+    this.name = "LLMError";
+  }
 }
 
 /** 判断错误是否为用户主动取消（AbortController.abort()） */
 export function isAbortError(err: unknown): boolean {
-	return err instanceof Error && err.name === "AbortError";
+  return err instanceof Error && err.name === "AbortError";
 }

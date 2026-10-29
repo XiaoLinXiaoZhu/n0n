@@ -8,33 +8,33 @@ export type { PostArgs } from "../../tool-args.ts";
 export type { CustomerCompleted, CustomerKind } from "./customer.ts";
 // Exec (post 的 exec:// 后端)
 export type {
-	ExecBackgrounded,
-	ExecCompleted,
-	ExecToolResult,
-	ExecTruncated,
-	ExecutionArtifactRef,
+  ExecBackgrounded,
+  ExecCompleted,
+  ExecToolResult,
+  ExecTruncated,
+  ExecutionArtifactRef,
 } from "./exec.ts";
 // 注册表核心
 export type {
-	MakeCall,
-	MakeResult,
-	MakeResultBase,
-	PartialToolCallRecord,
-	PostToolCall,
-	ToolCallRecord,
-	ToolCallRecordMap,
-	ToolMap,
-	ToolName,
+  MakeCall,
+  MakeResult,
+  MakeResultBase,
+  PartialToolCallRecord,
+  PostToolCall,
+  ToolCallRecord,
+  ToolCallRecordMap,
+  ToolMap,
+  ToolName,
 } from "./registry.ts";
 // Todo (post 的 todo:// 后端)
 export type { TodoCompleted, TodoRecovered, TodoToolResult } from "./todo.ts";
 // Write (post 的 write:// 后端)
 export type {
-	WriteCompleted,
-	WriteFailed,
-	WriteRecovered,
-	WriteRecoverFailed,
-	WriteToolResult,
+  WriteCompleted,
+  WriteFailed,
+  WriteRecovered,
+  WriteRecoverFailed,
+  WriteToolResult,
 } from "./write.ts";
 
 // ── 聚合 ToolResult 联合 ──
@@ -49,10 +49,7 @@ import type { WriteToolResult } from "./write.ts";
  * 以 scheme 字面量（exec | write | customer | todo）区分后端，再以 status 细分。
  */
 export type ToolResult =
-	| ExecToolResult
-	| WriteToolResult
-	| CustomerCompleted
-	| TodoToolResult;
+  ExecToolResult | WriteToolResult | CustomerCompleted | TodoToolResult;
 
 // ── 工具执行结局 ──
 
@@ -64,19 +61,16 @@ import type { ToolArgErrorMessage } from "../errors.ts";
  * arg_error: 参数解析失败，无结果。
  */
 export type ToolExecOutcome =
-	| { status: "completed"; result: ToolResult }
-	| { status: "arg_error" };
+  { status: "completed"; result: ToolResult } | { status: "arg_error" };
 
 /** 工具执行过程中的流式输出 chunk */
 export interface ToolOutputChunk {
-	type: "tool_output_chunk";
-	callId: string;
-	tool: string;
-	chunk: string;
+  type: "tool_output_chunk";
+  callId: string;
+  tool: string;
+  chunk: string;
 }
 
 /** 工具流式执行产出：chunk 或最终结果 */
 export type ToolStreamEvent =
-	| ToolOutputChunk
-	| ToolResult
-	| ToolArgErrorMessage;
+  ToolOutputChunk | ToolResult | ToolArgErrorMessage;

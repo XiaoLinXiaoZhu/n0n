@@ -8,11 +8,12 @@
 import type { StreamAccumulator } from "@n0n/shared";
 import type { PartialToolCall, RecoveredPair, ToolRecover } from "@n0n/tools";
 import type {
-	AssistantToolCallMessage,
-	DomainMessage,
-	PartialToolCallRecord,
-	ToolCallRecord,
+  AssistantToolCallMessage,
+  DomainMessage,
+  PartialToolCallRecord,
+  ToolCallRecord,
 } from "@n0n/types";
+
 import type { PipelineJob } from "./scheduler.ts";
 import type { StreamingResult } from "./streaming.ts";
 
@@ -20,69 +21,69 @@ import type { StreamingResult } from "./streaming.ts";
 
 /** 从 streaming 结果中提取未完成的工具调用，委托工具会话恢复并执行 */
 export async function recoverTruncatedCalls(
-	result: StreamingResult,
-	recover: ToolRecover,
+  result: StreamingResult,
+  recover: ToolRecover,
 ): Promise<RecoveredPair[]> {
-	const partials: PartialToolCall[] = [];
-	const acc = result.accumulator;
+  const partials: PartialToolCall[] = [];
+  const acc = result.accumulator;
 
-	for (const [idx, tcAcc] of acc.toolCalls) {
-		if (result.readyTools.has(idx)) continue; // 已完成的跳过
-		if (!tcAcc.toolCallId || !tcAcc.toolName) continue;
-		partials.push({
-			index: idx,
-			toolCallId: tcAcc.toolCallId,
-			toolName: tcAcc.toolName,
-			partialInput: tcAcc.input,
-		});
-	}
+  for (const [idx, tcAcc] of acc.toolCalls) {
+    if (result.readyTools.has(idx)) continue; // 已完成的跳过
+    if (!tcAcc.toolCallId || !tcAcc.toolName) continue;
+    partials.push({
+      index: idx,
+      toolCallId: tcAcc.toolCallId,
+      toolName: tcAcc.toolName,
+      partialInput: tcAcc.input,
+    });
+  }
 
-	const pairs: RecoveredPair[] = [];
-	for (const partial of partials) {
-		pairs.push(await recover(partial));
-	}
-	return pairs;
+  const pairs: RecoveredPair[] = [];
+  for (const partial of partials) {
+    pairs.push(await recover(partial));
+  }
+  return pairs;
 }
 
 // ── 消息构建 ──
 
 /** 构建 assistant_tool_call 消息 */
 export function buildToolCallMessage(
-	acc: StreamAccumulator,
-	toolCalls: (ToolCallRecord | PartialToolCallRecord)[],
+  acc: StreamAccumulator,
+  toolCalls: (ToolCallRecord | PartialToolCallRecord)[],
 ): AssistantToolCallMessage {
-	return {
-		type: "assistant_tool_call",
-		content: acc.content || null,
-		reasoning: acc.reasoning
-			? { ok: true as const, value: acc.reasoning }
-			: { ok: false as const },
-		reasoningSignature: acc.reasoningSignature,
-		toolCalls,
-	};
+  return {
+    type: "assistant_tool_call",
+    content: acc.content || null,
+    reasoning: acc.reasoning
+      ? { ok: true as const, value: acc.reasoning }
+      : { ok: false as const },
+    reasoningSignature: acc.reasoningSignature,
+    toolCalls,
+  };
 }
 
 /** 从 scheduler 完成的 jobs 中收集 domain messages（结果 + 错误） */
 export function collectJobMessages(
-	jobs: readonly PipelineJob[],
+  jobs: readonly PipelineJob[],
 ): DomainMessage[] {
-	const msgs: DomainMessage[] = [];
-	for (const job of jobs) {
-		switch (job.status) {
-			case "completed":
-				msgs.push(job.result);
-				break;
-			case "failed":
-				msgs.push(job.argError);
-				break;
-			case "pending":
-			case "running":
-				break;
-			default: {
-				const _exhaustive: never = job;
-				break;
-			}
-		}
-	}
-	return msgs;
+  const msgs: DomainMessage[] = [];
+  for (const job of jobs) {
+    switch (job.status) {
+      case "completed":
+        msgs.push(job.result);
+        break;
+      case "failed":
+        msgs.push(job.argError);
+        break;
+      case "pending":
+      case "running":
+        break;
+      default: {
+        const _exhaustive: never = job;
+        break;
+      }
+    }
+  }
+  return msgs;
 }

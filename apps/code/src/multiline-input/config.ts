@@ -7,6 +7,7 @@
  */
 
 import { z } from "zod";
+
 import { DEFAULT_CODE_SETTINGS } from "../config-defaults.ts";
 
 /** 菜单/输入框对齐位置 */
@@ -17,26 +18,26 @@ export type EditorAlign = "left" | "center" | "right";
  * maxWidth/maxHeight 为 null 表示无限制（受终端尺寸约束）。
  */
 export interface UserInputConfig {
-	maxWidth: number | null;
-	maxHeight: number | null;
-	align: EditorAlign;
+  maxWidth: number | null;
+  maxHeight: number | null;
+  align: EditorAlign;
 }
 
 /** 把 TOML 的 -1（或 ≤0）转为 null（无限制），正数原样保留 */
 const limitField = z
-	.number()
-	.default(DEFAULT_CODE_SETTINGS.user_input.max_width)
-	.transform((n) => (n > 0 ? n : null));
+  .number()
+  .default(DEFAULT_CODE_SETTINGS.user_input.max_width)
+  .transform((n) => (n > 0 ? n : null));
 
 const fields = z.object({
-	max_width: limitField,
-	max_height: z
-		.number()
-		.default(DEFAULT_CODE_SETTINGS.user_input.max_height)
-		.transform((n) => (n > 0 ? n : null)),
-	align: z
-		.enum(["left", "center", "right"])
-		.default(DEFAULT_CODE_SETTINGS.user_input.align),
+  max_width: limitField,
+  max_height: z
+    .number()
+    .default(DEFAULT_CODE_SETTINGS.user_input.max_height)
+    .transform((n) => (n > 0 ? n : null)),
+  align: z
+    .enum(["left", "center", "right"])
+    .default(DEFAULT_CODE_SETTINGS.user_input.align),
 });
 
 /**
@@ -44,12 +45,12 @@ const fields = z.object({
  * parse 后直接得到干净的 UserInputConfig。
  */
 export const UserInputConfigSchema = z
-	.optional(fields)
-	.transform((c): UserInputConfig => {
-		const parsed = c ?? fields.parse({});
-		return {
-			maxWidth: parsed.max_width,
-			maxHeight: parsed.max_height,
-			align: parsed.align,
-		};
-	});
+  .optional(fields)
+  .transform((c): UserInputConfig => {
+    const parsed = c ?? fields.parse({});
+    return {
+      maxWidth: parsed.max_width,
+      maxHeight: parsed.max_height,
+      align: parsed.align,
+    };
+  });

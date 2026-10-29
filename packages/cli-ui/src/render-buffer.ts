@@ -14,149 +14,149 @@ import type { ToolCallRecord, ToolExecOutcome, ToolResult } from "@n0n/types";
 // ── 渲染回调接口 ──
 
 export interface RenderSink {
-	onStart(tc: ToolCallRecord): void;
-	onChunk(tool: string, chunk: string): void;
-	onEnd(result: ToolResult): void;
+  onStart(tc: ToolCallRecord): void;
+  onChunk(tool: string, chunk: string): void;
+  onEnd(result: ToolResult): void;
 }
 
 // ── 内部缓冲事件 ──
 
 type BufferedEvent =
-	| { kind: "chunk"; tool: string; chunk: string }
-	| { kind: "end"; result: ToolResult };
+  | { kind: "chunk"; tool: string; chunk: string }
+  | { kind: "end"; result: ToolResult };
 
 interface ToolEntry {
-	tc: ToolCallRecord;
-	events: BufferedEvent[];
-	done: boolean;
-	/** 是否已向 sink 发射过 onStart */
-	started: boolean;
-	argError: boolean;
+  tc: ToolCallRecord;
+  events: BufferedEvent[];
+  done: boolean;
+  /** 是否已向 sink 发射过 onStart */
+  started: boolean;
+  argError: boolean;
 }
 
 // ── RenderBuffer ──
 
 export class RenderBuffer {
-	private readonly queue: ToolEntry[] = [];
-	private readonly entryMap = new Map<string, ToolEntry>();
-	private headIdx = 0;
-	private paused = true;
+  private readonly queue: ToolEntry[] = [];
+  private readonly entryMap = new Map<string, ToolEntry>();
+  private headIdx = 0;
+  private paused = true;
 
-	constructor(private readonly sink: RenderSink) {}
+  constructor(private readonly sink: RenderSink) {}
 
-	/** 注册一个新工具（按调用顺序） */
-	register(tc: ToolCallRecord): void {
-		const entry: ToolEntry = {
-			tc,
-			events: [],
-			done: false,
-			started: false,
-			argError: false,
-		};
-		this.queue.push(entry);
-		this.entryMap.set(tc.id, entry);
+  /** 注册一个新工具（按调用顺序） */
+  register(tc: ToolCallRecord): void {
+    const entry: ToolEntry = {
+      tc,
+      events: [],
+      done: false,
+      started: false,
+      argError: false,
+    };
+    this.queue.push(entry);
+    this.entryMap.set(tc.id, entry);
 
-		if (!this.paused && this.isHead(entry)) {
-			entry.started = true;
-			this.sink.onStart(entry.tc);
-		}
-	}
+    if (!this.paused && this.isHead(entry)) {
+      entry.started = true;
+      this.sink.onStart(entry.tc);
+    }
+  }
 
-	/** 推入一个 chunk 事件 */
-	pushChunk(tcId: string, tool: string, chunk: string): void {
-		const entry = this.entryMap.get(tcId);
-		if (!entry) return;
+  /** 推入一个 chunk 事件 */
+  pushChunk(tcId: string, tool: string, chunk: string): void {
+    const entry = this.entryMap.get(tcId);
+    if (!entry) return;
 
-		if (!this.paused && this.isHead(entry)) {
-			if (!entry.started) {
-				entry.started = true;
-				this.sink.onStart(entry.tc);
-			}
-			this.sink.onChunk(tool, chunk);
-		} else {
-			entry.events.push({ kind: "chunk", tool, chunk });
-		}
-	}
+    if (!this.paused && this.isHead(entry)) {
+      if (!entry.started) {
+        entry.started = true;
+        this.sink.onStart(entry.tc);
+      }
+      this.sink.onChunk(tool, chunk);
+    } else {
+      entry.events.push({ kind: "chunk", tool, chunk });
+    }
+  }
 
-	/** 推入完成事件（result 为 null 表示 argError，仅推进队列不渲染） */
-	pushEnd(tcId: string, outcome: ToolExecOutcome): void {
-		const entry = this.entryMap.get(tcId);
-		if (!entry) return;
-		entry.done = true;
+  /** 推入完成事件（result 为 null 表示 argError，仅推进队列不渲染） */
+  pushEnd(tcId: string, outcome: ToolExecOutcome): void {
+    const entry = this.entryMap.get(tcId);
+    if (!entry) return;
+    entry.done = true;
 
-		if (outcome.status === "arg_error") {
-			entry.argError = true;
-			if (!this.paused && this.isHead(entry)) {
-				this.headIdx++;
-				this.flushHead();
-			}
-			return;
-		}
+    if (outcome.status === "arg_error") {
+      entry.argError = true;
+      if (!this.paused && this.isHead(entry)) {
+        this.headIdx++;
+        this.flushHead();
+      }
+      return;
+    }
 
-		const result = outcome.result;
-		if (!this.paused && this.isHead(entry)) {
-			if (!entry.started) {
-				entry.started = true;
-				this.sink.onStart(entry.tc);
-			}
-			this.sink.onEnd(result);
-			this.headIdx++;
-			this.flushHead();
-		} else {
-			entry.events.push({ kind: "end", result });
-		}
-	}
+    const result = outcome.result;
+    if (!this.paused && this.isHead(entry)) {
+      if (!entry.started) {
+        entry.started = true;
+        this.sink.onStart(entry.tc);
+      }
+      this.sink.onEnd(result);
+      this.headIdx++;
+      this.flushHead();
+    } else {
+      entry.events.push({ kind: "end", result });
+    }
+  }
 
-	/** 开始输出（flush 已缓冲的事件，后续事件实时输出） */
-	resume(): void {
-		this.paused = false;
-		this.flushHead();
-	}
+  /** 开始输出（flush 已缓冲的事件，后续事件实时输出） */
+  resume(): void {
+    this.paused = false;
+    this.flushHead();
+  }
 
-	/** 重置所有状态（每轮开始时调用） */
-	reset(): void {
-		this.queue.length = 0;
-		this.entryMap.clear();
-		this.headIdx = 0;
-		this.paused = true;
-	}
+  /** 重置所有状态（每轮开始时调用） */
+  reset(): void {
+    this.queue.length = 0;
+    this.entryMap.clear();
+    this.headIdx = 0;
+    this.paused = true;
+  }
 
-	private isHead(entry: ToolEntry): boolean {
-		return this.queue[this.headIdx] === entry;
-	}
+  private isHead(entry: ToolEntry): boolean {
+    return this.queue[this.headIdx] === entry;
+  }
 
-	/** 从当前队首开始，flush 所有可输出的事件 */
-	private flushHead(): void {
-		while (this.headIdx < this.queue.length) {
-			const entry = this.queue[this.headIdx];
-			if (!entry) break;
+  /** 从当前队首开始，flush 所有可输出的事件 */
+  private flushHead(): void {
+    while (this.headIdx < this.queue.length) {
+      const entry = this.queue[this.headIdx];
+      if (!entry) break;
 
-			// argError 的 entry：跳过不渲染
-			if (entry.argError) {
-				this.headIdx++;
-				continue;
-			}
+      // argError 的 entry：跳过不渲染
+      if (entry.argError) {
+        this.headIdx++;
+        continue;
+      }
 
-			if (!entry.started) {
-				entry.started = true;
-				this.sink.onStart(entry.tc);
-			}
+      if (!entry.started) {
+        entry.started = true;
+        this.sink.onStart(entry.tc);
+      }
 
-			for (const event of entry.events) {
-				if (event.kind === "chunk") {
-					this.sink.onChunk(event.tool, event.chunk);
-				} else {
-					this.sink.onEnd(event.result);
-				}
-			}
-			entry.events.length = 0;
+      for (const event of entry.events) {
+        if (event.kind === "chunk") {
+          this.sink.onChunk(event.tool, event.chunk);
+        } else {
+          this.sink.onEnd(event.result);
+        }
+      }
+      entry.events.length = 0;
 
-			if (entry.done) {
-				this.headIdx++;
-				continue;
-			}
-			// 当前 entry 还在执行中，后续 push 会实时输出
-			break;
-		}
-	}
+      if (entry.done) {
+        this.headIdx++;
+        continue;
+      }
+      // 当前 entry 还在执行中，后续 push 会实时输出
+      break;
+    }
+  }
 }

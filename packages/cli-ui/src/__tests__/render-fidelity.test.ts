@@ -8,327 +8,329 @@
  */
 
 import { afterEach, describe, expect, test } from "bun:test";
+
 import type { PostArgs, ToolCallRecord } from "@n0n/types";
+
 import {
-	randomChunks,
-	restoreStderr,
-	saveStderr,
-	setupVT,
-	stripAnsi,
+  randomChunks,
+  restoreStderr,
+  saveStderr,
+  setupVT,
+  stripAnsi,
 } from "./test-helpers.ts";
 
 const saved = saveStderr();
 
 describe("RichRenderer 虚拟终端保真测试", () => {
-	afterEach(() => restoreStderr(saved));
+  afterEach(() => restoreStderr(saved));
 
-	test("基础流式渲染 — 最终画面不应有残留", async () => {
-		const vt = setupVT(80);
-		const { RichRenderer } = await import("../rich-renderer.ts");
-		const renderer = new RichRenderer();
+  test("基础流式渲染 — 最终画面不应有残留", async () => {
+    const vt = setupVT(80);
+    const { RichRenderer } = await import("../rich-renderer.ts");
+    const renderer = new RichRenderer();
 
-		renderer.roundStart(1, 10, 3);
+    renderer.roundStart(1, 10, 3);
 
-		// 流式 tool call
-		const json = '{"uri":"exec://cmd/probe","body":"echo hello"}';
-		const chunks = randomChunks(json, 42);
-		renderer.toolCallArgStart(0, "post");
-		for (const chunk of chunks) {
-			renderer.toolCallArgChunk(0, chunk);
-		}
-		renderer.streamEnd();
+    // 流式 tool call
+    const json = '{"uri":"exec://cmd/probe","body":"echo hello"}';
+    const chunks = randomChunks(json, 42);
+    renderer.toolCallArgStart(0, "post");
+    for (const chunk of chunks) {
+      renderer.toolCallArgChunk(0, chunk);
+    }
+    renderer.streamEnd();
 
-		renderer.toolExecStart("call_1", {
-			id: "call_1",
-			tool: "post",
-			args: JSON.parse(json),
-		});
-		renderer.toolExecEnd("call_1", {
-			status: "completed",
-			result: {
-				type: "tool_result" as const,
-				tool: "post",
-				scheme: "exec" as const,
-				claim: "probe",
-				runtime: "cmd",
-				cwd: "C:\\",
-				status: "completed" as const,
-				call: {
-					id: "call_1",
-					tool: "post",
-					args: JSON.parse(json),
-				},
-				stdout: "hello",
-				stderr: "",
-				exitCode: 0,
-				durationMs: 100,
-			},
-		});
+    renderer.toolExecStart("call_1", {
+      id: "call_1",
+      tool: "post",
+      args: JSON.parse(json),
+    });
+    renderer.toolExecEnd("call_1", {
+      status: "completed",
+      result: {
+        type: "tool_result" as const,
+        tool: "post",
+        scheme: "exec" as const,
+        claim: "probe",
+        runtime: "cmd",
+        cwd: "C:\\",
+        status: "completed" as const,
+        call: {
+          id: "call_1",
+          tool: "post",
+          args: JSON.parse(json),
+        },
+        stdout: "hello",
+        stderr: "",
+        exitCode: 0,
+        durationMs: 100,
+      },
+    });
 
-		const lines = vt.getVisibleLines();
-		const cleanLines = lines.map((l) => stripAnsi(l));
+    const lines = vt.getVisibleLines();
+    const cleanLines = lines.map((l) => stripAnsi(l));
 
-		// 检查最终画面中不应有 "(streaming…)" 残留
-		for (const line of cleanLines) {
-			expect(line).not.toContain("(streaming");
-		}
+    // 检查最终画面中不应有 "(streaming…)" 残留
+    for (const line of cleanLines) {
+      expect(line).not.toContain("(streaming");
+    }
 
-		// 应有结果行（claim 为标签）
-		const hasResult = cleanLines.some(
-			(l) => l.includes("probe") && l.includes("exit=0"),
-		);
-		expect(hasResult).toBe(true);
+    // 应有结果行（claim 为标签）
+    const hasResult = cleanLines.some(
+      (l) => l.includes("probe") && l.includes("exit=0"),
+    );
+    expect(hasResult).toBe(true);
 
-		// 不应有重复的 "▸ post" 行
-		const toolHeaders = cleanLines.filter((l) =>
-			l.trimStart().startsWith("▸ post"),
-		);
-		expect(toolHeaders.length).toBe(1);
-	});
+    // 不应有重复的 "▸ post" 行
+    const toolHeaders = cleanLines.filter((l) =>
+      l.trimStart().startsWith("▸ post"),
+    );
+    expect(toolHeaders.length).toBe(1);
+  });
 
-	test("CJK 内容流式渲染 — wrap 后 clear 不应残留", async () => {
-		const vt = setupVT(80);
-		const { RichRenderer } = await import("../rich-renderer.ts");
-		const renderer = new RichRenderer();
+  test("CJK 内容流式渲染 — wrap 后 clear 不应残留", async () => {
+    const vt = setupVT(80);
+    const { RichRenderer } = await import("../rich-renderer.ts");
+    const renderer = new RichRenderer();
 
-		renderer.roundStart(1, 10, 3);
+    renderer.roundStart(1, 10, 3);
 
-		// 含中文的 customer 参数
-		const json =
-			'{"uri":"customer://form","body":"已完成 PR #61 的清理：1. 关闭 PR #61，附带说明关闭原因（核心功能已被 PR #75/#76 覆盖，分支严重过时）2. 删除远程分支"}';
-		const chunks = randomChunks(json, 123);
-		renderer.toolCallArgStart(0, "post");
-		for (const chunk of chunks) {
-			renderer.toolCallArgChunk(0, chunk);
-		}
-		renderer.streamEnd();
+    // 含中文的 customer 参数
+    const json =
+      '{"uri":"customer://form","body":"已完成 PR #61 的清理：1. 关闭 PR #61，附带说明关闭原因（核心功能已被 PR #75/#76 覆盖，分支严重过时）2. 删除远程分支"}';
+    const chunks = randomChunks(json, 123);
+    renderer.toolCallArgStart(0, "post");
+    for (const chunk of chunks) {
+      renderer.toolCallArgChunk(0, chunk);
+    }
+    renderer.streamEnd();
 
-		renderer.toolExecStart("call_1", {
-			id: "call_1",
-			tool: "post",
-			args: JSON.parse(json),
-		});
-		renderer.toolExecEnd("call_1", {
-			status: "completed",
-			result: {
-				type: "tool_result" as const,
-				tool: "post",
-				scheme: "customer" as const,
-				kind: "form" as const,
-				slug: null,
-				status: "completed" as const,
-				call: { id: "call_1", tool: "post", args: JSON.parse(json) },
-			},
-		});
+    renderer.toolExecStart("call_1", {
+      id: "call_1",
+      tool: "post",
+      args: JSON.parse(json),
+    });
+    renderer.toolExecEnd("call_1", {
+      status: "completed",
+      result: {
+        type: "tool_result" as const,
+        tool: "post",
+        scheme: "customer" as const,
+        kind: "form" as const,
+        slug: null,
+        status: "completed" as const,
+        call: { id: "call_1", tool: "post", args: JSON.parse(json) },
+      },
+    });
 
-		const lines = vt.getVisibleLines();
-		const cleanLines = lines.map((l) => stripAnsi(l));
+    const lines = vt.getVisibleLines();
+    const cleanLines = lines.map((l) => stripAnsi(l));
 
-		// 不应有 streaming 残留
-		for (const line of cleanLines) {
-			expect(line).not.toContain("(streaming");
-		}
+    // 不应有 streaming 残留
+    for (const line of cleanLines) {
+      expect(line).not.toContain("(streaming");
+    }
 
-		// 不应有重复的工具头
-		const toolHeaders = cleanLines.filter((l) =>
-			l.trimStart().startsWith("▸ post"),
-		);
-		expect(toolHeaders.length).toBe(1);
-	});
+    // 不应有重复的工具头
+    const toolHeaders = cleanLines.filter((l) =>
+      l.trimStart().startsWith("▸ post"),
+    );
+    expect(toolHeaders.length).toBe(1);
+  });
 
-	test("随机 chunk 分割 fuzz（多种子）— 最终画面一致", async () => {
-		const _vt0 = setupVT(80);
-		await import("../rich-renderer.ts");
-		restoreStderr(saved);
+  test("随机 chunk 分割 fuzz（多种子）— 最终画面一致", async () => {
+    const _vt0 = setupVT(80);
+    await import("../rich-renderer.ts");
+    restoreStderr(saved);
 
-		// 用不同种子跑同一场景，收集最终画面
-		const json = '{"uri":"exec://cmd/ls?waitfor=30","body":"ls -la"}';
-		const finalScreens: string[][] = [];
+    // 用不同种子跑同一场景，收集最终画面
+    const json = '{"uri":"exec://cmd/ls?waitfor=30","body":"ls -la"}';
+    const finalScreens: string[][] = [];
 
-		for (const seed of [1, 42, 100, 999, 65535]) {
-			const vt = setupVT(80);
-			const { RichRenderer } = await import("../rich-renderer.ts");
-			const renderer = new RichRenderer();
+    for (const seed of [1, 42, 100, 999, 65535]) {
+      const vt = setupVT(80);
+      const { RichRenderer } = await import("../rich-renderer.ts");
+      const renderer = new RichRenderer();
 
-			renderer.roundStart(1, 10, 3);
-			const chunks = randomChunks(json, seed);
-			renderer.toolCallArgStart(0, "post");
-			for (const chunk of chunks) {
-				renderer.toolCallArgChunk(0, chunk);
-			}
-			const tc: ToolCallRecord = {
-				id: "call_1",
-				tool: "post",
-				args: JSON.parse(json) as PostArgs,
-			};
-			renderer.toolCallArgEnd(0, tc);
-			renderer.streamEnd();
-			renderer.toolExecStart("call_1", {
-				id: "call_1",
-				tool: "post",
-				args: JSON.parse(json),
-			});
-			renderer.toolExecEnd("call_1", {
-				status: "completed",
-				result: {
-					type: "tool_result" as const,
-					tool: "post",
-					scheme: "exec" as const,
-					claim: "ls",
-					runtime: "cmd",
-					cwd: "C:\\",
-					status: "completed" as const,
-					call: {
-						id: "call_1",
-						tool: "post",
-						args: JSON.parse(json),
-					},
-					stdout: "output",
-					stderr: "",
-					exitCode: 0,
-					durationMs: 50,
-				},
-			});
+      renderer.roundStart(1, 10, 3);
+      const chunks = randomChunks(json, seed);
+      renderer.toolCallArgStart(0, "post");
+      for (const chunk of chunks) {
+        renderer.toolCallArgChunk(0, chunk);
+      }
+      const tc: ToolCallRecord = {
+        id: "call_1",
+        tool: "post",
+        args: JSON.parse(json) as PostArgs,
+      };
+      renderer.toolCallArgEnd(0, tc);
+      renderer.streamEnd();
+      renderer.toolExecStart("call_1", {
+        id: "call_1",
+        tool: "post",
+        args: JSON.parse(json),
+      });
+      renderer.toolExecEnd("call_1", {
+        status: "completed",
+        result: {
+          type: "tool_result" as const,
+          tool: "post",
+          scheme: "exec" as const,
+          claim: "ls",
+          runtime: "cmd",
+          cwd: "C:\\",
+          status: "completed" as const,
+          call: {
+            id: "call_1",
+            tool: "post",
+            args: JSON.parse(json),
+          },
+          stdout: "output",
+          stderr: "",
+          exitCode: 0,
+          durationMs: 50,
+        },
+      });
 
-			const cleanLines = vt.getVisibleLines().map((l) => stripAnsi(l));
-			finalScreens.push(cleanLines);
-			restoreStderr(saved);
-		}
+      const cleanLines = vt.getVisibleLines().map((l) => stripAnsi(l));
+      finalScreens.push(cleanLines);
+      restoreStderr(saved);
+    }
 
-		// 所有种子的最终画面应该相同
-		const reference = finalScreens[0];
-		for (let i = 1; i < finalScreens.length; i++) {
-			expect(finalScreens[i]).toEqual(reference);
-		}
-	});
+    // 所有种子的最终画面应该相同
+    const reference = finalScreens[0];
+    for (let i = 1; i < finalScreens.length; i++) {
+      expect(finalScreens[i]).toEqual(reference);
+    }
+  });
 
-	test("极细粒度 chunk（单字符）— 不应崩溃或残留", async () => {
-		const vt = setupVT(80);
-		const { RichRenderer } = await import("../rich-renderer.ts");
-		const renderer = new RichRenderer();
+  test("极细粒度 chunk（单字符）— 不应崩溃或残留", async () => {
+    const vt = setupVT(80);
+    const { RichRenderer } = await import("../rich-renderer.ts");
+    const renderer = new RichRenderer();
 
-		renderer.roundStart(1, 10, 3);
+    renderer.roundStart(1, 10, 3);
 
-		// 每次只发 1 个字符
-		const json = '{"uri":"exec://sh/hi","body":"echo hi"}';
-		for (let i = 0; i < json.length; i++) {
-			if (i === 0) renderer.toolCallArgStart(0, "post");
-			renderer.toolCallArgChunk(0, json[i] as string);
-		}
-		renderer.streamEnd();
+    // 每次只发 1 个字符
+    const json = '{"uri":"exec://sh/hi","body":"echo hi"}';
+    for (let i = 0; i < json.length; i++) {
+      if (i === 0) renderer.toolCallArgStart(0, "post");
+      renderer.toolCallArgChunk(0, json[i] as string);
+    }
+    renderer.streamEnd();
 
-		renderer.toolExecStart("call_1", {
-			id: "call_1",
-			tool: "post",
-			args: JSON.parse(json),
-		});
+    renderer.toolExecStart("call_1", {
+      id: "call_1",
+      tool: "post",
+      args: JSON.parse(json),
+    });
 
-		const lines = vt.getVisibleLines();
-		const cleanLines = lines.map((l) => stripAnsi(l));
+    const lines = vt.getVisibleLines();
+    const cleanLines = lines.map((l) => stripAnsi(l));
 
-		// 不应有 streaming 残留
-		for (const line of cleanLines) {
-			expect(line).not.toContain("(streaming");
-		}
-	});
+    // 不应有 streaming 残留
+    for (const line of cleanLines) {
+      expect(line).not.toContain("(streaming");
+    }
+  });
 
-	test("窄终端（40列）+ CJK — wrap 边界验证", async () => {
-		const vt = setupVT(40);
-		const { RichRenderer } = await import("../rich-renderer.ts");
-		const renderer = new RichRenderer();
+  test("窄终端（40列）+ CJK — wrap 边界验证", async () => {
+    const vt = setupVT(40);
+    const { RichRenderer } = await import("../rich-renderer.ts");
+    const renderer = new RichRenderer();
 
-		renderer.roundStart(1, 10, 3);
+    renderer.roundStart(1, 10, 3);
 
-		const json =
-			'{"uri":"customer://question","body":"关闭并清理远程分支和本地引用完成所有操作"}';
-		const chunks = randomChunks(json, 77);
-		renderer.toolCallArgStart(0, "post");
-		for (const chunk of chunks) {
-			renderer.toolCallArgChunk(0, chunk);
-		}
-		renderer.streamEnd();
+    const json =
+      '{"uri":"customer://question","body":"关闭并清理远程分支和本地引用完成所有操作"}';
+    const chunks = randomChunks(json, 77);
+    renderer.toolCallArgStart(0, "post");
+    for (const chunk of chunks) {
+      renderer.toolCallArgChunk(0, chunk);
+    }
+    renderer.streamEnd();
 
-		renderer.toolExecStart("call_1", {
-			id: "call_1",
-			tool: "post",
-			args: JSON.parse(json),
-		});
-		renderer.toolExecEnd("call_1", {
-			status: "completed",
-			result: {
-				type: "tool_result" as const,
-				tool: "post",
-				scheme: "customer" as const,
-				kind: "question" as const,
-				slug: null,
-				status: "completed" as const,
-				call: { id: "call_1", tool: "post", args: JSON.parse(json) },
-			},
-		});
+    renderer.toolExecStart("call_1", {
+      id: "call_1",
+      tool: "post",
+      args: JSON.parse(json),
+    });
+    renderer.toolExecEnd("call_1", {
+      status: "completed",
+      result: {
+        type: "tool_result" as const,
+        tool: "post",
+        scheme: "customer" as const,
+        kind: "question" as const,
+        slug: null,
+        status: "completed" as const,
+        call: { id: "call_1", tool: "post", args: JSON.parse(json) },
+      },
+    });
 
-		const lines = vt.getVisibleLines();
-		const cleanLines = lines.map((l) => stripAnsi(l));
+    const lines = vt.getVisibleLines();
+    const cleanLines = lines.map((l) => stripAnsi(l));
 
-		// 不应有 streaming 残留
-		for (const line of cleanLines) {
-			expect(line).not.toContain("(streaming");
-		}
+    // 不应有 streaming 残留
+    for (const line of cleanLines) {
+      expect(line).not.toContain("(streaming");
+    }
 
-		// 应有结果行
-		const hasResult = cleanLines.some((l) => l.includes("customer"));
-		expect(hasResult).toBe(true);
-	});
+    // 应有结果行
+    const hasResult = cleanLines.some((l) => l.includes("customer"));
+    expect(hasResult).toBe(true);
+  });
 
-	test("todo 结果渲染 — 结果行含 goal", async () => {
-		const vt = setupVT(80);
-		const { RichRenderer } = await import("../rich-renderer.ts");
-		const renderer = new RichRenderer();
+  test("todo 结果渲染 — 结果行含 goal", async () => {
+    const vt = setupVT(80);
+    const { RichRenderer } = await import("../rich-renderer.ts");
+    const renderer = new RichRenderer();
 
-		renderer.roundStart(1, 10, 3);
+    renderer.roundStart(1, 10, 3);
 
-		const json = '{"uri":"todo://refactor-auth","body":"- [ ] first"}';
-		renderer.toolCallArgStart(0, "post");
-		for (const chunk of randomChunks(json, 99)) {
-			renderer.toolCallArgChunk(0, chunk);
-		}
-		renderer.streamEnd();
+    const json = '{"uri":"todo://refactor-auth","body":"- [ ] first"}';
+    renderer.toolCallArgStart(0, "post");
+    for (const chunk of randomChunks(json, 99)) {
+      renderer.toolCallArgChunk(0, chunk);
+    }
+    renderer.streamEnd();
 
-		renderer.toolExecStart("call_1", {
-			id: "call_1",
-			tool: "post",
-			args: JSON.parse(json),
-		});
-		renderer.toolExecEnd("call_1", {
-			status: "completed",
-			result: {
-				type: "tool_result" as const,
-				tool: "post",
-				scheme: "todo" as const,
-				goal: "refactor-auth",
-				path: "C:\\session\\todo\\refactor-auth.md",
-				status: "completed" as const,
-				call: { id: "call_1", tool: "post", args: JSON.parse(json) },
-			},
-		});
+    renderer.toolExecStart("call_1", {
+      id: "call_1",
+      tool: "post",
+      args: JSON.parse(json),
+    });
+    renderer.toolExecEnd("call_1", {
+      status: "completed",
+      result: {
+        type: "tool_result" as const,
+        tool: "post",
+        scheme: "todo" as const,
+        goal: "refactor-auth",
+        path: "C:\\session\\todo\\refactor-auth.md",
+        status: "completed" as const,
+        call: { id: "call_1", tool: "post", args: JSON.parse(json) },
+      },
+    });
 
-		const cleanLines = vt.getVisibleLines().map((l) => stripAnsi(l));
+    const cleanLines = vt.getVisibleLines().map((l) => stripAnsi(l));
 
-		// 不应有 streaming 残留
-		for (const line of cleanLines) {
-			expect(line).not.toContain("(streaming");
-		}
+    // 不应有 streaming 残留
+    for (const line of cleanLines) {
+      expect(line).not.toContain("(streaming");
+    }
 
-		// 应有结果行，含 todo 标签和 goal
-		const hasResult = cleanLines.some(
-			(l) => l.includes("todo") && l.includes("refactor-auth"),
-		);
-		expect(hasResult).toBe(true);
-	});
+    // 应有结果行，含 todo 标签和 goal
+    const hasResult = cleanLines.some(
+      (l) => l.includes("todo") && l.includes("refactor-auth"),
+    );
+    expect(hasResult).toBe(true);
+  });
 
-	test("超长单行 exec 输出在折叠模式中使用有界预览", async () => {
-		const { boundExecPreviewLine } = await import("../rich-renderer.ts");
-		const preview = boundExecPreviewLine("x".repeat(100_000));
-		expect(preview).toContain("chars omitted");
-		expect(preview.length).toBeLessThan(4_200);
-	});
+  test("超长单行 exec 输出在折叠模式中使用有界预览", async () => {
+    const { boundExecPreviewLine } = await import("../rich-renderer.ts");
+    const preview = boundExecPreviewLine("x".repeat(100_000));
+    expect(preview).toContain("chars omitted");
+    expect(preview.length).toBeLessThan(4_200);
+  });
 });

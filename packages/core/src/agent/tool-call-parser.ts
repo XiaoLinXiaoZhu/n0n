@@ -5,38 +5,38 @@ import { PostArgsSchema } from "@n0n/types";
 
 /** 工具名 → 规范参数键序 */
 const PARAM_ORDER_MAP: Record<string, string[]> = {
-	post: Object.keys(PostArgsSchema.shape),
+  post: Object.keys(PostArgsSchema.shape),
 };
 
 /** 将 args 的键序调整为规范顺序（不在规范中的键追加在末尾） */
 function normalizeArgOrder(
-	args: Record<string, unknown>,
-	toolName: string,
+  args: Record<string, unknown>,
+  toolName: string,
 ): Record<string, unknown> {
-	const order = PARAM_ORDER_MAP[toolName];
-	if (!order) return args;
+  const order = PARAM_ORDER_MAP[toolName];
+  if (!order) return args;
 
-	const normalized: Record<string, unknown> = {};
-	for (const key of order) {
-		if (key in args) {
-			normalized[key] = args[key];
-		}
-	}
-	// 补充规范中未出现的键
-	for (const key of Object.keys(args)) {
-		if (!(key in normalized)) {
-			normalized[key] = args[key];
-		}
-	}
-	return normalized;
+  const normalized: Record<string, unknown> = {};
+  for (const key of order) {
+    if (key in args) {
+      normalized[key] = args[key];
+    }
+  }
+  // 补充规范中未出现的键
+  for (const key of Object.keys(args)) {
+    if (!(key in normalized)) {
+      normalized[key] = args[key];
+    }
+  }
+  return normalized;
 }
 
 /** parse：将 unknown 收窄为 Record<string, unknown>，非 plain object 时抛错 */
 function parseRecord(v: unknown): Record<string, unknown> {
-	if (v === null || typeof v !== "object" || Array.isArray(v)) {
-		throw new Error("expected a plain object");
-	}
-	return v as Record<string, unknown>;
+  if (v === null || typeof v !== "object" || Array.isArray(v)) {
+    throw new Error("expected a plain object");
+  }
+  return v as Record<string, unknown>;
 }
 
 // ── 解析 ──
@@ -49,20 +49,20 @@ function parseRecord(v: unknown): Record<string, unknown> {
  * 参数结构由执行阶段的 Zod schema 校验。
  */
 export function parseToolCalls(raw: AssistantToolCallPart[]): ToolCallRecord[] {
-	return raw.map((tc) => {
-		let args: Record<string, unknown>;
-		try {
-			const parsed =
-				typeof tc.input === "string" ? JSON.parse(tc.input) : tc.input;
-			const record = parseRecord(parsed);
-			args = normalizeArgOrder(record, tc.toolName);
-		} catch {
-			args = { _parseError: true, _raw: tc.input };
-		}
-		return {
-			id: tc.toolCallId,
-			tool: tc.toolName,
-			args,
-		} as ToolCallRecord;
-	});
+  return raw.map((tc) => {
+    let args: Record<string, unknown>;
+    try {
+      const parsed =
+        typeof tc.input === "string" ? JSON.parse(tc.input) : tc.input;
+      const record = parseRecord(parsed);
+      args = normalizeArgOrder(record, tc.toolName);
+    } catch {
+      args = { _parseError: true, _raw: tc.input };
+    }
+    return {
+      id: tc.toolCallId,
+      tool: tc.toolName,
+      args,
+    } as ToolCallRecord;
+  });
 }

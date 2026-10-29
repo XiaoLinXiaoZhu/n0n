@@ -12,113 +12,113 @@
 
 // ── Assistant 侧 ──
 export type {
-	AssistantTextMessage,
-	AssistantToolCallMessage,
-	GenericAssistantToolCallMessage,
-	GenericToolResultMessage,
-	ReasoningResult,
+  AssistantTextMessage,
+  AssistantToolCallMessage,
+  GenericAssistantToolCallMessage,
+  GenericToolResultMessage,
+  ReasoningResult,
 } from "./assistant.ts";
 // ── 元数据/控制 ──
 export type {
-	CacheBreakpointMessage,
-	TokenUsageMessage,
-	TurnFeedbackMessage,
+  CacheBreakpointMessage,
+  TokenUsageMessage,
+  TurnFeedbackMessage,
 } from "./base.ts";
 // ── Error 侧 ──
 export type {
-	InternalExecutionError,
-	InvalidArgsError,
-	ToolArgErrorMessage,
-	ToolError,
-	TruncatedRecoveryError,
-	UnknownToolError,
+  InternalExecutionError,
+  InvalidArgsError,
+  ToolArgErrorMessage,
+  ToolError,
+  TruncatedRecoveryError,
+  UnknownToolError,
 } from "./errors.ts";
 // ── 调度 ──
 export type { CanStartFn } from "./scheduling.ts";
 // Tool 侧
 export type {
-	// Customer
-	CustomerCompleted,
-	CustomerKind,
-	// Exec
-	ExecToolResult,
-	ExecutionArtifactRef,
-	MakeCall,
-	MakeResult,
-	MakeResultBase,
-	PartialToolCallRecord,
-	// 注册表
-	PostArgs,
-	PostToolCall,
-	// Todo
-	TodoCompleted,
-	TodoRecovered,
-	TodoToolResult,
-	ToolCallRecord,
-	ToolCallRecordMap,
-	ToolExecOutcome,
-	ToolMap,
-	ToolName,
-	ToolOutputChunk,
-	// 聚合
-	ToolResult,
-	ToolStreamEvent,
-	// Write
-	WriteCompleted,
-	WriteFailed,
-	WriteRecovered,
-	WriteRecoverFailed,
-	WriteToolResult,
+  // Customer
+  CustomerCompleted,
+  CustomerKind,
+  // Exec
+  ExecToolResult,
+  ExecutionArtifactRef,
+  MakeCall,
+  MakeResult,
+  MakeResultBase,
+  PartialToolCallRecord,
+  // 注册表
+  PostArgs,
+  PostToolCall,
+  // Todo
+  TodoCompleted,
+  TodoRecovered,
+  TodoToolResult,
+  ToolCallRecord,
+  ToolCallRecordMap,
+  ToolExecOutcome,
+  ToolMap,
+  ToolName,
+  ToolOutputChunk,
+  // 聚合
+  ToolResult,
+  ToolStreamEvent,
+  // Write
+  WriteCompleted,
+  WriteFailed,
+  WriteRecovered,
+  WriteRecoverFailed,
+  WriteToolResult,
 } from "./tools";
 // ── User 侧 ──
 export type {
-	GenericSystemMessage,
-	GenericUserTextMessage,
-	SystemWithSkillMessage,
-	UserImageMessage,
-	UserInputMessage,
+  GenericSystemMessage,
+  GenericUserTextMessage,
+  SystemWithSkillMessage,
+  UserImageMessage,
+  UserInputMessage,
 } from "./user.ts";
 
 // ── DomainMessage 联合类型 ──
 
 import type {
-	AssistantTextMessage,
-	AssistantToolCallMessage,
-	GenericAssistantToolCallMessage,
-	GenericToolResultMessage,
+  AssistantTextMessage,
+  AssistantToolCallMessage,
+  GenericAssistantToolCallMessage,
+  GenericToolResultMessage,
 } from "./assistant.ts";
 import type {
-	CacheBreakpointMessage,
-	TokenUsageMessage,
-	TurnFeedbackMessage,
+  CacheBreakpointMessage,
+  TokenUsageMessage,
+  TurnFeedbackMessage,
 } from "./base.ts";
 import type { ToolArgErrorMessage } from "./errors.ts";
 import type { ToolResult } from "./tools";
 import type {
-	GenericSystemMessage,
-	GenericUserTextMessage,
-	SystemWithSkillMessage,
-	UserImageMessage,
-	UserInputMessage,
+  GenericSystemMessage,
+  GenericUserTextMessage,
+  SystemWithSkillMessage,
+  UserImageMessage,
+  UserInputMessage,
 } from "./user.ts";
 
 /** 领域消息主干联合 */
 export type DomainMessage =
-	// 基础交互
-	| GenericSystemMessage
-	| SystemWithSkillMessage
-	| GenericUserTextMessage
-	| UserInputMessage
-	| UserImageMessage
-	// 模型输出
-	| AssistantTextMessage
-	| AssistantToolCallMessage
-	| GenericAssistantToolCallMessage
-	| GenericToolResultMessage
-	// 工具执行生命周期
-	| ToolResult
-	| ToolArgErrorMessage
-	// 流程控制与元数据
-	| TurnFeedbackMessage
-	| CacheBreakpointMessage
-	| TokenUsageMessage;
+  // 基础交互
+  | GenericSystemMessage
+  | SystemWithSkillMessage
+  | GenericUserTextMessage
+  | UserInputMessage
+  | UserImageMessage
+  // 模型输出
+  | AssistantTextMessage
+  | AssistantToolCallMessage
+  | GenericAssistantToolCallMessage
+  | GenericToolResultMessage
+  // 工具执行生命周期
+  | ToolResult
+  | ToolArgErrorMessage
+  // 流程控制与元数据
+  | TurnFeedbackMessage
+  | CacheBreakpointMessage
+  | TokenUsageMessage;

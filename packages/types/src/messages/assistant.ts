@@ -10,18 +10,18 @@ export type ReasoningResult = { ok: true; value: string } | { ok: false };
 // ── 助手消息 ──
 
 export interface AssistantTextMessage {
-	type: "assistant_text";
-	content: string;
-	reasoning: ReasoningResult;
-	reasoningSignature?: string;
+  type: "assistant_text";
+  content: string;
+  reasoning: ReasoningResult;
+  reasoningSignature?: string;
 }
 
 export interface AssistantToolCallMessage {
-	type: "assistant_tool_call";
-	content: string | null;
-	reasoning: ReasoningResult;
-	reasoningSignature?: string;
-	toolCalls: (ToolCallRecord | PartialToolCallRecord)[];
+  type: "assistant_tool_call";
+  content: string | null;
+  reasoning: ReasoningResult;
+  reasoningSignature?: string;
+  toolCalls: (ToolCallRecord | PartialToolCallRecord)[];
 }
 
 // ── 通用工具消息（内部子循环使用） ──
@@ -31,9 +31,9 @@ export interface AssistantToolCallMessage {
  * 与 AssistantToolCallMessage 不同，toolCalls 不受 ToolCallRecord 判别联合约束。
  */
 export interface GenericAssistantToolCallMessage {
-	type: "generic_tool_call";
-	content: string | null;
-	toolCalls: Array<{ id: string; tool: string; args: Record<string, unknown> }>;
+  type: "generic_tool_call";
+  content: string | null;
+  toolCalls: Array<{ id: string; tool: string; args: Record<string, unknown> }>;
 }
 
 /**
@@ -41,8 +41,8 @@ export interface GenericAssistantToolCallMessage {
  * formatPrompt 直接透传 content，不做额外格式化。
  */
 export interface GenericToolResultMessage {
-	type: "generic_tool_result";
-	callId: string;
-	toolName: string;
-	content: string;
+  type: "generic_tool_result";
+  callId: string;
+  toolName: string;
+  content: string;
 }

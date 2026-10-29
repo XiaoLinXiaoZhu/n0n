@@ -5,6 +5,6 @@
  * Bun 在编译时将文件内容内联为字符串常量。
  */
 declare module "*.md" {
-	const content: string;
-	export default content;
+  const content: string;
+  export default content;
 }

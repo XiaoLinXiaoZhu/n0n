@@ -11,12 +11,14 @@
 
 import { existsSync } from "node:fs";
 import { resolve } from "node:path";
+
 import { Glob } from "bun";
+
 import { parseSkillMeta } from "./parser.ts";
 import {
-	SKILL_CATEGORIES,
-	type SkillCategory,
-	type SkillMeta,
+  SKILL_CATEGORIES,
+  type SkillCategory,
+  type SkillMeta,
 } from "./types.ts";
 
 /**
@@ -26,28 +28,28 @@ import {
  * @param category 分类名称
  */
 async function discoverSkillsInCategory(
-	categoryDir: string,
-	category: SkillCategory,
+  categoryDir: string,
+  category: SkillCategory,
 ): Promise<SkillMeta[]> {
-	if (!existsSync(categoryDir)) return [];
+  if (!existsSync(categoryDir)) return [];
 
-	const glob = new Glob("**/SKILL.md");
-	const files = Array.from(glob.scanSync({ cwd: categoryDir }));
+  const glob = new Glob("**/SKILL.md");
+  const files = Array.from(glob.scanSync({ cwd: categoryDir }));
 
-	const skills: SkillMeta[] = [];
+  const skills: SkillMeta[] = [];
 
-	for (const rel of files) {
-		const absPath = resolve(categoryDir, rel);
-		try {
-			const content = await Bun.file(absPath).text();
-			const meta = parseSkillMeta(content, absPath, categoryDir, category);
-			if (meta) skills.push(meta);
-		} catch {
-			// 读取/解析失败，静默跳过
-		}
-	}
+  for (const rel of files) {
+    const absPath = resolve(categoryDir, rel);
+    try {
+      const content = await Bun.file(absPath).text();
+      const meta = parseSkillMeta(content, absPath, categoryDir, category);
+      if (meta) skills.push(meta);
+    } catch {
+      // 读取/解析失败，静默跳过
+    }
+  }
 
-	return skills;
+  return skills;
 }
 
 /**
@@ -56,18 +58,18 @@ async function discoverSkillsInCategory(
  * @param baseDir 根目录（如 ~/.n0n/builtin-skills/）
  */
 export async function discoverSkills(baseDir: string): Promise<SkillMeta[]> {
-	const absBase = resolve(baseDir);
-	if (!existsSync(absBase)) return [];
+  const absBase = resolve(baseDir);
+  if (!existsSync(absBase)) return [];
 
-	const skills: SkillMeta[] = [];
+  const skills: SkillMeta[] = [];
 
-	for (const cat of SKILL_CATEGORIES) {
-		const catDir = resolve(absBase, cat);
-		const catSkills = await discoverSkillsInCategory(catDir, cat);
-		skills.push(...catSkills);
-	}
+  for (const cat of SKILL_CATEGORIES) {
+    const catDir = resolve(absBase, cat);
+    const catSkills = await discoverSkillsInCategory(catDir, cat);
+    skills.push(...catSkills);
+  }
 
-	return skills;
+  return skills;
 }
 
 /**
@@ -76,14 +78,14 @@ export async function discoverSkills(baseDir: string): Promise<SkillMeta[]> {
  * 当同名 skill 出现在多个根目录时，每个都被保留（去重由调用方决定）。
  */
 export async function discoverSkillsMultiDir(
-	baseDirs: string[],
+  baseDirs: string[],
 ): Promise<SkillMeta[]> {
-	const all: SkillMeta[] = [];
+  const all: SkillMeta[] = [];
 
-	for (const baseDir of baseDirs) {
-		const skills = await discoverSkills(baseDir);
-		all.push(...skills);
-	}
+  for (const baseDir of baseDirs) {
+    const skills = await discoverSkills(baseDir);
+    all.push(...skills);
+  }
 
-	return all;
+  return all;
 }

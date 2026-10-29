@@ -5,6 +5,6 @@
  * Bun 在运行时返回文件的绝对路径字符串。
  */
 declare module "*.wav" {
-	const path: string;
-	export default path;
+  const path: string;
+  export default path;
 }

@@ -10,7 +10,9 @@
 
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
+
 import type { DomainMessage } from "@n0n/types";
+
 import type { ConversationLog } from "./types.ts";
 
 /**
@@ -18,24 +20,24 @@ import type { ConversationLog } from "./types.ts";
  * 格式：20250320-181500
  */
 function compactTimestamp(): string {
-	const now = new Date();
-	const pad = (n: number) => String(n).padStart(2, "0");
-	return [
-		now.getFullYear(),
-		pad(now.getMonth() + 1),
-		pad(now.getDate()),
-		"-",
-		pad(now.getHours()),
-		pad(now.getMinutes()),
-		pad(now.getSeconds()),
-	].join("");
+  const now = new Date();
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return [
+    now.getFullYear(),
+    pad(now.getMonth() + 1),
+    pad(now.getDate()),
+    "-",
+    pad(now.getHours()),
+    pad(now.getMinutes()),
+    pad(now.getSeconds()),
+  ].join("");
 }
 
 /**
  * 生成对话日志的默认文件名
  */
 export function generateLogFileName(): string {
-	return `n0n-conversation-${compactTimestamp()}.json`;
+  return `n0n-conversation-${compactTimestamp()}.json`;
 }
 
 /**
@@ -48,26 +50,26 @@ export function generateLogFileName(): string {
  * @returns 写入的文件绝对路径
  */
 export function saveConversation(
-	history: DomainMessage[],
-	workspace: string,
-	outputDir: string,
-	fileName?: string,
+  history: DomainMessage[],
+  workspace: string,
+  outputDir: string,
+  fileName?: string,
 ): string {
-	const log: ConversationLog = {
-		version: 2,
-		humanReadable: {
-			savedAt: new Date().toISOString(),
-			workspace,
-			messageCount: history.length,
-		},
-		history,
-	};
+  const log: ConversationLog = {
+    version: 2,
+    humanReadable: {
+      savedAt: new Date().toISOString(),
+      workspace,
+      messageCount: history.length,
+    },
+    history,
+  };
 
-	const name = fileName ?? generateLogFileName();
-	mkdirSync(outputDir, { recursive: true });
-	const filePath = resolve(outputDir, name);
-	writeFileSync(filePath, JSON.stringify(log, null, 2), "utf-8");
-	return filePath;
+  const name = fileName ?? generateLogFileName();
+  mkdirSync(outputDir, { recursive: true });
+  const filePath = resolve(outputDir, name);
+  writeFileSync(filePath, JSON.stringify(log, null, 2), "utf-8");
+  return filePath;
 }
 
 /**
@@ -78,23 +80,23 @@ export function saveConversation(
  * @throws 文件不存在、JSON 格式错误或版本不兼容时抛出异常
  */
 export function loadConversation(filePath: string): ConversationLog {
-	const absPath = resolve(filePath);
-	const raw = readFileSync(absPath, "utf-8");
-	const parsed = JSON.parse(raw);
+  const absPath = resolve(filePath);
+  const raw = readFileSync(absPath, "utf-8");
+  const parsed = JSON.parse(raw);
 
-	if (!parsed || typeof parsed !== "object") {
-		throw new Error(`Invalid conversation log: not a JSON object`);
-	}
+  if (!parsed || typeof parsed !== "object") {
+    throw new Error(`Invalid conversation log: not a JSON object`);
+  }
 
-	if (parsed.version !== 2) {
-		throw new Error(
-			`Unsupported conversation log version: ${parsed.version} (expected 2)`,
-		);
-	}
+  if (parsed.version !== 2) {
+    throw new Error(
+      `Unsupported conversation log version: ${parsed.version} (expected 2)`,
+    );
+  }
 
-	if (!Array.isArray(parsed.history)) {
-		throw new Error(`Invalid conversation log: missing history array`);
-	}
+  if (!Array.isArray(parsed.history)) {
+    throw new Error(`Invalid conversation log: missing history array`);
+  }
 
-	return parsed as ConversationLog;
+  return parsed as ConversationLog;
 }

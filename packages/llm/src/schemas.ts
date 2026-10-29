@@ -11,17 +11,17 @@ import { z } from "zod";
 // ── OpenAI Chat Completions 响应（OpenAI / DeepSeek / Gemini / openai-compatible 共用）──
 
 export const ChatCompletionSchema = z.object({
-	choices: z
-		.array(
-			z.object({
-				message: z
-					.object({
-						content: z.string().nullable(),
-					})
-					.optional(),
-			}),
-		)
-		.optional(),
+  choices: z
+    .array(
+      z.object({
+        message: z
+          .object({
+            content: z.string().nullable(),
+          })
+          .optional(),
+      }),
+    )
+    .optional(),
 });
 
 export type ChatCompletion = z.infer<typeof ChatCompletionSchema>;
@@ -32,42 +32,42 @@ export type ChatCompletion = z.infer<typeof ChatCompletionSchema>;
  * 确保非法响应在入口处被捕获。
  */
 export function parseChatCompletionText(json: unknown): string {
-	const parsed = ChatCompletionSchema.parse(json);
-	return parsed?.choices?.[0]?.message?.content ?? "";
+  const parsed = ChatCompletionSchema.parse(json);
+  return parsed?.choices?.[0]?.message?.content ?? "";
 }
 
 // ── Anthropic Messages API 响应 ──
 
 export const AnthropicCompletionSchema = z.object({
-	content: z
-		.array(
-			z.object({
-				type: z.string(),
-				text: z.string().optional(),
-			}),
-		)
-		.optional(),
+  content: z
+    .array(
+      z.object({
+        type: z.string(),
+        text: z.string().optional(),
+      }),
+    )
+    .optional(),
 });
 
 export type AnthropicCompletion = z.infer<typeof AnthropicCompletionSchema>;
 
 export function parseAnthropicCompletionText(json: unknown): string {
-	const parsed = AnthropicCompletionSchema.parse(json);
-	const textBlock = parsed?.content?.find((b) => b.type === "text");
-	return textBlock?.text ?? "";
+  const parsed = AnthropicCompletionSchema.parse(json);
+  const textBlock = parsed?.content?.find((b) => b.type === "text");
+  return textBlock?.text ?? "";
 }
 
 // ── Anthropic usage（heartbeat 返回）──
 
 export const AnthropicUsageSchema = z.object({
-	usage: z
-		.object({
-			input_tokens: z.number().optional(),
-			output_tokens: z.number().optional(),
-			cache_creation_input_tokens: z.number().optional(),
-			cache_read_input_tokens: z.number().optional(),
-		})
-		.optional(),
+  usage: z
+    .object({
+      input_tokens: z.number().optional(),
+      output_tokens: z.number().optional(),
+      cache_creation_input_tokens: z.number().optional(),
+      cache_read_input_tokens: z.number().optional(),
+    })
+    .optional(),
 });
 
 export type AnthropicUsage = z.infer<typeof AnthropicUsageSchema>;

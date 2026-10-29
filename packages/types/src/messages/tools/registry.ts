@@ -10,7 +10,7 @@ import type { PostArgs } from "../../tool-args.ts";
 // ── 核心注册表 ──
 
 export interface ToolMap {
-	post: PostArgs;
+  post: PostArgs;
 }
 
 export type ToolName = keyof ToolMap;
@@ -19,24 +19,24 @@ export type ToolName = keyof ToolMap;
 
 /** 构造特定工具的 Call 类型 */
 export type MakeCall<T extends ToolName> = {
-	id: string;
-	tool: T;
-	args: ToolMap[T];
+  id: string;
+  tool: T;
+  args: ToolMap[T];
 };
 
 /** 构造特定工具的 Result 基类 */
 export type MakeResult<T extends ToolName, S extends string> = {
-	type: "tool_result";
-	tool: T;
-	call: MakeCall<T>;
-	status: S;
+  type: "tool_result";
+  tool: T;
+  call: MakeCall<T>;
+  status: S;
 };
 
 /** 构造特定工具的 Result 基类（无 status 判别字段） */
 export type MakeResultBase<T extends ToolName> = {
-	type: "tool_result";
-	tool: T;
-	call: MakeCall<T>;
+  type: "tool_result";
+  tool: T;
+  call: MakeCall<T>;
 };
 
 // ── 导出联合类型 ──
@@ -47,11 +47,11 @@ export type MakeResultBase<T extends ToolName> = {
  * 修改 schema 字段时 tsc 会在所有消费方报错。
  */
 export type ToolCallRecord = {
-	[K in ToolName]: MakeCall<K>;
+  [K in ToolName]: MakeCall<K>;
 }[ToolName];
 
 export type ToolCallRecordMap = {
-	[K in ToolName]: Extract<ToolCallRecord, { tool: K }>;
+  [K in ToolName]: Extract<ToolCallRecord, { tool: K }>;
 };
 
 // 快捷导出
@@ -63,7 +63,7 @@ export type PostToolCall = ToolCallRecordMap["post"];
  * 用于在 assistant_tool_call 消息中保持与 tool_arg_error result 的配对完整性。
  */
 export interface PartialToolCallRecord {
-	id: string;
-	tool: string;
-	args: Record<string, never>;
+  id: string;
+  tool: string;
+  args: Record<string, never>;
 }

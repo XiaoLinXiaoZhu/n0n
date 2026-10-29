@@ -2,6 +2,6 @@
 
 const chunks: Buffer[] = [];
 for await (const chunk of process.stdin) {
-	chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+  chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
 }
 console.log(`EOF:${Buffer.concat(chunks).toString("utf8")}`);

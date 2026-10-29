@@ -18,40 +18,40 @@ export type PingResult = { ok: true } | { ok: false; error: string };
  * @param apiKey Bearer token
  */
 export async function pingModelsEndpoint(
-	baseUrl: BaseUrl,
-	apiKey: string,
+  baseUrl: BaseUrl,
+  apiKey: string,
 ): Promise<PingResult> {
-	try {
-		const url = modelsUrl(baseUrl);
-		const controller = new AbortController();
-		const timeout = setTimeout(() => controller.abort(), 15_000);
-		const resp = await fetch(url, {
-			method: "GET",
-			headers: {
-				Authorization: `Bearer ${apiKey}`,
-				"Content-Type": "application/json",
-			},
-			signal: controller.signal,
-		});
-		clearTimeout(timeout);
+  try {
+    const url = modelsUrl(baseUrl);
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 15_000);
+    const resp = await fetch(url, {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      signal: controller.signal,
+    });
+    clearTimeout(timeout);
 
-		if (resp.ok) return { ok: true };
+    if (resp.ok) return { ok: true };
 
-		if (resp.status === 401 || resp.status === 403) {
-			return { ok: false, error: "认证失败，请检查 API Key" };
-		}
-		const text = await resp.text().catch(() => "");
-		return {
-			ok: false,
-			error: `API ${resp.status}: ${text.slice(0, 200)}`,
-		};
-	} catch (err) {
-		if (err instanceof Error) {
-			if (isAbortError(err) || err.name === "TimeoutError") {
-				return { ok: false, error: "连接超时（15s），请检查网络或 API 地址" };
-			}
-			return { ok: false, error: err.message.slice(0, 200) };
-		}
-		return { ok: false, error: `连接失败: ${String(err)}` };
-	}
+    if (resp.status === 401 || resp.status === 403) {
+      return { ok: false, error: "认证失败，请检查 API Key" };
+    }
+    const text = await resp.text().catch(() => "");
+    return {
+      ok: false,
+      error: `API ${resp.status}: ${text.slice(0, 200)}`,
+    };
+  } catch (err) {
+    if (err instanceof Error) {
+      if (isAbortError(err) || err.name === "TimeoutError") {
+        return { ok: false, error: "连接超时（15s），请检查网络或 API 地址" };
+      }
+      return { ok: false, error: err.message.slice(0, 200) };
+    }
+    return { ok: false, error: `连接失败: ${String(err)}` };
+  }
 }

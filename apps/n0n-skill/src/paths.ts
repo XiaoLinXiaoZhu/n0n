@@ -16,18 +16,18 @@ const BUILTIN_DIR = "builtin-skills";
 const USER_DIR = "skills";
 
 export function getN0nDir(): string {
-	return resolve(homedir(), N0N_DIR);
+  return resolve(homedir(), N0N_DIR);
 }
 
 export function getBuiltinSkillsDir(): string {
-	return resolve(getN0nDir(), BUILTIN_DIR);
+  return resolve(getN0nDir(), BUILTIN_DIR);
 }
 
 export function getUserSkillsDir(): string {
-	return resolve(getN0nDir(), USER_DIR);
+  return resolve(getN0nDir(), USER_DIR);
 }
 
 /** 返回 skill 扫描根目录列表（builtin 在前，user 在后，不重覆盖） */
 export function getSkillDirs(): string[] {
-	return [getBuiltinSkillsDir(), getUserSkillsDir()];
+  return [getBuiltinSkillsDir(), getUserSkillsDir()];
 }
