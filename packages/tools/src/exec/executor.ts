@@ -225,7 +225,9 @@ function startBackgroundTracking(
       clearInterval(timer);
       try {
         unlinkSync(tmpFile);
-      } catch {}
+      } catch {
+        // 临时文件可能已不存在，清理失败不影响主流程
+      }
     }
   })();
 }
@@ -434,7 +436,9 @@ export async function* execToolStream(
     if (cleanupTempFile) {
       try {
         unlinkSync(tmpFile);
-      } catch {}
+      } catch {
+        // 临时文件可能已不存在，清理失败不影响主流程
+      }
     }
     if (!keepArtifact) removeArtifact(artifact);
   }

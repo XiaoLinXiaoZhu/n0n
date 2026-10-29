@@ -86,7 +86,7 @@ async function buildBundle() {
     // /v flag (unicodeSets) 和含 \p{} 的 /gu flag 需要转换
     let preProcessed = jsContent;
     preProcessed = preProcessed.replace(
-      /\/([^\/\n]+)\/v(?=\s*[;,)\[])/g,
+      /\/([^/\n]+)\/v(?=\s*[;,)[])/g,
       (match, body) => {
         if (body.includes("\\p{") || body.includes("\\P{")) {
           const escaped = body.replace(/\\/g, "\\\\").replace(/'/g, "\\'");
@@ -96,7 +96,7 @@ async function buildBundle() {
       },
     );
     preProcessed = preProcessed.replace(
-      /\/([^\/\n]+)\/gu(?=\s*[;,)\[])/g,
+      /\/([^/\n]+)\/gu(?=\s*[;,)[])/g,
       (match, body) => {
         if (body.includes("\\p{") || body.includes("\\P{")) {
           const escaped = body.replace(/\\/g, "\\\\").replace(/'/g, "\\'");

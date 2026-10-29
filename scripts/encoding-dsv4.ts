@@ -607,7 +607,8 @@ export function parseToolCalls(
     const toolArgs = new Map<string, [string, string]>();
     while (stopToken === `<${DSML_TOKEN}parameter`) {
       let paramContent: string;
-      [index, paramContent, stopToken] = readUntilStop(index, text, [
+      // 此处返回的 stopToken 未被使用：本轮结束后由下方 readUntilStop 重新决定
+      [index, paramContent] = readUntilStop(index, text, [
         `/${DSML_TOKEN}parameter`,
       ]);
       const pm = paramContent.match(
@@ -643,11 +644,11 @@ export function parseMessageFromCompletionText(
   reasoning_content: string;
   tool_calls: OpenAIToolCall[];
 } {
-  let summary = "",
+  let summary: string,
     reasoning = "";
   let toolCalls: InternalToolCall[] = [];
   let index = 0,
-    stopToken: string | null = null;
+    stopToken: string | null;
   const tcStart = `\n\n<${DSML_TOKEN}${TOOL_CALLS_BLOCK_NAME}`;
   let isToolCalling = false;
 
@@ -675,7 +676,8 @@ export function parseMessageFromCompletionText(
   }
 
   if (isToolCalling) {
-    [index, stopToken, toolCalls] = parseToolCalls(index, text);
+    // 中段 stopToken 由下一行 readUntilStop 重新决定，这里显式丢弃
+    [index, , toolCalls] = parseToolCalls(index, text);
     let trailing: string;
     [index, trailing, stopToken] = readUntilStop(index, text, [EOS_TOKEN]);
     if (trailing) throw new Error("Unexpected content after tool calls");

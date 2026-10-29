@@ -105,7 +105,9 @@ describe("exec waitfor 行为验证", () => {
         expect(outcome.result.artifact.kind).toBe("execution");
         try {
           process.kill(outcome.result.pid, "SIGKILL");
-        } catch {}
+        } catch {
+          // 目标进程可能已退出，kill 失败属预期
+        }
       }
     }
   }, 15000);
@@ -123,7 +125,9 @@ describe("exec waitfor 行为验证", () => {
       if (outcome.result.status === "backgrounded") {
         try {
           process.kill(outcome.result.pid, "SIGKILL");
-        } catch {}
+        } catch {
+          // 目标进程可能已退出，kill 失败属预期
+        }
       }
     }
   }, 15000);
@@ -149,7 +153,9 @@ describe("exec waitfor 行为验证", () => {
         expect(lines.length).toBeLessThanOrEqual(5);
         try {
           process.kill(outcome.result.pid, "SIGKILL");
-        } catch {}
+        } catch {
+          // 目标进程可能已退出，kill 失败属预期
+        }
       }
     }
   }, 15000);

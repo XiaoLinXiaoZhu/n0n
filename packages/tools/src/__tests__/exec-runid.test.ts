@@ -23,7 +23,9 @@ afterAll(() => {
   for (const pid of pidsToCleanup) {
     try {
       process.kill(pid, "SIGKILL");
-    } catch {}
+    } catch {
+      // 目标进程可能已退出，kill 失败属预期
+    }
   }
   rmSync(SESSION_DIR, { recursive: true, force: true });
 });

@@ -144,7 +144,9 @@ function tryParseArgs(s: string): Record<string, unknown> | null {
     if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
       return parsed as Record<string, unknown>;
     }
-  } catch {}
+  } catch {
+    // 非 JSON 或不完整 JSON 不是错误，交给下方返回 null
+  }
   return null;
 }
 

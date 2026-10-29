@@ -24,7 +24,9 @@ afterAll(() => {
   for (const pid of pidsToCleanup) {
     try {
       process.kill(pid, "SIGKILL");
-    } catch {}
+    } catch {
+      // 目标进程可能已退出，kill 失败属预期
+    }
   }
   for (const dir of dirsToCleanup) {
     rmSync(dir, { recursive: true, force: true });

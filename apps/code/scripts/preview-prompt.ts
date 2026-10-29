@@ -214,7 +214,7 @@ const msgStats: { role: string; label: string; chars: number }[] = [];
 
 for (const msg of promptMessages) {
   let chars = msg.content.length;
-  let label = "";
+  let label: string;
 
   if (msg.role === "tool") {
     label = `tool [${msg.toolName}]`;
