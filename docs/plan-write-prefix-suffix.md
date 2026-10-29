@@ -103,20 +103,32 @@ parameters — they belong after `?` in the uri; the body is file content
 only, never parameter text. Body is the new state: the complete file by
 default (both zero/omitted); windowed, the window's new state —
 fill-in-the-middle: P unchanged anchor lines copied verbatim from the
-file, then the new content, then S unchanged anchor lines (P and S are
-independent counts). Example: to rewrite line 3 of a 5-line file —
-write://f.txt?prefix_lines=2&suffix_lines=2, body = the file's lines 1-2,
-then the replacement line, then its lines 4-5. Anchors must match the
-file exactly; a body shorter than P+S lines or with mismatched anchors is
-rejected — enlarge the window to cover all changed lines. write:// cannot
-read files — to read one, use exec:// with a read script (e.g. cat or
-type); reading is an intentional action performed through code execution.
+file, then the new content (those lines as they end up, not a diff),
+then S unchanged anchor lines (P and S are independent counts). Editing
+an existing file is the windowed case — only the lines between the
+anchors are replaced and every other line is written back unchanged, so
+a local edit needs no scripted whole-file rewrite; a full write is for
+creating a file or replacing all of it. Example: to rewrite line 3 of a
+5-line file — write://f.txt?prefix_lines=2&suffix_lines=2, body = the
+file's lines 1-2, then the replacement line, then its lines 4-5.
+Anchors must match the file exactly and match only once: a body shorter
+than P+S lines, no match, or several matches is rejected and nothing is
+written — enlarge the window to cover all changed lines (or to
+disambiguate) and retry. write:// cannot read files — to read one, use
+exec:// with a read script (e.g. cat or type); reading is an intentional
+action performed through code execution.
 ```
 
 修订 2026-10-29：实测发现模型可能把 prefix_lines/suffix_lines 误写进
 body（uri 无 query 时被静默当作全量写入，body 原样覆盖文件）——文案
 补充"参数属于 uri query、body 只放文件内容"的显式声明与 5 行文件
 微型示例。
+
+修订 2026-10-29（其二）：原文案以 "complete file by default" 起头，未说明
+编辑既有文件即窗口场景，模型容易对局部编辑退回 shell/脚本整体重写——那会
+把整篇文件重新编码写回（行尾/编码随脚本的默认行为漂移），而窗口写只替换
+锚点之间的行。文案补充：编辑即窗口、全写仅用于新建或整篇替换、锚点必须
+唯一且失配不写盘（重试零成本）。
 
 注意：描述文案变更会打破进行中会话的 prompt cache，commit message 注明（项目惯例）。
 
