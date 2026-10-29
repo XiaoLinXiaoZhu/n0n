@@ -25,6 +25,7 @@ import { dirname, isAbsolute, resolve } from "node:path";
 import type {
   PostToolCall,
   ToolArgErrorMessage,
+  WriteStats,
   WriteToolResult,
 } from "@n0n/types";
 
@@ -183,6 +184,7 @@ async function writeFile(
   filePath: string,
   content: string,
   successStatus: "completed" | "recovered",
+  stats?: WriteStats,
 ): Promise<WriteToolResult> {
   try {
     const dir = dirname(filePath);
@@ -197,6 +199,7 @@ async function writeFile(
       status: successStatus,
       scheme: "write",
       path: filePath,
+      ...(stats ? { stats } : {}),
     };
   } catch (err) {
     // 截断恢复写入也可能失败（权限等），统一用 recover_failed 或 failed
@@ -243,6 +246,69 @@ function parseWindowCount(raw: string, key: string, fullUri: string): number {
   return Number(value);
 }
 
+/** 精确 diff 的单元格上限（超过则退化上界，避免 O(n·m) 打满） */
+const MAX_DIFF_CELLS = 4_000_000;
+
+/** 最长公共子序列长度（滚动数组，O(min(n,m)) 内存） */
+function lcsLength(a: string[], b: string[]): number {
+  const long = a.length >= b.length ? a : b;
+  const short = a.length >= b.length ? b : a;
+  let prev: number[] = new Array(short.length + 1).fill(0);
+  let cur: number[] = new Array(short.length + 1).fill(0);
+  for (let i = 1; i <= long.length; i++) {
+    for (let j = 1; j <= short.length; j++) {
+      cur[j] =
+        long[i - 1] === short[j - 1]
+          ? (prev[j - 1] ?? 0) + 1
+          : Math.max(prev[j] ?? 0, cur[j - 1] ?? 0);
+    }
+    const swap = prev;
+    prev = cur;
+    cur = swap;
+    cur.fill(0);
+  }
+  return prev[short.length] ?? 0;
+}
+
+/** 读取写入前的磁盘内容（文件不存在视为空），仅供行统计 */
+function readPrevious(filePath: string): string {
+  try {
+    return readFileSync(filePath, "utf8");
+  } catch {
+    // 文件不存在（首次创建）即视为空内容
+  }
+  return "";
+}
+
+/**
+ * 行变化统计：落盘内容相对磁盘上的原内容。
+ *
+ * 先剥公共前后缀（局部编辑只剩很小的中段），再对中段求 LCS：
+ * added = |mid| - LCS、removed = |mid| - LCS。LCS 长度唯一，因此同一对
+ * 内容永远得到同一组数字，不依赖 diff 实现的启发式。
+ */
+export function lineStats(before: string, after: string): WriteStats {
+  const a = toLines(before).lines;
+  const b = toLines(after).lines;
+  let head = 0;
+  while (head < a.length && head < b.length && a[head] === b[head]) head++;
+  let endA = a.length;
+  let endB = b.length;
+  while (endA > head && endB > head && a[endA - 1] === b[endB - 1]) {
+    endA--;
+    endB--;
+  }
+  const midA = a.slice(head, endA);
+  const midB = b.slice(head, endB);
+  if (midA.length === 0) return { added: midB.length, removed: 0, exact: true };
+  if (midB.length === 0) return { added: 0, removed: midA.length, exact: true };
+  if (midA.length * midB.length > MAX_DIFF_CELLS) {
+    return { added: midB.length, removed: midA.length, exact: false };
+  }
+  const lcs = lcsLength(midA, midB);
+  return { added: midB.length - lcs, removed: midA.length - lcs, exact: true };
+}
+
 export const writeScheme: SchemeHandler<ParsedWrite> = {
   scheme: "write",
   uriPrefix: "write://",
@@ -251,7 +317,7 @@ export const writeScheme: SchemeHandler<ParsedWrite> = {
 
   describe() {
     return [
-      "write — write://<path>?prefix_lines=P&suffix_lines=S . P/S are uri query parameters — they belong after `?` in the uri; the body is file content only, never parameter text. Body is the new state: the complete file by default (both zero/omitted); windowed, the window's new state — fill-in-the-middle: P unchanged anchor lines copied verbatim from the file, then the new content (those lines as they end up, not a diff), then S unchanged anchor lines (P and S are independent counts). Editing an existing file is the windowed case — only the lines between the anchors are replaced and every other line is written back unchanged, so a local edit needs no scripted whole-file rewrite; a full write is for creating a file or replacing all of it. Example: to rewrite line 3 of a 5-line file — write://f.txt?prefix_lines=2&suffix_lines=2, body = the file's lines 1-2, then the replacement line, then its lines 4-5. Anchors must match the file exactly and match only once: a body shorter than P+S lines, no match, or several matches is rejected and nothing is written — enlarge the window to cover all changed lines (or to disambiguate) and retry. The body's trailing newline decides the file's: end the body with a newline to keep one. write:// cannot read files — to read one, use exec:// with a read script (e.g. cat or type); reading is an intentional action performed through code execution.",
+      "write — write://<path>?prefix_lines=P&suffix_lines=S . P/S are uri query parameters — they belong after `?` in the uri; the body is file content only, never parameter text. Body is the new state: the complete file by default (both zero/omitted); windowed, the window's new state — fill-in-the-middle: P unchanged anchor lines copied verbatim from the file, then the new content (those lines as they end up, not a diff), then S unchanged anchor lines (P and S are independent counts). Editing an existing file is the windowed case — only the lines between the anchors are replaced and every other line is written back unchanged, so a local edit needs no scripted whole-file rewrite; a full write is for creating a file or replacing all of it. Example: to rewrite line 3 of a 5-line file — write://f.txt?prefix_lines=2&suffix_lines=2, body = the file's lines 1-2, then the replacement line, then its lines 4-5. Anchors must match the file exactly and match only once: a body shorter than P+S lines, no match, or several matches is rejected and nothing is written — enlarge the window to cover all changed lines (or to disambiguate) and retry. The body's trailing newline decides the file's: end the body with a newline to keep one. The result reports how many lines were added and removed relative to the file on disk. write:// cannot read files — to read one, use exec:// with a read script (e.g. cat or type); reading is an intentional action performed through code execution.",
     ];
   },
 
@@ -296,7 +362,13 @@ export const writeScheme: SchemeHandler<ParsedWrite> = {
 
     // 全写：body = 完整文件，无匹配直接替换
     if (P === 0 && S === 0) {
-      yield await writeFile(call, filePath, call.args.body, "completed");
+      yield await writeFile(
+        call,
+        filePath,
+        call.args.body,
+        "completed",
+        lineStats(readPrevious(filePath), call.args.body),
+      );
       return;
     }
 
@@ -331,7 +403,13 @@ export const writeScheme: SchemeHandler<ParsedWrite> = {
       yield argError(call.id, "body", result.message);
       return;
     }
-    yield await writeFile(call, filePath, result.content, "completed");
+    yield await writeFile(
+      call,
+      filePath,
+      result.content,
+      "completed",
+      lineStats(fileContent, result.content),
+    );
   },
 
   async recover(extracted, toolCallId, ctx): Promise<RecoveredExecute | null> {
@@ -365,6 +443,7 @@ export const writeScheme: SchemeHandler<ParsedWrite> = {
         filePath,
         extracted.body,
         "recovered",
+        lineStats(readPrevious(filePath), extracted.body),
       );
       return { call, result };
     }
@@ -385,6 +464,7 @@ export const writeScheme: SchemeHandler<ParsedWrite> = {
       filePath,
       result.content,
       "recovered",
+      lineStats(fileContent, result.content),
     );
     return { call, result: written };
   },

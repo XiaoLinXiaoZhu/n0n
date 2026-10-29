@@ -34,6 +34,7 @@ export type {
   WriteFailed,
   WriteRecovered,
   WriteRecoverFailed,
+  WriteStats,
   WriteToolResult,
 } from "./write.ts";
 

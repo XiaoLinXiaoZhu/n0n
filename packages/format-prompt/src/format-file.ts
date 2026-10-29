@@ -4,7 +4,7 @@
  * 返回 FormattedToolResult：fact（客观数据）与 hint（系统操作建议）分离。
  */
 
-import type { WriteToolResult } from "@n0n/types";
+import type { WriteStats, WriteToolResult } from "@n0n/types";
 
 import type { FormattedToolResult, TagAdapter } from "./utils.ts";
 import { pick } from "./utils.ts";
@@ -39,6 +39,17 @@ const recoveredHintTemplates = [
 
 // ── 格式化函数 ──
 
+/**
+ * 行变化统计后缀 — 无统计时不追加任何字符。
+ * exact = false 时数字是变更区上界，用 `≈` 标出，不假装精确。
+ */
+function statsSuffix(stats: WriteStats | undefined): string {
+  if (!stats) return "";
+  const mark = stats.exact ? "" : "≈";
+  const added = `${stats.added} line${stats.added === 1 ? "" : "s"}`;
+  return ` (${mark}${added} added, ${stats.removed} removed)`;
+}
+
 export function formatFileResult(
   msg: WriteToolResult,
   tags: TagAdapter,
@@ -48,7 +59,10 @@ export function formatFileResult(
     case "completed": {
       const tpl = pick(completedTemplates, msgIndex);
       return {
-        fact: tags.wrapTag("file_result", tpl(msg.path)),
+        fact: tags.wrapTag(
+          "file_result",
+          `${tpl(msg.path)}${statsSuffix(msg.stats)}`,
+        ),
         hint: null,
       };
     }
@@ -61,7 +75,10 @@ export function formatFileResult(
       const factTpl = pick(recoveredFactTemplates, msgIndex);
       const hintTpl = pick(recoveredHintTemplates, msgIndex);
       return {
-        fact: tags.wrapTag("file_result", factTpl(msg.path)),
+        fact: tags.wrapTag(
+          "file_result",
+          `${factTpl(msg.path)}${statsSuffix(msg.stats)}`,
+        ),
         hint: hintTpl(msg.path),
       };
     }

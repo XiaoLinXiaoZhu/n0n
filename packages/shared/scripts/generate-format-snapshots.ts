@@ -288,6 +288,7 @@ const scenarios: Scenario[] = [
         scheme: "write",
         path: `${WORKSPACE}/src/config.ts`,
         status: "completed",
+        stats: { added: 1, removed: 1, exact: true },
         call: {
           id: "tc_5",
           tool: "post",

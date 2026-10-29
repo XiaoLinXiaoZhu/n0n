@@ -12,9 +12,14 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import { resolvePlatform } from "@n0n/shared";
-import type { ToolArgErrorMessage, ToolCallRecord } from "@n0n/types";
+import type {
+  ToolArgErrorMessage,
+  ToolCallRecord,
+  WriteStats,
+} from "@n0n/types";
 
 import { makeToolkit, type ToolJob } from "../index.ts";
+import { lineStats } from "../schemes/write.ts";
 
 const SESSION_DIR = mkdtempSync(join(tmpdir(), "n0n-write-win-"));
 const WORKSPACE = mkdtempSync(join(tmpdir(), "n0n-write-win-ws-"));
@@ -355,5 +360,90 @@ describe("write — recover 截断恢复", () => {
     );
     expect(result.status).toBe("unrecoverable");
     expect(read(p)).toBe("head\nold\ntail\n");
+  });
+});
+
+/** 从结果事件取出行变化统计 */
+function statsOf(first: unknown): WriteStats {
+  const stats = (first as { stats?: WriteStats } | undefined)?.stats;
+  if (!stats) throw new Error(`expected stats, got ${JSON.stringify(first)}`);
+  return stats;
+}
+
+describe("write — 行变化统计", () => {
+  it("新建文件：added = 行数，removed = 0", async () => {
+    const rel = uniqueName();
+    const { first } = await runPost(`write://${rel}`, "a\nb\nc\n");
+    expect(statsOf(first)).toEqual({ added: 3, removed: 0, exact: true });
+  });
+
+  it("全写覆盖既有文件：按内容求差，而不是按行数差", async () => {
+    const p = seed("keep\nold\n");
+    const rel = p.slice(WORKSPACE.length + 1);
+    const { first } = await runPost(`write://${rel}`, "keep\nnew\n");
+    expect(statsOf(first)).toEqual({ added: 1, removed: 1, exact: true });
+  });
+
+  it("窗口替换中间一行：1 增 1 删", async () => {
+    const p = seed("head\nold\ntail\n");
+    const rel = p.slice(WORKSPACE.length + 1);
+    const { first } = await runPost(
+      `write://${rel}?prefix_lines=1&suffix_lines=1`,
+      "head\nnew\ntail\n",
+    );
+    expect(statsOf(first)).toEqual({ added: 1, removed: 1, exact: true });
+    expect(read(p)).toBe("head\nnew\ntail\n");
+  });
+
+  it("窗口插入：只增不删", async () => {
+    const p = seed("head\ntail\n");
+    const rel = p.slice(WORKSPACE.length + 1);
+    const { first } = await runPost(
+      `write://${rel}?prefix_lines=1&suffix_lines=1`,
+      "head\nx\ny\ntail\n",
+    );
+    expect(statsOf(first)).toEqual({ added: 2, removed: 0, exact: true });
+  });
+
+  it("窗口删除：只删不增", async () => {
+    const p = seed("head\nx\ny\ntail\n");
+    const rel = p.slice(WORKSPACE.length + 1);
+    const { first } = await runPost(
+      `write://${rel}?prefix_lines=1&suffix_lines=1`,
+      "head\ntail\n",
+    );
+    expect(statsOf(first)).toEqual({ added: 0, removed: 2, exact: true });
+  });
+
+  it("内容不变重写：0 增 0 删", async () => {
+    const p = seed("same\ncontent\n");
+    const rel = p.slice(WORKSPACE.length + 1);
+    const { first } = await runPost(
+      `write://${rel}?prefix_lines=1&suffix_lines=1`,
+      "same\ncontent\n",
+    );
+    expect(statsOf(first)).toEqual({ added: 0, removed: 0, exact: true });
+  });
+
+  it("统计对称：交换前后内容则 added/removed 互换", () => {
+    const a = "one\ntwo\nthree\n";
+    const b = "one\n2\nthree\nfour\n";
+    expect(lineStats(a, b)).toEqual({ added: 2, removed: 1, exact: true });
+    expect(lineStats(b, a)).toEqual({ added: 1, removed: 2, exact: true });
+  });
+
+  it("统计只看内容：行尾 CRLF 与 LF 视为同一行", () => {
+    expect(lineStats("a\r\nb\r\n", "a\nb\n")).toEqual({
+      added: 0,
+      removed: 0,
+      exact: true,
+    });
+  });
+
+  it("变更区超过上限：退化上界并置 exact=false（不求 LCS）", () => {
+    const big = (tag: string) =>
+      Array.from({ length: 2500 }, (_, i) => `${tag}-${i}`).join("\n");
+    const stats = lineStats(big("a"), big("b"));
+    expect(stats).toEqual({ added: 2500, removed: 2500, exact: false });
   });
 });

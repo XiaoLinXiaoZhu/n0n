@@ -15,9 +15,28 @@ interface FileResultBase extends MakeResult<"post", string> {
   path: string;
 }
 
+/**
+ * 本次写入的行变化统计（落盘内容相对磁盘上的原内容）。
+ *
+ * `added`/`removed` 由最长公共子序列唯一确定（`|new| - LCS`、`|old| - LCS`）
+ * ——同一对内容永远得到同一组数字，与具体 diff 实现无关；代价是变更区过大
+ * 时无法在预算内精确求解，此时 `exact = false`，两个数字退化为变更区行数
+ * 上界。
+ */
+export interface WriteStats {
+  /** 新增行数 */
+  added: number;
+  /** 删除行数 */
+  removed: number;
+  /** false = 变更区超过精确 diff 上限，数字为变更区行数上界 */
+  exact: boolean;
+}
+
 /** file 正常写入成功 */
 export interface WriteCompleted extends FileResultBase {
   status: "completed";
+  /** 行变化统计；缺省表示该实现未统计 */
+  stats?: WriteStats;
 }
 
 /** file 写入失败 */
@@ -29,6 +48,8 @@ export interface WriteFailed extends FileResultBase {
 /** file 从截断恢复后写入成功（内容不完整） */
 export interface WriteRecovered extends FileResultBase {
   status: "recovered";
+  /** 行变化统计；缺省表示该实现未统计 */
+  stats?: WriteStats;
 }
 
 /** file 从截断恢复失败（参数无法解析） */

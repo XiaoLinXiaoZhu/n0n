@@ -132,6 +132,32 @@ body（uri 无 query 时被静默当作全量写入，body 原样覆盖文件）
 
 注意：描述文案变更会打破进行中会话的 prompt cache，commit message 注明（项目惯例）。
 
+### 结果行变化统计（stats）
+
+写入结果（completed / recovered）携带 `stats: { added, removed, exact }`，
+由落盘内容与写入前的磁盘内容求差得出，并在 formatter 里以
+` (N lines added, M removed)` 追加到 file_result 事实句末尾。
+
+**为什么用 LCS 而不是「按行数差」**：`|new| - |old|` 会让「改一行」变成
+「0 增 0 删」，模型无法据此确认自己改对了地方。改用 LCS：
+
+```
+added   = |new| - LCS(new, old)
+removed = |old| - LCS(new, old)
+```
+
+**稳定性**：LCS 长度是唯一值（对齐方式可以有多解，长度不行），所以
+`added`/`removed` 与 diff 实现的启发式无关——同一对内容永远得到同一组数字，
+交换前后内容则两数互换。这就是它可以当作校验信号的原因。
+
+**代价与退化**：先剥公共前后缀（局部编辑只剩很小的中段），再对中段求 LCS。
+中段单元格数超过 `MAX_DIFF_CELLS`（400 万）时不求解，直接报变更区行数并置
+`exact: false`，formatter 渲染成 `≈N lines added`——宁可标出上界，也不假装精确。
+
+**与「非目标」的关系**：非目标里的「不在结果消息中增加 windowed/mode 字段」
+仍然成立——行计数是**客观事实**（可以据此判断窗口切得对不对），mode 是
+**过程细节**（模型不需要知道自己用了哪种写法）。
+
 ### 行尾与换行 pin（parse 边界定死）
 
 - 匹配比较时剥掉行尾 `\r`（容忍 CRLF 文件与 body），**拼接与写盘统一 LF**；

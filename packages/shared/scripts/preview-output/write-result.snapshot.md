@@ -8,6 +8,6 @@ toolName: post
 
 --- content ---
 <file_result>
-`/Users/preview/projects/demo/src/config.ts` created successfully
+`/Users/preview/projects/demo/src/config.ts` created successfully (1 line added, 1 removed)
 </file_result>
 ```
