@@ -308,8 +308,9 @@ LLM_PROVIDER=openai-compatible
 |------|------|
 | 运行时 | [Bun](https://bun.sh) |
 | 语言 | TypeScript (strict mode) |
-| Monorepo | [Turborepo](https://turbo.build) |
-| Lint | [Biome](https://biomejs.dev) |
+| Monorepo | [Bun workspaces](https://bun.sh/docs/pm/workspaces) |
+| 类型检查 | `bun check`（Bun 内置 TypeScript 类型检查） |
+| Lint/格式化 | `bun fmt` + `bun lint`（Bun 内置，Prettier / ESLint 兼容） |
 | Schema | [Zod](https://zod.dev) |
 
 ---
@@ -328,10 +329,14 @@ LLM_PROVIDER=openai-compatible
 
 ```bash
 # 类型检查
-bun run typecheck
+bun check
 
-# Lint + 自动修复
-bun run lint
+# 格式化 / import 排序 / Lint
+bun fmt
+bun lint --fix
+
+# 提交前全量校验（fmt --check + lint + check）
+bun run ci
 
 # 启动统一 CLI
 bun run apps/cli/src/main.ts

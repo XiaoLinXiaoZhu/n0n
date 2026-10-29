@@ -1,4 +1,4 @@
-// biome-ignore-all lint/style/noNonNullAssertion: test assertions on known-shape results
+// test assertions on known-shape results
 /**
  * agentLoop customer:// 终止行为测试。
  *

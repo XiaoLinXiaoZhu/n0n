@@ -1,4 +1,4 @@
-// biome-ignore-all lint/style/noNonNullAssertion: test assertions on known-shape results
+// test assertions on known-shape results
 /**
  * parseStream 单元测试
  *

@@ -1,0 +1,5 @@
+[fmt]
+sortImports = true
+sortPackageJson = true
+# md 不做格式化；docs/ 与 data/ 是文档/资产，.runtime 与 .n0n 是运行期产物
+ignorePatterns = ["**/*.md", "docs/**", "data/**", ".runtime/**", ".n0n/**"]

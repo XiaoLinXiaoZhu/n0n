@@ -154,12 +154,29 @@ async function codebaseSection(cwd: string): Promise<string> {
 	)
 		markers.push("python");
 	if (
+		existsSync(join(cwd, "pnpm-workspace.yaml")) ||
 		existsSync(join(cwd, "turbo.json")) ||
-		existsSync(join(cwd, "pnpm-workspace.yaml"))
+		hasWorkspaces(cwd)
 	)
 		markers.push("monorepo");
 	if (existsSync(join(cwd, ".venv"))) markers.push(".venv present");
 	if (markers.length > 0) lines.push(`Type: ${markers.join(", ")}`);
 
 	return lines.join("\n");
+}
+
+/**
+ * 判断 package.json 是否声明了 workspaces。
+ * monorepo 的判据是工作区声明，而不是某个具体的编排工具。
+ */
+function hasWorkspaces(cwd: string): boolean {
+	try {
+		const pkg = JSON.parse(readFileSync(join(cwd, "package.json"), "utf8")) as {
+			workspaces?: unknown;
+		};
+		const ws = pkg.workspaces;
+		return Array.isArray(ws) || (typeof ws === "object" && ws !== null);
+	} catch {
+		return false;
+	}
 }

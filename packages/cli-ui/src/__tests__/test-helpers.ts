@@ -9,7 +9,7 @@ import { VirtualTerminal } from "./virtual-terminal.ts";
 
 // ── ANSI 处理 ──
 
-// biome-ignore lint/suspicious/noControlCharactersInRegex: ANSI escape stripping requires control chars
+// eslint-disable-next-line no-control-regex -- ANSI escape stripping requires control chars
 const ANSI_RE = /\x1b\[[0-9;]*[a-zA-Z]|\x1b\[\?[0-9;]*[a-zA-Z]/g;
 
 export function stripAnsi(s: string): string {

@@ -1,4 +1,4 @@
-// biome-ignore-all lint/suspicious/noTemplateCurlyInString: literal test scripts
+// literal test scripts
 import { afterAll, describe, expect, test } from "bun:test";
 import {
 	existsSync,

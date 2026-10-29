@@ -144,7 +144,7 @@ export class VirtualTerminal {
 		}
 
 		this.ensureRow(this.cursorRow);
-		// biome-ignore lint/style/noNonNullAssertion: bounds guaranteed by ensureRow
+		// bounds guaranteed by ensureRow
 		const row = this.buffer[this.cursorRow]!;
 
 		if (w === 2) {
@@ -182,7 +182,7 @@ export class VirtualTerminal {
 			// 先清除当前行光标之后的部分
 			this.ensureRow(this.cursorRow);
 			for (let c = this.cursorCol; c < this.cols; c++) {
-				// biome-ignore lint/style/noNonNullAssertion: bounds guaranteed by ensureRow
+				// bounds guaranteed by ensureRow
 				this.buffer[this.cursorRow]![c] = emptyCell();
 			}
 			// 清除光标下方所有行
@@ -195,7 +195,7 @@ export class VirtualTerminal {
 	/** Erase in Line: 0=光标到行尾, 1=行首到光标, 2=整行 */
 	private eraseLine(mode: number): void {
 		this.ensureRow(this.cursorRow);
-		// biome-ignore lint/style/noNonNullAssertion: bounds guaranteed by ensureRow
+		// bounds guaranteed by ensureRow
 		const row = this.buffer[this.cursorRow]!;
 		if (mode === 2) {
 			for (let c = 0; c < this.cols; c++) row[c] = emptyCell();
@@ -209,7 +209,7 @@ export class VirtualTerminal {
 	/** 获取某行的可见文本（去除尾部空格） */
 	getLine(row: number): string {
 		if (row >= this.buffer.length) return "";
-		// biome-ignore lint/style/noNonNullAssertion: bounds checked above
+		// bounds checked above
 		return this.buffer[row]!.filter((c) => !c.isWideRight)
 			.map((c) => c.char)
 			.join("")

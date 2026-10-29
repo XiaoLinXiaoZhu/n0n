@@ -1,4 +1,4 @@
-// biome-ignore-all lint/style/noNonNullAssertion: test assertions on known-shape results
+// test assertions on known-shape results
 /**
  * round 纯函数单元测试
  *
