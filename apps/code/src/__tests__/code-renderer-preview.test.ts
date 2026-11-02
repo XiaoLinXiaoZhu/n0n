@@ -13,7 +13,6 @@ import {
   readdirSync,
   readFileSync,
   rmSync,
-  writeFileSync,
 } from "node:fs";
 import { join } from "node:path";
 
@@ -225,50 +224,6 @@ describe("CodeRenderer 流式 write:// 预览", () => {
 
     // 文件仍存在（已写入的不会被撤回），但状态已清理
     expect(listFiles(TEST_WORKSPACE)).toContain("test.txt");
-  });
-
-  test("REGRESSION 窗口写：查询参数分片到达时不得预览（文件不得被清空）", () => {
-    const renderer = new CodeRenderer(TEST_PATHS, TEST_RENDERER_OPTIONS);
-    const target = join(TEST_WORKSPACE, "w.txt");
-    writeFileSync(target, "a\nb\nc\n", "utf-8");
-
-    // uri 值在 `?` 之前被 chunk 截断：partial-json 会把裸路径解析成
-    // 合法的全量写 uri。旧实现此刻锁定 targetPath，随后 body 的空串
-    // 直接把文件截成 0 字节，窗口写执行时只能读到空文件。
-    simulateStream(
-      renderer,
-      0,
-      "post",
-      [
-        '{"uri": "write://w.txt',
-        '?prefix_lines=1&suffix_lines=1"',
-        ', "body": "a\\n',
-        'B\\nc\\n"',
-        "}",
-      ],
-      {
-        uri: "write://w.txt?prefix_lines=1&suffix_lines=1",
-        body: "a\nB\nc\n",
-      },
-    );
-
-    expect(readFileSync(target, "utf-8")).toBe("a\nb\nc\n");
-  });
-
-  test("REGRESSION 畸形 query：分片到达时不得先预览再报错（文件不得被清空）", () => {
-    const renderer = new CodeRenderer(TEST_PATHS, TEST_RENDERER_OPTIONS);
-    const target = join(TEST_WORKSPACE, "t.txt");
-    writeFileSync(target, "keep\n", "utf-8");
-
-    simulateStream(
-      renderer,
-      0,
-      "post",
-      ['{"uri": "write://t.txt', '?bogus=1"', ', "body": "DESTROYED"', "}"],
-      { uri: "write://t.txt?bogus=1", body: "DESTROYED" },
-    );
-
-    expect(readFileSync(target, "utf-8")).toBe("keep\n");
   });
 
   test("body 先于 uri 到达：uri 闭合前不写入，闭合后正常预览", () => {

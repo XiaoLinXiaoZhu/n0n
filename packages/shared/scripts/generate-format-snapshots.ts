@@ -123,34 +123,6 @@ const scenarios: Scenario[] = [
       },
     ],
   },
-  {
-    file: "write-window-call",
-    title: "assistant_tool_call — write://?prefix_lines 窗口写入（FIM）",
-    messages: [
-      {
-        type: "assistant_tool_call",
-        content: "只改窗口中间的行，锚行原样保留。",
-        reasoning: { ok: false },
-        toolCalls: [
-          {
-            id: "tc_w",
-            tool: "post",
-            args: {
-              uri: "write://src/config.ts?prefix_lines=2&suffix_lines=2",
-              body: [
-                'import { z } from "zod";',
-                'import type { Config } from "./types";',
-                "export const config = z.object({ x: z.string() });",
-                "export type Config = z.infer<typeof config>;",
-                "export default config;",
-              ].join("\n"),
-            },
-          },
-        ],
-      },
-    ],
-  },
-
   // ── exec tool_result (3 statuses) ──
   {
     file: "exec-completed",
@@ -292,7 +264,7 @@ const scenarios: Scenario[] = [
           id: "tc_5",
           tool: "post",
           args: {
-            uri: "write://src/config.ts?prefix_lines=2&suffix_lines=2",
+            uri: "write://src/config.ts",
             body: 'import { z } from "zod";\nexport const config = z.object({ x: z.string() });',
           },
         },

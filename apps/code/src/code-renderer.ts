@@ -3,7 +3,7 @@
  *
  * 继承 RichRenderer 的全部终端渲染能力，额外增加：
  * - post 工具 write:// 流式预览：在参数流式传输过程中，增量解析 partial JSON，
- *   仅当 uri 的字符串值已闭合、且解析为 write:// 全量写时，将已有的 body
+ *   仅当 uri 的字符串值已闭合、且解析为 write:// 时，将已有的 body
  *   实时写入目标文件，让编辑器自动检测变化实现实时预览。
  *   exec:// 与 customer:// 不产生预览。
  *
@@ -51,10 +51,9 @@ function isPostPreviewArgs(v: unknown): v is Record<string, unknown> {
 /**
  * partial JSON 中某个顶层 key 的字符串值是否已闭合。
  *
- * partial-json 会把被 chunk 截断的字符串值原样返回（`{"uri":"write://f`
- * 解析出 `write://f`），所以「能解析出 uri」不等于「uri 已完整」。窗口写的
- * `?prefix_lines=...` 往往落在下一个 chunk：若把裸路径当完整 uri，窗口写会被
- * 误判成全量写，body（初始为空串）随即覆盖目标文件 —— 确定性数据丢失。
+ * partial-json 会把被 chunk 截断的字符串值原样返回（`{"uri":"write://src/i`
+ * 解析出 `write://src/i`），所以「能解析出 uri」不等于「uri 已完整」。
+ * 若把截断值当完整 uri，预览会写到错误路径，留下垃圾文件。
  *
  * 这里扫描原始 args，确认该 key 对应的字符串存在闭合引号；字符串内部的
  * `"uri"` 只是普通字符，不会被误认为 key。
@@ -151,17 +150,11 @@ export class CodeRenderer extends RichRenderer {
     super.toolCallArgEnd(index, tc);
 
     if (tc.tool === "post") {
-      // 最终写入仅对 write:// uri 的全写模式；exec/customer 无文件落盘，
-      // 窗口写（prefix_lines/suffix_lines）不预览——body 只是窗口片段，
-      // 直接落盘会把整个文件替换成窗口片段（确定性损坏）。
+      // 最终写入仅对 write:// uri；exec/customer 无文件落盘。
       // （uri 畸形时静默跳过 — 该错误由工具执行侧转成 tool_arg_error）
       try {
         const parsed = parsePostUri(tc.args.uri);
-        if (
-          parsed.scheme === "write" &&
-          parsed.prefixLines === 0 &&
-          parsed.suffixLines === 0
-        ) {
+        if (parsed.scheme === "write") {
           this.writeFile(this.resolvePath(parsed.path), tc.args.body);
         }
       } catch {
@@ -189,7 +182,7 @@ export class CodeRenderer extends RichRenderer {
 
   /**
    * 从累积的 partial JSON 中提取 uri/body，写入目标文件。
-   * 仅当 uri 的字符串值已闭合、且解析为 write:// 全量写时预览；
+   * 仅当 uri 的字符串值已闭合、且解析为 write:// 时预览；
    * 闭合后锁定 targetPath，避免截断的 uri 值产生垃圾文件。
    * @param force 是否强制写入（跳过节流，用于 streamEnd）
    */
@@ -219,18 +212,13 @@ export class CodeRenderer extends RichRenderer {
     const bodyStr = typeof parsed.body === "string" ? parsed.body : undefined;
 
     // 只有 uri 的字符串值已闭合才做预览决定：被 chunk 截断的裸路径同样
-    // 能被 partial-json 解析成合法 uri，此刻锁定会把窗口写误判成全量写。
+    // 能被 partial-json 解析成合法 uri，此刻锁定会预览到错误路径。
     if (!preview.uriLocked && isTopLevelStringComplete(preview.args, "uri")) {
       preview.uriLocked = true;
       if (uriStr !== undefined) {
         try {
           const parsedUri = parsePostUri(uriStr);
-          // 窗口写不预览：流式 body 只是窗口片段，落盘即损坏整个文件
-          if (
-            parsedUri.scheme === "write" &&
-            parsedUri.prefixLines === 0 &&
-            parsedUri.suffixLines === 0
-          ) {
+          if (parsedUri.scheme === "write") {
             preview.targetPath = this.resolvePath(parsedUri.path);
           }
         } catch {
