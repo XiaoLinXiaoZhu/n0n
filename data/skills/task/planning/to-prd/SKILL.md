@@ -12,15 +12,15 @@ activation: manual
 
 ### 1. 理解现状
 
-如果尚未充分了解代码库，先 observe 了解当前实现状态。使用项目领域词汇表的术语。
+如果尚未充分了解代码库，先用 `post` 执行 `exec://` 只读命令了解当前实现状态。使用项目领域词汇表的术语。
 
 ### 2. 识别模块
 
 勾勒需要构建或修改的主要模块。积极寻找可以提取为"接口简单、可独立测试"的深模块。
 
 技术模块划分和测试策略由生产方依据现有代码、项目口径和风险负责决定。
-只有模块边界会改变客户理解的产品范围、公共契约或交付拆分时，才用 `show(customer decision required)`
-呈现这些客户可见差异并请求确认。
+只有模块边界会改变客户理解的产品范围、公共契约或交付拆分时，才用 `post` 发送 `customer://question`
+在 body 中呈现这些客户可见差异并请求确认。
 
 ### 3. 撰写 PRD
 
@@ -54,6 +54,6 @@ activation: manual
 
 ### 4. 发布
 
-用 `show(customer decision required)` 呈现 PRD 草案让用户审阅。确认后写入文件或发布到 issue tracker。
+用 `post` 发送 `customer://question/prd-review` 呈现 PRD 草案让用户审阅。确认后写入文件或发布到 issue tracker。
 
-**退出 → 提交 `show(qualified delivery)`**，包含 PRD 路径和内容概要。
+**退出 → 以最终正文结束**（不再调用任何工具，本周期自然结束），包含 PRD 路径和内容概要。

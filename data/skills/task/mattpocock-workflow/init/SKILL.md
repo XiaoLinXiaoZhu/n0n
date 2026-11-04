@@ -18,7 +18,7 @@ alias: mwf-init
 
 ### 1. 探索现状
 
-用 `observe` 了解仓库的当前状态。读取但不假设存在：
+用 `post` 执行 `exec://` 只读命令（如 `cat` / `type` / `rg`）了解仓库的当前状态。读取但不假设存在：
 
 - `git remote -v` 和 `.git/config` — 是 GitHub 仓库吗？远程地址是什么？
 - `AGENTS.md` — 是否存在？是否有 `## Agent skills` 段？
@@ -28,9 +28,9 @@ alias: mwf-init
 
 ### 2. 分项配置
 
-先用 `observe` 取得仓库中可见的事实。只有客户掌握而生产方无法取得的现状、要求或路径，
-才用 `show(customer information required)` 请求；只有配置会改变客户工作流、公共契约或长期维护取舍时，
-才在解释后果和建议后使用 `show(customer decision required)`。一条等待消息只请求一种客户责任。
+先用 `post` 执行 `exec://` 只读命令取得仓库中可见的事实。只有客户掌握而生产方无法取得的现状、要求或路径，
+才用 `post` 发送 `customer://form/mwf-init-tracker` 请求；只有配置会改变客户工作流、公共契约或长期维护取舍时，
+才在解释后果和建议后用 `post` 发送 `customer://question/mwf-init-config`。一次暂停只请求一种客户责任。
 
 #### A — Issue tracker
 
@@ -77,14 +77,14 @@ alias: mwf-init
 | `wontfix` | `wontfix` | 不做 |
 
 先从现有 issue tracker 和项目文档检查自定标签。无法访问而客户掌握现状时，
-用 `show(customer information required)` 请求现有标签；取得事实后，只有映射存在真实语义取舍时才请求客户决定。
+用 `post` 发送 `customer://form/mwf-init-tracker` 请求现有标签；取得事实后，只有映射存在真实语义取舍时才请求客户决定。
 没有自定标签或不存在实质取舍时，默认直接使用角色名作为标签。
 
 写入 `docs/agents/triage-labels.md`，参考 [triage-labels.md](references/triage-labels.md)。
 
 ### 3. 写入配置
 
-所有四项确认后，用 `write` 一次性写入：
+所有四项确认后，用 `post` 写入 `write://` 一次性写入：
 
 **AGENTS.md** — 添加或更新 `## Agent skills` 段：
 
@@ -116,8 +116,8 @@ alias: mwf-init
 
 ### 4. 完成
 
-作为完整 `@mwf` 管线的一部分时，用 `show(production record)` 提交以下阶段产物并继续 Plan。
-只有客户直接调用 `@mwf-init`，且本次订单只要求完成初始化时，才用 `show(qualified delivery)`：
+作为完整 `@mwf` 管线的一部分时，把阶段产物写入 session 文件（`write://.n0n/manual/mwf/session.md`）并更新 `todo://mwf` 条目后继续 Plan。
+只有客户直接调用 `@mwf-init`，且本次订单只要求完成初始化时，才以最终正文结束（不再调用任何工具，本周期自然结束），正文包含：
 
 ```
 【阶段】Init — 完成

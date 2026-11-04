@@ -12,13 +12,13 @@ alias: mwf-status
 
 ## 前置条件
 
-上下文中存在活跃的 session。
+存在活跃的 session（`.n0n/manual/mwf/session.md` 存在，或上下文中有）。
 
 ## 流程
 
 ### 1. 汇总状态
 
-用 `observe`/`reason` 遍历 session 中的 issue，并按状态分组：
+遍历 session 中的 issue（本 run 内刚写过则在上下文，否则 `exec://` 读 session 文件），按状态分组：
 
 | 状态 | 数量 | 说明 |
 |------|------|------|
@@ -32,7 +32,7 @@ alias: mwf-status
 
 ### 2. 依赖图
 
-用 `reason` 分析依赖关系拓扑，高亮阻塞链：
+分析依赖关系拓扑（内部推演），高亮阻塞链：
 
 ```
 MWF-01 [done] ──→ MWF-02 [afk-ready] ──→ MWF-03 [hitl-blocked] ← 阻塞！
@@ -41,7 +41,7 @@ MWF-01 [done] ──→ MWF-02 [afk-ready] ──→ MWF-03 [hitl-blocked] ← �
 
 ### 3. 瓶颈分析
 
-用 `reason` 分析瓶颈，识别当前阻塞点：
+分析瓶颈（内部推演），识别当前阻塞点：
 
 - **最长的未完成链**：从某个 afk-ready 到最远的 pending issue 的路径长度
 - **关键路径**：如果某个 issue 的延迟会影响最多下游
@@ -49,7 +49,7 @@ MWF-01 [done] ──→ MWF-02 [afk-ready] ──→ MWF-03 [hitl-blocked] ← �
 
 ### 4. 建议下一步
 
-用 `reason` 推断下一步建议，基于当前状态给用户一个具体的行动建议：
+推断下一步建议（内部推演），基于当前状态给用户一个具体的行动建议：
 
 | 状态分布 | 建议 |
 |---------|------|
@@ -59,4 +59,4 @@ MWF-01 [done] ──→ MWF-02 [afk-ready] ──→ MWF-03 [hitl-blocked] ← �
 | 全部 done | "全部完成！🎉" |
 | 空 session | "还没有 session，建议用 @mwf plan 开始" |
 
-**退出 → 提交 `show(qualified delivery)`，格式同上。**
+**退出 → 以最终正文结束（不再调用任何工具，本周期自然结束），格式同上。**

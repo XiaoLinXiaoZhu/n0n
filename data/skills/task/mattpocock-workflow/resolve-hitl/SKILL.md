@@ -18,7 +18,7 @@ activation: manual
 
 ### 1. 理解阻塞
 
-用 `observe` 读取 HITL issue 的内容和 `hitlNotes`，用 `reason` 理解阻塞原因：
+用 `post` 执行 `exec://` 读取 HITL issue 的内容和 `hitlNotes`，理解阻塞原因（内部推演）：
 
 - **公共契约或范围**：架构/接口方案会改变客户可见行为、兼容性或订单范围
 - **设计验收**：订单明确要求客户对 UI/UX 产品方向作主观验收
@@ -33,15 +33,15 @@ activation: manual
 
 ### 2. 准备质询
 
-用 `reason` 根据阻塞类型准备具体问题。**一次一个问题**，每个问题附上你的推荐答案，并按客户参与的性质选择类型：
+根据阻塞类型准备具体问题（内部推演）。**一次一个问题**，每个问题附上你的推荐答案，并按客户参与的性质选择类型：
 
-- 客户掌握的事实、既有业务规则、背景或权限现状缺失：`show(customer information required)`
-- 需要客户决定业务结果、订单范围、公共契约、授权、重大风险或契约要求的设计审查：`show(customer decision required)`
-- 需要客户创建账号、调整权限或执行其他外部操作：`show(customer action required)`
+- 客户掌握的事实、既有业务规则、背景或权限现状缺失：`post` 发送 `customer://form/mwf-resolve-facts`
+- 需要客户决定业务结果、订单范围、公共契约、授权、重大风险或契约要求的设计审查：`post` 发送 `customer://question/mwf-resolve-decision`
+- 需要客户创建账号、调整权限或执行其他外部操作：`post` 发送 `customer://action_required/mwf-resolve-action`
 
 等待用户反馈后再继续。
 
-能通过探索代码库回答的问题（observe），不问用户。
+能通过 `exec://` 只读探索回答的问题，不问用户。
 
 #### 质询模板（按阻塞类型）
 
@@ -56,13 +56,13 @@ activation: manual
 ### 3. 记录决策
 
 每个问题确认后：
-- 用 `write` 更新 issue 的 `hitlNotes`，记录决策内容
-- 如果决策涉及 ADR 条件，用 `write` 写入 docs/adr/
-- 如果决策引入或修改了领域术语，用 `write` 更新词汇表
+- 用 `post` 通过 `write://` 更新 issue 的 `hitlNotes`，记录决策内容
+- 如果决策涉及 ADR 条件，用 `post` 通过 `write://` 写入 docs/adr/
+- 如果决策引入或修改了领域术语，用 `post` 通过 `write://` 更新词汇表
 
 ### 4. 判定是否可转换
 
-当一个 HITL issue 的所有阻塞点都被解决后，用 `reason` 判断：
+当一个 HITL issue 的所有阻塞点都被解决后，判断（内部推演）：
 
 - **可转为 AFK** → 更新 issue: `type: AFK`, `status: afk-ready`，清空 `hitlNotes` 或保留为上下文参考
 - **需拆分为子 issue** → 阻塞点复杂时，拆为"决策 issue（仍为 HITL）→ 实现 issue（AFK）"
@@ -70,8 +70,8 @@ activation: manual
 
 ### 5. 报告转换结果
 
-目标阻塞已经解决时，按调用范围选择消息类型：作为完整 `@mwf` 管线阶段时使用 `show(production record)` 并回到 Dispatch；
-客户直接调用 `@mwf-resolve` 且本次订单只要求解决该阻塞时，使用 `show(qualified delivery)`。
+目标阻塞已经解决时，按调用范围选择出口：作为完整 `@mwf` 管线阶段时更新 session 文件与 `todo://mwf` 条目并回到 Dispatch；
+客户直接调用 `@mwf-resolve` 且本次订单只要求解决该阻塞时，以最终正文结束（不再调用任何工具，本周期自然结束）。
 两种情况的内容均可采用以下结构：
 
 ```
@@ -86,7 +86,7 @@ activation: manual
 【下一步】继续 resolve 其他 HITL / 回到 dispatch
 ```
 
-如果仍有未解决的阻塞且客户参与可用，按当前缺少的是信息、决定还是外部操作，继续使用对应的 customer required 类型质询。
-只有目标阻塞已解决且当前订单以此为完整目标时才提交 `show(qualified delivery)`。客户明确移除相关 issue 时，必须先把范围修订更新为有效契约；
-剩余范围全部验收通过后才使用 `show(qualified delivery)`，并在正文明确说明范围修订已先更新有效契约。客户撤回整个订单且不要求验收现有产物时，使用 `show(customer cancelled)`。
-不存在可继续的等待路径时，按实际边界使用 `show(production suspended)` 或 `show(production failed)`。
+如果仍有未解决的阻塞且客户参与可用，按当前缺少的是信息、决定还是外部操作，继续用对应的 `customer://` kind 质询。
+只有目标阻塞已解决且当前订单以此为完整目标时才以最终正文结束（不再调用任何工具，本周期自然结束）。客户明确移除相关 issue 时，必须先把范围修订更新为有效契约；
+剩余范围全部验收通过后才以最终正文结束，并在正文明确说明范围修订已先更新有效契约。客户撤回整个订单且不要求验收现有产物时，以最终正文结束并说明客户撤回。
+不存在可继续的等待路径时，按实际边界以最终正文结束并说明暂停原因或失败原因。

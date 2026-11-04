@@ -31,24 +31,26 @@ activation: manual
 | "我建议用 Redis" | "延迟要求 <10ms，当前 SQL 查询 P99 为 50ms（见压测报告 §2.3），候选方案对比如下..." |
 | "可能不是这个原因" | "排除这个假设的理由：如果 X 是根因，那么 Y 应该出现；但日志显示 ¬Y（`checkpoint.log:47`），因此排除 X" |
 
-在得出结论前，用 `reason` 运行思维实验——把假设、预期、实际检查写成可执行的具体逻辑。有时候直接用 `act` 尝试再用 `observe` 看结果比纯推演更高效。
+在得出结论前，先运行思维实验——把假设、预期、实际检查写成可执行的具体逻辑再判断。有时直接用 `exec://` 尝试再看结果比纯推演更高效。
 
-### 约束二：按可审查结果使用 `show(production record)`
+### 约束二：按可审查结果更新 todo 条目
 
 形成一个可独立审查的阶段结论、证据改变探索方向，或从分析转入综合并已经形成新的综合判断时，
-使用 `show(production record)`。首次探索前的计划、例行读取、单次工具调用和尚未改变后续动作的中间观察不单独汇报。
+用 `post` 更新 `todo://research`（全量重写该 goal 的列表，已完成项保留勾选与展开内容）。首次探索前的计划、例行读取、单次工具调用和尚未改变后续动作的中间观察不单独更新。
 
-阶段声明的**必须元素**：
+阶段条目的**必须元素**（展开填写到对应 todo 条目下）：
 1. 本检查点形成的结论
 2. 支持结论的**具体证据引用**（文件名、行号、时间戳、数值等）
 3. 结论怎样影响下一步探索
 
-### 约束三：需要客户决定时使用 `show(customer decision required)`
+未开始/未展开的阶段只列条目、内容留空。
+
+### 约束三：需要客户决定时用 `post` 发送 `customer://question/research-review`
 
 当研究产出了**需要客户基于其结果、范围、公共契约或风险责任作出判断才能继续推进**的文档时，
-必须用 `show(customer decision required)` 请求审阅。纯技术判断由生产方完成。
+必须用 `post` 发送 `customer://question/research-review` 请求审阅。纯技术判断由生产方完成。
 
-`show(customer decision required)` 的**必须元素**：
+body 的**必须元素**：
 1. 核心结论（1-3 句话摘要）
 2. 自信程度（以及不确定的地方）
 3. 需要人类确认的具体决策点，以及真实可行选项和后果差异；不存在多个可行选项时不为凑数制造选项
@@ -69,7 +71,7 @@ activation: manual
 
 阶段 3: 综合与产出
   working → 整合检查结果并形成报告结论
-  customer decision required → 请求客户决定
+  customer://question/research-review → 请求客户决定
 
 阶段 4: 收尾（收到反馈后继续）
 ```
@@ -77,4 +79,4 @@ activation: manual
 ## 与 bugfix 的协作
 
 research 负责探索和归因阶段，bugfix 负责修复阶段。当研究确认了根因，且后续确实需要客户决定时，
-在决定请求中说明是否建议切换为 bugfix。
+在 `customer://question/research-review` 的 body 中说明是否建议切换为 bugfix。

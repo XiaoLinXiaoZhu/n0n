@@ -80,7 +80,7 @@
 | `startedAt` | 开始时间 |
 | `currentFocus` | 当前正在处理的 issue id（如有） |
 
-Session 由 `@mwf` 在上下文中维护，子 skill 通过上下文读取和更新。
+Session 由 `@mwf` 全量写入 `.n0n/manual/mwf/session.md`，子 skill 通过该文件读取和更新（本 run 内刚写过则在上下文，跨 run 或需核对时用 `exec://` 读取）。
 
 ## 4. 工作流管线
 
@@ -106,8 +106,8 @@ Session 由 `@mwf` 在上下文中维护，子 skill 通过上下文读取和更
 ## 5. 命名约定
 
 - issue id: `MWF-01`, `MWF-02`...（按创建顺序递增）
-- 在 `@mwf` 上下文中用 `this session` 引用当前 session
-- 子 skill 作为完整管线阶段时通过 `show(production record)` 报告 session 状态变更，由父流程继续并判定订单终态
+- 用 `this session` 引用当前 session（`.n0n/manual/mwf/session.md`）
+- 子 skill 作为完整管线阶段时通过更新 session 文件（`write://`）与 `todo://` 报告状态变更，由父流程继续并判定订单验收
 
 ---
 

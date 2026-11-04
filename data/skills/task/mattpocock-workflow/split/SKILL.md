@@ -18,13 +18,13 @@ plan 阶段已完成，上下文中存在 plan 引用。
 
 ### 1. 读取 plan
 
-用 `observe` 读取 plan/PRD 内容。用 `reason` 理解所有用户故事、模块划分、技术决策。
+用 `post` 执行 `exec://` 读取 plan/PRD 内容。理解所有用户故事、模块划分、技术决策（内部推演）。
 
 ### 2. 识别纵向切片
 
 **核心原则：纵向切片，不水平分层。**
 
-用 `reason` 分析切片方式。
+分析切片方式（内部推演）。
 
 每个 issue 切穿所有集成层（schema → API → UI → tests），完成后可独立演示或验证。
 
@@ -37,7 +37,7 @@ plan 阶段已完成，上下文中存在 plan 引用。
 
 每个切片标注：
 
-用 `reason` 判断每个切片类型。
+判断每个切片类型（内部推演）。
 
 | 标注 | 含义 | 判断标准 |
 |------|------|---------|
@@ -49,7 +49,7 @@ plan 阶段已完成，上下文中存在 plan 引用。
 
 ### 4. 解析依赖关系
 
-用 `reason` 分析依赖链。
+分析依赖链（内部推演）。
 
 确定每个 issue 被哪些 issue 阻塞：
 - Schema 变更 → 阻塞使用该 schema 的 API 和 UI
@@ -59,8 +59,8 @@ plan 阶段已完成，上下文中存在 plan 引用。
 ### 5. 呈现给用户
 
 issue 粒度、技术依赖和 AFK 分类由生产方依据 PRD、代码和工具能力确定。
-若拆分会改变订单范围、公共契约或把新增工作分配给客户，使用 `show(customer decision required)` 请求客户决定；
-否则不制造等待消息，直接进入第 6 步。需要客户决定时，消息可采用以下结构：
+若拆分会改变订单范围、公共契约或把新增工作分配给客户，用 `post` 发送 `customer://question/mwf-split-scope` 请求客户决定；
+否则不请求客户，直接进入第 6 步。需要客户决定时，body 可采用以下结构：
 
 ```
 计划拆分：<plan 标题>
@@ -78,14 +78,14 @@ MWF-01 ──→ MWF-02 ──→ MWF-03
            MWF-04 (HITL 分支)
 ```
 
-客户决定请求只列出会改变其范围、公共契约或承担工作的事项；不得要求客户替生产方校验技术依赖或 AFK 分类。
+customer://question 的 body 只列出会改变其范围、公共契约或承担工作的事项；不得要求客户替生产方校验技术依赖或 AFK 分类。
 
 ### 6. 提交 session
 
-拆分结果成立且必要的客户决定完成后，用 `act` 在上下文中维护 issue 列表（session.issues）。
+拆分结果成立且必要的客户决定完成后，更新 session 文件（`write://.n0n/manual/mwf/session.md`）维护 issue 列表（session.issues）。
 
-作为完整 `@mwf` 管线的一部分时用 `show(production record)` 继续 Dispatch 或 Resolve HITL；
-客户直接调用且本次订单只要求形成 issue 列表时用 `show(qualified delivery)`：
+作为完整 `@mwf` 管线的一部分时，更新 session 文件与 `todo://mwf` 条目后继续 Dispatch 或 Resolve HITL；
+客户直接调用且本次订单只要求形成 issue 列表时，以最终正文结束（不再调用任何工具，本周期自然结束）并包含：
 
 ```
 【阶段】Split — 完成

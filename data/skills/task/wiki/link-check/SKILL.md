@@ -14,7 +14,7 @@ activation: manual
 
 - 链接语法：`[[文件名]]`，文件名不含扩展名
 - 除非用户明确确认，**不执行任何实际编辑**
-- 所有发现通过 `show` 汇报，附建议和依据
+- 所有发现以正文汇报，附建议和依据
 
 ## 执行步骤
 
@@ -33,11 +33,11 @@ rg --files wiki/ | rg "\.md$"
 
 ### 2. 读取待审文档
 
-用 `observe` 读取用户指定的文档全文。
+用 `post` 执行 `exec://` 读取用户指定的文档全文。
 
 ### 3. 提取候选词
 
-用 `reason` 完成以下分析：
+完成以下分析（内部推理）：
 
 **3a. 已有 wikilink 清单**
 
@@ -70,7 +70,7 @@ rg --files wiki/ | rg "\.md$"
 
 ### 4. 汇报
 
-用 `show(customer decision required)` 提交完整报告，等待用户确认是否执行修改：
+用 `post` 发送 `customer://question`，body 为完整报告，等待用户确认是否执行修改：
 
 ```
 【文档】xxx.md
@@ -89,7 +89,7 @@ rg --files wiki/ | rg "\.md$"
 
 ### 5. 确认后执行
 
-用户确认后，用 `write` 逐处重写修改。每次修改记录在 commit message 中。
+用户确认后，用 `post` 写入 `write://` 逐处重写修改。每次修改记录在 commit message 中。
 
 ## 自检
 

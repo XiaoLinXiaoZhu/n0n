@@ -21,11 +21,11 @@ activation: manual
 
 ### 阶段 1：Grill
 
-参考 `grill-with-docs` 的质询方式，对计划进行穷举式提问。整个质询过程中，能用 `observe` 回答的就不问用户。
+参考 `grill-with-docs` 的质询方式，对计划进行穷举式提问。整个质询过程中，能用 `exec://` 只读探索回答的就不问用户。
 
 **一次一个问题**，每个问题附上你的推荐答案。询问客户掌握的问题定义、用户故事、既有约束或其他事实/要求时用
-`show(customer information required)`；需要客户决定业务结果、订单范围、公共契约、授权、重大风险或修订范围时用
-`show(customer decision required)`。等待用户反馈后再继续。
+`post` 发送 `customer://form/mwf-plan-facts`；需要客户决定业务结果、订单范围、公共契约、授权、重大风险或修订范围时用
+`post` 发送 `customer://question/mwf-plan-decisions`。等待用户反馈后再继续。
 
 #### 质询清单（按优先级）
 
@@ -41,16 +41,16 @@ activation: manual
 才作为客户决定提交。
 
 **同时内联维护**：
-- 领域词汇表：术语确定后用 `write` 将术语写入 AGENTS.md 或 CONTEXT.md
-- ADR：用 `reason` 判断是否满足三个条件，满足后用 `write` 写入 docs/adr/（难以逆转 / 无上下文会困惑 / 真正的取舍）
+- 领域词汇表：术语确定后用 `post` 通过 `write://` 将术语写入 AGENTS.md 或 CONTEXT.md
+- ADR：判断是否满足三个条件（内部推演），满足后用 `post` 通过 `write://` 写入 docs/adr/（难以逆转 / 无上下文会困惑 / 真正的取舍）
 
 ### 阶段 2：PRD
 
-用 `reason` 综合阶段 1 中已讨论的内容为 PRD。不做额外采访——直接综合已知信息。
+综合阶段 1 中已讨论的内容为 PRD。不做额外采访——直接综合已知信息。
 
-如果对话中已经有充分的讨论（用户直接给了详细 spec），可以跳过阶段 1，用 `reason` 直接综合为 PRD。
+如果对话中已经有充分的讨论（用户直接给了详细 spec），可以跳过阶段 1，直接综合为 PRD。
 
-用 `write` 按以下模板写入文件：
+用 `post` 通过 `write://` 按以下模板写入文件：
 
 ```markdown
 ## 问题陈述
@@ -78,12 +78,12 @@ activation: manual
 
 ### 3. 呈现 PRD
 
-用 `show(customer decision required)` 呈现 PRD 草案让用户审阅。确认后写入文件。
+用 `post` 发送 `customer://question/mwf-plan-prd` 呈现 PRD 草案让用户审阅。确认后写入文件。
 
-确认后，用 `act` 在上下文中维护 plan 引用（文件路径或内容摘要），供后续 `split` 阶段使用。
+确认后，更新 session 文件（`write://.n0n/manual/mwf/session.md`）维护 plan 引用（文件路径或内容摘要），供后续 `split` 阶段使用。
 
-作为完整 `@mwf` 管线的一部分时，用 `show(production record)` 提交以下阶段产物并继续 Split。
-只有客户直接调用 `@mwf-plan`，且本次订单只要求形成已确认的 PRD 时，才用 `show(qualified delivery)`：
+作为完整 `@mwf` 管线的一部分时，把阶段产物写入 session 文件并更新 `todo://mwf` 条目后继续 Split。
+只有客户直接调用 `@mwf-plan`，且本次订单只要求形成已确认的 PRD 时，才以最终正文结束（不再调用任何工具，本周期自然结束），正文包含：
 
 ```
 【阶段】Plan — 完成

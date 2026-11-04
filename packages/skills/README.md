@@ -29,9 +29,7 @@
 - 以 init 方式在生产周期开始时自动生效
 
 **与系统的关系**：作为 init skill 启动时自动加载（activation: init）。质量标准定义
-`show` 类型的语义和合格判据；工具接口只定义枚举、参数和循环行为。
-
-**当前代表**：`self-function/production-quality`
+等待质询（`customer://` kind）、阶段记录（`todo://`）与最终正文的语义和合格判据；工具接口只定义枚举、参数和循环行为。
 
 ### Task（任务）
 
@@ -45,7 +43,7 @@
 - 有明确的起点和终点（任务完成即结束）
 - 将重复出现的任务抽取为可复用的标准化流程
 
-**与系统的关系**：编排 observe/reason/act 三个工具的使用顺序。生产记录只在形成有信息价值的关键进展时发送；
+**与系统的关系**：编排 `post`（exec/write/customer/todo scheme）的使用。阶段记录只在形成有信息价值的关键进展时更新 `todo://`；
 等待型消息由客户下一步任务决定，终态由产物与当前验收基线的关系决定，不能把“流程结束”直接等同于合格交付。
 
 **典型代表**：bugfix（修 bug）、refactor（重构）、review（代码审查）、disk-cleanup（清理磁盘）、triage（分诊 issue）、to-prd（生成 PRD）、handoff（生成交接文档）
@@ -62,10 +60,10 @@
 - 可以与任何 task 堆叠使用
 
 **两个子方向**：
-- **Show 调制器**：改变 production record 的使用时机和内容格式（research、step）
+- **记录调制器**：改变 `todo://` 阶段记录的时机与格式（research、step）
 - **视角/模式调制器**：改变模型的输出视角或交互角色（zoom-out 上升抽象层、grill-me 反转为提问者）
 
-**与系统的关系**：调制 production record 的触发条件和格式，或约束 observe/reason/act 的使用范围。
+**与系统的关系**：调制 `todo://` 阶段记录的触发条件和格式，或约束 `post` 各 scheme 的使用范围。
 
 **典型代表**：research（高频汇报+证据链条）、step（通用高频汇报）、zoom-out（上升抽象层）、grill-me（穷举式提问）
 
@@ -77,11 +75,11 @@
 
 **核心特征**：
 - 包含具体的命令/代码模板
-- 教模型如何通过 observe/act 操作特定系统
+- 教模型如何通过 `post` 的 `exec://` 与 `write://` 操作特定系统
 - 通常包含 scripts/ 目录中的可执行代码
 - 附带的参考信息（参数表、避坑指南）服务于该能力本身
 
-**与系统的关系**：扩展 observe 和 act 两个工具的操作范围。
+**与系统的关系**：扩展 `post` 的 `exec://` 与 `write://` scheme 的操作范围。
 
 **典型代表**：ssh-remote（远程服务器操作）、ppio-web-search（网页搜索）、everything-cli（文件搜索）、annotation（批注读写）
 

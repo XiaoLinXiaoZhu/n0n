@@ -46,7 +46,7 @@ skill-name/
 
 ### 1. 收集需求
 
-用 `show(customer information required)` 逐项询问：
+用 `post` 发送 `customer://form` 逐项询问：
 
 - 这个 skill 覆盖什么任务/领域？
 - 具体触发场景和关键词是什么？
@@ -63,8 +63,8 @@ skill-name/
 ### 3. 内容原则
 
 - 读者是 agent——用祈使句下指令，不写面向人类的解释。
-- 每个步骤明确关联工具（observe/reason/act）和 show type。
-- 退出条件必须与实际质量终态一致；只有成功条件完整满足时才定义 `show(qualified delivery)`。
+- 每个步骤明确关联 `post` 的 scheme（exec/write/customer/todo）与消息形态。
+- 退出条件必须与实际退出判定一致；只有成功条件完整满足时才在最终正文中声明完成。
 - 使用中文。
 
 ### 4. 何时拆分文件
@@ -76,12 +76,12 @@ skill-name/
 
 ### 5. 审查
 
-用 `show(customer decision required)` 呈现草案，请用户审阅。检查清单：
+用 `post` 发送 `customer://question` 呈现草案，请用户审阅。检查清单：
 
 - [ ] description 包含触发条件，覆盖用户场景
 - [ ] activation 字段正确（init 需配 order，manual 需配触发词在 description 中）
 - [ ] 无时间敏感信息（日期、版本号等容易过期的内容）
-- [ ] show type 与客户下一步任务或实际质量终态一致；工作日志不按步骤数量强制产生
+- [ ] customer:// kind 与客户下一步任务一致（信息=form、决定=question、操作=action_required）；工作日志不按步骤数量强制产生
 - [ ] 引用只一层深，附件平铺在同级目录
 
-**退出 → 提交 `show(qualified delivery)`**，包含 skill 路径和概要。
+**退出 → 以最终正文结束**（不再调用任何工具，本周期自然结束），包含 skill 路径和概要。

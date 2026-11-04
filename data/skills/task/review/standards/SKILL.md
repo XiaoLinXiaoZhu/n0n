@@ -30,7 +30,7 @@ review-init 已完成，你已知道 diff 命令和 standards 来源列表。
 
 ### 3. 产出报告
 
-**退出 → 提交 `show(qualified delivery)`，格式：**
+**退出 → 以最终正文结束（不再调用任何工具，本周期自然结束），格式：**
 
 ```
 【阶段】Review Standards
