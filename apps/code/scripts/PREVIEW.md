@@ -6,13 +6,13 @@
 
 - **post**(uri, body): Four uri schemes route this tool to different backends:  exec — exec://<runtime>/<NAME>?cwd=…&waitfor=…&max_output_token...
 
-## Message Sequence (3 messages, ~747 tokens)
+## Message Sequence (3 messages, ~778 tokens)
 
 | # | Role | Approx Tokens | Chars |
 |---|------|--------------|-------|
 | 1 | system | ~28 | 113 |
 | 2 | user | ~44 | 175 |
-| 3 | user | ~675 | 2,698 |
+| 3 | user | ~706 | 2,822 |
 
 ## Token Budget Breakdown
 
@@ -20,10 +20,10 @@
 |-----------|--------------|-------|
 | System prompt | ~28 | 113 |
 | Init skills (user message) | ~44 | 175 |
-| Tool definitions | ~827 | 3,309 (1 tools) |
-| Environment context | ~650 | 2,598 |
+| Tool definitions | ~1,018 | 4,073 (1 tools) |
+| Environment context | ~681 | 2,722 |
 | User input | ~12 | 46 |
-| **Total prefix (messages + tools)** | **~1,574** | **6,295** |
+| **Total prefix (messages + tools)** | **~1,796** | **7,183** |
 
 ## Init Skills
 
@@ -59,17 +59,18 @@ You are a agent operating in a local development environment. Your tools are pro
 执行 n0n scan global 的结果为：
 ```
 [OS]
-Microsoft Windows [Version 10.0.26340.9767]
+Microsoft Windows [Version 10.0.26340.9843]
 
-[Exec Runtimes] (use as `runtime` param in exec tool)
-cmd: 10.0.26340.9767 (preferred)  →  cmd /c <tmpfile.cmd>
-pwsh: 7.6.9  →  pwsh -NoProfile -File <tmpfile.ps1>
+[Exec Runtimes] (`runtime` segment of exec://<runtime>/<NAME> is required — there is no default)
 bun: 1.4.4 (preferred)  →  bun run <tmpfile.ts>
 node: 24.22.1  →  node <tmpfile.mjs>
 python3: 3.13.7 (preferred)  →  python3 <tmpfile.py>
 uv: 0.8.14  →  uv run <tmpfile.py>
-(default runtime: cmd)
-To run inline code (TS/Python/PowerShell), use the runtime param directly — do NOT invoke interpreters through the default shell (e.g. don't write script="bun -e '...'" or script="python -c '...'"). Instead: exec(runtime="bun", script="<your TS code>") or exec(runtime="uv", script="<your Python code>").
+cmd: 10.0.26340.9843 (preferred)  →  cmd /c <tmpfile.cmd>
+bash: 5.3.9  →  bash <tmpfile.sh>
+pwsh: 7.6.9  →  pwsh -NoProfile -File <tmpfile.ps1>
+(recommended runtime: bun)
+Prefer script runtimes over shells — the same script runs on every platform, while shell syntax and quoting differ. To run inline code (TS/Python/PowerShell), use the runtime segment directly: do NOT invoke an interpreter through a shell runtime (e.g. don't write script="bun -e '...'" or script="python -c '...'"). Instead: exec://bun/... with body = your TS code, or exec://uv/... with body = your Python code.
 
 [PATH Tools]
 adb, bun, cargo, cmake, curl, dotnet, fastboot, ffmpeg, ffplay, ffprobe, gh, git, go, jq, markitdown, n0n, node, npm, nvim, pandoc, pnpm, ppt2md, pwsh, python, python3, rg, rustc, sqlite3, ssh, tar, tig, uv
@@ -83,16 +84,11 @@ E:\_Project\n0n
 
 [Git]
 Branch: refactor/post-scheme-registry
-Status: 19 changed files
-  M AGENTS.md
-   M README.md
-   M apps/n0n-scan/src/commands/project.ts
-  D  biome.json
-   M package.json
-   M packages/cli-ui/src/__tests__/test-helpers.ts
-   M packages/cli-ui/src/__tests__/virtual-terminal.ts
-   M packages/cli-ui/src/ansi.ts
-  ... and 11 more
+Status: 4 changed files
+  M apps/n0n-scan/src/commands/global.ts
+   M packages/tools/scripts/preview-output/tool-post.preview.md
+   M packages/tools/src/__tests__/exec-escape.test.ts
+   M packages/tools/src/schemes/exec.ts
 
 [AGENTS.md]
 ## report 格式
@@ -122,8 +118,8 @@ Status: 19 changed files
 
 [Codebase]
 Structure: apps, data, docs, packages, scripts
-Source files: 228
-Total lines: ~27800
+Source files: 229
+Total lines: ~28300
 Type: node/bun, monorepo
 ```
 

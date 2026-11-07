@@ -23,8 +23,9 @@ export interface ParsedExec {
   maxOutputTokens?: number;
 }
 
+/** runtime 选项，按推荐度排序：跨平台的脚本 runtime 在前，shell 在后 */
 const ALL_RUNTIMES =
-  "sh, bash, pwsh, cmd, bun, node, deno, python, python3, uv";
+  "bun, node, deno, python, python3, uv, sh, bash, pwsh, cmd";
 const DEFAULT_OUTPUT_TOKENS = 5_000;
 
 export const execScheme: SchemeHandler<ParsedExec> = {
@@ -33,9 +34,8 @@ export const execScheme: SchemeHandler<ParsedExec> = {
   bodyHint: "Code for exec://",
 
   describe(ctx) {
-    const defaultRuntime = ctx.platform === "win32" ? "cmd" : "sh";
     return [
-      `exec — exec://<runtime>/<NAME>?cwd=…&waitfor=…&max_output_tokens=… . Body is code (a single command or multi-line script with imports, loops, etc.). Runtime options: ${ALL_RUNTIMES} (default: "${defaultRuntime}"). <NAME> is your own short label for what this step is doing (e.g. read-config). cwd is the working directory (default: injected workspace root). waitfor is max seconds to wait (default: ${ctx.default_exec_waitfor}, max: ${WAITFOR_MAX}); exceeding it is a signal, not a failure: the process keeps running in the background and its PID and execution artifact are returned. max_output_tokens caps the estimated stdout+stderr tokens returned to you (default: ${Math.min(
+      `exec — exec://<runtime>/<NAME>?cwd=…&waitfor=…&max_output_tokens=… . Body is code (a single command or multi-line script with imports, loops, etc.). Runtime options: ${ALL_RUNTIMES} — the runtime segment is required, there is no default. Prefer bun for TS/JS and uv or python3 for Python: script runtimes behave the same on every platform, while shells differ in syntax and quoting. <NAME> is your own short label for what this step is doing (e.g. read-config). cwd is the working directory (default: injected workspace root). waitfor is max seconds to wait (default: ${ctx.default_exec_waitfor}, max: ${WAITFOR_MAX}); exceeding it is a signal, not a failure: the process keeps running in the background and its PID and execution artifact are returned. max_output_tokens caps the estimated stdout+stderr tokens returned to you (default: ${Math.min(
         DEFAULT_OUTPUT_TOKENS,
         ctx.max_exec_output_tokens,
       )}, max: ${ctx.max_exec_output_tokens}); the budget covers both streams combined and full output is saved as an execution artifact when truncated.`,

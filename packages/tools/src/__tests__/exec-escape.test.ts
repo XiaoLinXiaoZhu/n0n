@@ -3,7 +3,7 @@
  * exec 工具测试
  *
  * 验证 post 工具 exec:// 分支的脚本执行：
- * - 默认 runtime（平台 shell）执行简单命令
+ * - 平台 shell runtime 执行简单命令
  * - bun runtime 执行 TypeScript 代码
  * - 转义字符在文件执行模式下不再是问题
  */
@@ -66,7 +66,7 @@ async function collectExecResult(script: string, runtime?: string) {
 }
 
 describe("exec tool — script+runtime model", () => {
-  test("simple command with default runtime (platform shell)", async () => {
+  test("simple command with platform shell runtime", async () => {
     const result = await collectExecResult("echo hello");
     expect(result.exitCode).toBe(0);
     expect(result.stdout.trim()).toBe("hello");

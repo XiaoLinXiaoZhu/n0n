@@ -215,44 +215,49 @@ async function probeRuntime(
   }
 }
 
+/** 展示顺序 = 推荐顺序：跨平台一致性好的脚本 runtime 在前，shell 在后 */
+const RUNTIME_GROUPS: RuntimeGroup[] = ["js", "python", "shell"];
+
+function groupRuntimes(
+  available: ProbeResult[],
+  group: RuntimeGroup,
+): ProbeResult[] {
+  return available
+    .filter((r) => r.def.group === group)
+    .sort((a, b) => a.def.priority - b.def.priority);
+}
+
 async function runtimesSection(runCommandFn: RunCommandFn): Promise<string> {
-  const lines = ["[Exec Runtimes] (use as `runtime` param in exec tool)"];
+  const lines = [
+    "[Exec Runtimes] (`runtime` segment of exec://<runtime>/<NAME> is required — there is no default)",
+  ];
 
-  const results = await probeRuntimes(runCommandFn);
-  const available = results.filter((r) => r.available);
+  const available = (await probeRuntimes(runCommandFn)).filter(
+    (r) => r.available,
+  );
 
-  // 按分组输出，每组标注首选
-  const groups: RuntimeGroup[] = ["shell", "js", "python"];
-  const preferredByGroup = new Map<RuntimeGroup, string>();
+  // 每组首个标 (preferred)；跨组推荐取排序后的第一个（脚本 runtime 优先）
+  const preferredPerGroup = RUNTIME_GROUPS.map((group) =>
+    groupRuntimes(available, group),
+  );
+  const recommended = preferredPerGroup.find((list) => list.length > 0)?.[0];
 
-  for (const group of groups) {
-    const groupResults = available
-      .filter((r) => r.def.group === group)
-      .sort((a, b) => a.def.priority - b.def.priority);
-
-    if (groupResults.length > 0) {
-      const [first] = groupResults;
-      if (first === undefined) {
-        throw new Error("invariant: non-empty runtime group has no first item");
-      }
-      preferredByGroup.set(group, first.def.name);
-    }
-
-    for (const r of groupResults) {
-      const isPreferred = r.def.name === preferredByGroup.get(group);
-      const versionStr = r.version ? `${r.version}` : "available";
-      const marker = isPreferred ? " (preferred)" : "";
+  for (const groupResults of preferredPerGroup) {
+    for (const [index, r] of groupResults.entries()) {
+      const versionStr = r.version ?? "available";
+      const marker = index === 0 ? " (preferred)" : "";
       lines.push(
         `${r.def.name}: ${versionStr}${marker}  →  ${r.def.execution}`,
       );
     }
   }
 
-  const defaultRuntime = IS_WINDOWS ? "cmd" : "sh";
-  lines.push(`(default runtime: ${defaultRuntime})`);
+  if (recommended !== undefined) {
+    lines.push(`(recommended runtime: ${recommended.def.name})`);
+  }
 
   lines.push(
-    `To run inline code (TS/Python/PowerShell), use the runtime param directly — do NOT invoke interpreters through the default shell (e.g. don't write script="bun -e '...'" or script="python -c '...'"). Instead: exec(runtime="bun", script="<your TS code>") or exec(runtime="uv", script="<your Python code>").`,
+    `Prefer script runtimes over shells — the same script runs on every platform, while shell syntax and quoting differ. To run inline code (TS/Python/PowerShell), use the runtime segment directly: do NOT invoke an interpreter through a shell runtime (e.g. don't write script="bun -e '...'" or script="python -c '...'"). Instead: exec://bun/... with body = your TS code, or exec://uv/... with body = your Python code.`,
   );
 
   return lines.join("\n");
