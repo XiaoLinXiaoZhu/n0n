@@ -52,7 +52,7 @@ describe("toDeepSeekMessages", () => {
     ]);
   });
 
-  test("reasoning 原样保留不改写", () => {
+  test("reasoning 原样保留", () => {
     expect(
       toDeepSeekMessages([
         {

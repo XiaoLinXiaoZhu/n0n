@@ -310,9 +310,9 @@ interface LedgerArgs {
 
 ### 4.7 独立议题：reasoning 是否应当始终回传
 
-`packages/llm/src/deepseek-client/format.ts` 当前"始终保留 reasoning_content"，而 `packages/llm/src/deepseek-client/utils.ts` 提供一个默认关闭的 `rewriteParagraphs`（"Let me" → "We need to"）。
+`packages/llm/src/deepseek-client/format.ts` 当前"始终保留 reasoning_content"。
 
-- `rewriteParagraphs` 只改措辞、不改结构：它不解决"未决事项无处安放"，因此**不能替代本方案**；但它是同类问题的另一个观察点（措辞改写属于"堵"的近亲）。
+- 曾有的措辞改写（`rewriteParagraphs`，"Let me" → "We need to"）由默认关闭的 `ENABLE_REASONING_REWRITE` 控制，从未实际生效，现已删除；它只改措辞、不改结构，不解决"未决事项无处安放"，不能替代本方案。
 - 是否回传历史 reasoning 是一个独立的经济学问题（省 ~49% 上下文 vs 失去后续轮次复用推导的能力），建议单独立项评估，不要与本方案捆绑定稿。
 
 ---

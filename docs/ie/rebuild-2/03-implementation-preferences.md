@@ -215,6 +215,9 @@ Python 试验在 `uv` 已确认可用且适合当前环境时，倾向用其创�
 
 ## 6. 模型适配偏好
 
+**状态：已撤回（2026-08）。** 该偏好从未实际生效，对应实现 `apps/code/src/model-guidance.ts`
+已删除；本节仅保留迁移记录，不再作为可实施偏好。
+
 **来源**
 
 - `data/skills/self-function/B-chain-of-thought/SKILL.md`

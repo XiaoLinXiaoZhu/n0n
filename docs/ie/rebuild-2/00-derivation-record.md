@@ -396,7 +396,8 @@
 - 客户后续参与不可用时，运行时从工具枚举移除三种客户责任请求；headless 与 one-shot
   不伪造客户答复或自动批准受限命令；
 - headless 将每条 show 渲染到日志并持久化到结果返回的 session 目录；
-- `apps/code/src/model-guidance.ts` 在模型适配层承载条件化隐藏分析偏好；
+- `apps/code/src/model-guidance.ts` 曾在模型适配层承载条件化隐藏分析偏好；该实现与偏好已于
+  2026-08 删除（从未实际生效）；
 - `data/skills/directive/implementation-preferences/SKILL.md` 承载跨项目运行时偏好。
 - 现有 task/directive skill 中按固定次数产生生产记录、固定候选数量和把子阶段结束称为合格交付的规则，
   已按 R7、R8、R11 改为信息触发和真实终态。

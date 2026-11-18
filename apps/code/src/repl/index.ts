@@ -32,7 +32,6 @@ import type {
 
 import { CodeRenderer } from "../code-renderer.ts";
 import { buildEnvironmentContext } from "../context-env.ts";
-import { buildCodeSystemPrompt } from "../model-guidance.ts";
 import type { UserInputConfig } from "../multiline-input/config.ts";
 import type { NotifyConfig } from "../notify-sound.ts";
 import { lastAssistantText, OutputWriter } from "../output-writer.ts";
@@ -96,10 +95,7 @@ export async function startCodeRepl(
   // ── 依赖组装 ──
 
   const { client, toolsConfig, agentConfig } = options;
-  const baseSystemPrompt = buildCodeSystemPrompt(
-    getPrompt(promptVersion),
-    client.modelId,
-  );
+  const baseSystemPrompt = getPrompt(promptVersion);
 
   const initSkills = await loadInitSkills();
   const systemSkills: Skill[] = initSkills.map(toSkill);

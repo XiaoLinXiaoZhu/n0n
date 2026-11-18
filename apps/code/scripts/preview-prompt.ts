@@ -33,7 +33,6 @@ import type {
 } from "@n0n/types";
 
 import { buildEnvironmentContext } from "../src/context-env.ts";
-import { buildCodeSystemPrompt } from "../src/model-guidance.ts";
 import { getPrompt } from "../src/prompts";
 import { CODE_TAIL_ANCHOR } from "../src/tail-anchor.ts";
 
@@ -112,7 +111,7 @@ const mockClient: LLMClient = {
 // ── 复用 repl.ts 的完整初始化流程 ──
 // 以下代码与 repl.ts startCodeRepl 中的初始化部分保持一致
 
-const baseSystemPrompt = buildCodeSystemPrompt(getPrompt(), mockClient.modelId);
+const baseSystemPrompt = getPrompt();
 
 const initSkills = useRepositorySkills
   ? await loadInitSkillsFromDirs([repositorySkillsDir])
