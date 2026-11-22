@@ -27,6 +27,8 @@ const tagStyleField = z
 
 /** 透传到 API 请求 body 的额外字段 — 覆盖同名显式参数 */
 const extraBodyField = z.record(z.string(), z.unknown()).optional();
+/** 透传到 HTTP 请求头的额外字段 */
+const extraHeadersField = z.record(z.string(), z.string()).optional();
 
 // ═══════════════════════════════════════════════════════════
 // ProviderConfig — discriminated union on `provider`
@@ -101,6 +103,31 @@ export const DeepSeekProviderConfigSchema = z.object({
 export type DeepSeekProviderConfig = z.infer<
   typeof DeepSeekProviderConfigSchema
 >;
+export const OpencodeProviderConfigSchema = z.object({
+  provider: z.literal("opencode"),
+  api_key: z.string(),
+  model: z.string(),
+  base_url: z.string().default("https://opencode.ai/inference/go"),
+  tag_style: tagStyleField,
+  backend_provider: z.enum(["anthropic", "google", "openai"]).default("openai"),
+  extra_body: extraBodyField,
+  extra_headers: extraHeadersField,
+});
+
+export const OpencodeGoProviderConfigSchema = z.object({
+  provider: z.literal("opencode-go"),
+  api_key: z.string(),
+  model: z.string(),
+  base_url: z.string().default("https://opencode.ai/inference/go"),
+  tag_style: tagStyleField,
+  backend_provider: z.enum(["anthropic", "google", "openai"]).default("openai"),
+  extra_body: extraBodyField,
+  extra_headers: extraHeadersField,
+});
+
+export type OpencodeProviderConfig =
+  | z.infer<typeof OpencodeProviderConfigSchema>
+  | z.infer<typeof OpencodeGoProviderConfigSchema>;
 
 export const ProviderConfigSchema = z.discriminatedUnion("provider", [
   OpenAIProviderConfigSchema,
@@ -109,6 +136,8 @@ export const ProviderConfigSchema = z.discriminatedUnion("provider", [
   GoogleProviderConfigSchema,
   OpenAICompatibleProviderConfigSchema,
   DeepSeekProviderConfigSchema,
+  OpencodeProviderConfigSchema,
+  OpencodeGoProviderConfigSchema,
 ]);
 
 /** 统一的 LLM provider 配置 — discriminated union on `provider` */

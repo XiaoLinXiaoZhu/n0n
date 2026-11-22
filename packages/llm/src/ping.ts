@@ -15,11 +15,11 @@ export type PingResult = { ok: true } | { ok: false; error: string };
  * 通过 GET /v1/models 探测 API 连通性。
  *
  * @param baseUrl 规范化的 API Base URL
- * @param apiKey Bearer token
  */
 export async function pingModelsEndpoint(
   baseUrl: BaseUrl,
   apiKey: string,
+  headers?: Record<string, string>,
 ): Promise<PingResult> {
   try {
     const url = modelsUrl(baseUrl);
@@ -30,6 +30,7 @@ export async function pingModelsEndpoint(
       headers: {
         Authorization: `Bearer ${apiKey}`,
         "Content-Type": "application/json",
+        ...(headers ?? {}),
       },
       signal: controller.signal,
     });

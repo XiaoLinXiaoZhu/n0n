@@ -27,6 +27,7 @@ export type {
   OpenAICompatibleProviderConfig,
   OpenAIProviderConfig,
   OpenAIResponseProviderConfig,
+  OpencodeProviderConfig,
   ProviderConfig,
 } from "./config.ts";
 export { LLMConfigSchema, ProviderConfigSchema } from "./config.ts";

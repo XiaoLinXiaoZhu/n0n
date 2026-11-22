@@ -12,12 +12,13 @@ import { createTagAdapter } from "@n0n/shared";
 import type { DomainMessage, LLMClient, PromptMessage } from "@n0n/types";
 
 import { AnthropicClient } from "./anthropic-client";
-import type { LLMConfig } from "./config.ts";
+import type { LLMConfig, OpencodeProviderConfig } from "./config.ts";
 import { DeepSeekClient } from "./deepseek-client";
 import { GeminiClient } from "./gemini-client";
 import { OpenAIClient } from "./openai-client";
 import { OpenAICompatibleClient } from "./openai-compatible-client";
 import { OpenAIResponseClient } from "./openai-response-client";
+import { OpencodeClient } from "./opencode-client";
 
 /** 格式化函数类型 — DomainMessage[] → PromptMessage[] */
 export type FormatFn = (messages: DomainMessage[]) => PromptMessage[];
@@ -47,6 +48,10 @@ export function createLLMClient(config: LLMConfig): LLMClient {
       return new GeminiClient(pc, format);
     case "deepseek": {
       return new DeepSeekClient(pc, format);
+    }
+    case "opencode":
+    case "opencode-go": {
+      return new OpencodeClient(pc as OpencodeProviderConfig, format);
     }
     default: {
       const _exhaustive: never = pc;
